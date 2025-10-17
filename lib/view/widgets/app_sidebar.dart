@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../common/constants/app_colors.dart';
@@ -14,77 +15,83 @@ import 'profile_card.dart';
 class AppSidebar extends ConsumerWidget {
   const AppSidebar({super.key});
 
-  /// 확장 처리
-  void _handleExpand(WidgetRef ref) {
-    ref.read(sidebarExpandedProvider.notifier).expand();
-
-    // 150ms 후 콘텐츠 표시
-    Future.delayed(const Duration(milliseconds: 150), () {
-      ref.read(sidebarContentVisibleProvider.notifier).show();
-    });
-  }
-
-  /// 축소 처리
-  void _handleCollapse(WidgetRef ref) {
-    ref.read(sidebarContentVisibleProvider.notifier).hide();
-    ref.read(sidebarExpandedProvider.notifier).collapse();
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isExpanded = ref.watch(sidebarExpandedProvider);
     final showContent = ref.watch(sidebarContentVisibleProvider);
 
+    // 오른쪽 모서리에 적용할 둥근 테두리 값
+    const borderRadius = BorderRadius.only(
+      topRight: Radius.circular(UIConstants.radiusXLarge),
+      bottomRight: Radius.circular(UIConstants.radiusXLarge),
+    );
+
     return MouseRegion(
-      onEnter: (_) => _handleExpand(ref),
-      onExit: (_) => _handleCollapse(ref),
+      onEnter: (_) => ref.read(sidebarExpandedProvider.notifier).expand(),
+      onExit: (_) => ref.read(sidebarExpandedProvider.notifier).collapse(),
       child: AnimatedContainer(
         duration: UIConstants.animationNormal,
         width: isExpanded
             ? UIConstants.sidebarWidthExpanded
             : UIConstants.sidebarWidthCollapsed,
         decoration: BoxDecoration(
+          borderRadius: borderRadius, // 둥근 모서리 적용
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: isDark
                 ? [
-              AppColors.darkSurface.withValues(alpha: 0.95),
-              AppColors.darkSurface.withValues(alpha: 0.85),
-            ]
+                    AppColors.darkSurface.withAlpha(
+                      UIConstants.glassAlphaMedium,
+                    ),
+                    AppColors.darkSurface.withAlpha(UIConstants.glassAlphaLow),
+                  ]
                 : [
-              Colors.white.withValues(alpha: 0.95),
-              Colors.white.withValues(alpha: 0.85),
-            ],
+                    Colors.white.withAlpha(UIConstants.glassAlphaMedium),
+                    Colors.white.withAlpha(UIConstants.glassAlphaLow),
+                  ],
           ),
-          border: Border(
-            right: BorderSide(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.black.withValues(alpha: 0.1),
-              width: 1,
-            ),
+          // borderRadius를 적용하려면 Border.all을 사용해야 합니다.
+          // 사이드바가 화면 왼쪽에 붙어있어 правая 테두리만 보이게 됩니다.
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withAlpha(UIConstants.glassAlphaBorder)
+                : Colors.black.withAlpha(UIConstants.glassAlphaBorder),
+            width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withAlpha(38),
               blurRadius: UIConstants.spacing24,
               offset: const Offset(4, 0),
             ),
           ],
         ),
-        child: Column(
-          children: [
-            _buildHeader(isDark, isExpanded, showContent),
-            const SizedBox(height: UIConstants.spacing16),
-            _buildNewChatButton(isDark, isExpanded, showContent),
-            const SizedBox(height: UIConstants.spacing16),
-            Expanded(
-              child: _buildConversationList(isDark, isExpanded, showContent),
+        child: ClipRRect(
+          borderRadius: borderRadius, // 자식 위젯(BackdropFilter)도 동일하게 잘라냅니다.
+          child: BackdropFilter(
+            filter: ImageFilter.blur(
+              sigmaX: UIConstants.blurSigmaMedium,
+              sigmaY: UIConstants.blurSigmaMedium,
             ),
-            _buildBottomSection(context, isDark, isExpanded, showContent),
-          ],
+            child: Column(
+              children: [
+                _buildHeader(isDark, isExpanded, showContent),
+                const SizedBox(height: UIConstants.spacing16),
+                _buildNewChatButton(isDark, isExpanded, showContent),
+                const SizedBox(height: UIConstants.spacing16),
+                Expanded(
+                  child: _buildConversationList(
+                    isDark,
+                    isExpanded,
+                    showContent,
+                  ),
+                ),
+                _buildBottomSection(context, isDark, isExpanded, showContent),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -96,52 +103,54 @@ class AppSidebar extends ConsumerWidget {
       padding: const EdgeInsets.all(UIConstants.spacing16),
       child: isExpanded
           ? Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Container(
-            width: UIConstants.iconXLarge,
-            height: UIConstants.iconXLarge,
-            decoration: BoxDecoration(
-              gradient: AppColors.gradient,
-              borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
-            ),
-            child: const Icon(
-              Icons.code_rounded,
-              color: Colors.white,
-              size: UIConstants.iconLarge,
-            ),
-          ),
-          if (showContent) ...[
-            const SizedBox(width: UIConstants.spacing12),
-            Flexible(
-              child: Text(
-                'Vibe Code',
-                style: UIHelpers.getTextStyle(
-                  isDark: isDark,
-                  fontSize: UIConstants.fontXLarge,
-                  fontWeight: FontWeight.bold,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Container(
+                  width: UIConstants.iconXLarge,
+                  height: UIConstants.iconXLarge,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.gradient,
+                    borderRadius: BorderRadius.circular(
+                      UIConstants.radiusSmall,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.code_rounded,
+                    color: Colors.white,
+                    size: UIConstants.iconLarge,
+                  ),
                 ),
-                overflow: TextOverflow.ellipsis,
+                if (showContent) ...[
+                  const SizedBox(width: UIConstants.spacing12),
+                  Flexible(
+                    child: Text(
+                      'Vibe Code',
+                      style: UIHelpers.getTextStyle(
+                        isDark: isDark,
+                        fontSize: UIConstants.fontXLarge,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            )
+          : Center(
+              child: Container(
+                width: UIConstants.iconXLarge,
+                height: UIConstants.iconXLarge,
+                decoration: BoxDecoration(
+                  gradient: AppColors.gradient,
+                  borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
+                ),
+                child: const Icon(
+                  Icons.code_rounded,
+                  color: Colors.white,
+                  size: UIConstants.iconLarge,
+                ),
               ),
             ),
-          ],
-        ],
-      )
-          : Center(
-        child: Container(
-          width: UIConstants.iconXLarge,
-          height: UIConstants.iconXLarge,
-          decoration: BoxDecoration(
-            gradient: AppColors.gradient,
-            borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
-          ),
-          child: const Icon(
-            Icons.code_rounded,
-            color: Colors.white,
-            size: UIConstants.iconLarge,
-          ),
-        ),
-      ),
     );
   }
 
@@ -188,7 +197,11 @@ class AppSidebar extends ConsumerWidget {
   }
 
   /// 대화 목록 빌더
-  Widget _buildConversationList(bool isDark, bool isExpanded, bool showContent) {
+  Widget _buildConversationList(
+    bool isDark,
+    bool isExpanded,
+    bool showContent,
+  ) {
     return ListView(
       padding: EdgeInsets.symmetric(
         horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
@@ -238,46 +251,46 @@ class AppSidebar extends ConsumerWidget {
       ),
       child: isExpanded && showContent
           ? Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: UIHelpers.getTextStyle(
-              isDark: isDark,
-              fontSize: UIConstants.fontSmall,
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: UIConstants.spacing3),
-          Text(
-            lastMessage,
-            style: UIHelpers.getTextStyle(
-              isDark: isDark,
-              fontSize: UIConstants.fontTiny,
-              isSecondary: true,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      )
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: UIHelpers.getTextStyle(
+                    isDark: isDark,
+                    fontSize: UIConstants.fontSmall,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: UIConstants.spacing3),
+                Text(
+                  lastMessage,
+                  style: UIHelpers.getTextStyle(
+                    isDark: isDark,
+                    fontSize: UIConstants.fontTiny,
+                    isSecondary: true,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            )
           : Icon(
-        Icons.chat_bubble_outline_rounded,
-        size: UIConstants.iconMedium,
-        color: isDark ? Colors.white70 : Colors.black54,
-      ),
+              Icons.chat_bubble_outline_rounded,
+              size: UIConstants.iconMedium,
+              color: isDark ? Colors.white70 : Colors.black54,
+            ),
     );
   }
 
   /// 하단 섹션 빌더
   Widget _buildBottomSection(
-      BuildContext context,
-      bool isDark,
-      bool isExpanded,
-      bool showContent,
-      ) {
+    BuildContext context,
+    bool isDark,
+    bool isExpanded,
+    bool showContent,
+  ) {
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
@@ -286,10 +299,7 @@ class AppSidebar extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ProfileCard(
-            isExpanded: isExpanded,
-            showContent: showContent,
-          ),
+          ProfileCard(isExpanded: isExpanded, showContent: showContent),
           const SizedBox(height: UIConstants.spacing8),
           _buildSettingsButton(context, isDark, isExpanded, showContent),
         ],
@@ -299,19 +309,17 @@ class AppSidebar extends ConsumerWidget {
 
   /// 설정 버튼 빌더
   Widget _buildSettingsButton(
-      BuildContext context,
-      bool isDark,
-      bool isExpanded,
-      bool showContent,
-      ) {
+    BuildContext context,
+    bool isDark,
+    bool isExpanded,
+    bool showContent,
+  ) {
     return UIHelpers.buildFloatingButton(
       isDark: isDark,
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => const SettingsScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const SettingsScreen()),
         );
       },
       alpha: UIConstants.glassAlphaLow,
@@ -320,8 +328,9 @@ class AppSidebar extends ConsumerWidget {
         vertical: isExpanded ? UIConstants.spacing10 : UIConstants.spacing8,
       ),
       child: Row(
-        mainAxisAlignment:
-        isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+        mainAxisAlignment: isExpanded
+            ? MainAxisAlignment.start
+            : MainAxisAlignment.center,
         children: [
           Icon(
             Icons.settings_outlined,

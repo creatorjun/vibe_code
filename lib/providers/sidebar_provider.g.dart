@@ -44,7 +44,7 @@ final class SidebarExpandedProvider
   }
 }
 
-String _$sidebarExpandedHash() => r'613c96394399946a65b19a1b92c0bf29d2eb3c7e';
+String _$sidebarExpandedHash() => r'21c7721530383f8c19aa17a6b3c06b06b2e09d0f';
 
 /// 사이드바 확장/축소 상태
 

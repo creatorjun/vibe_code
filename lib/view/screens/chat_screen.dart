@@ -1,13 +1,11 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../common/constants/app_colors.dart';
 import '../../common/constants/ui_constants.dart';
-import '../../common/utils/ui_helpers.dart';
+import '../widgets/chat_app_bar.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/app_sidebar.dart';
 import '../../models/message.dart';
-import 'settings_screen.dart';
 
 /// 메인 채팅 화면
 ///
@@ -52,612 +50,610 @@ class _ChatScreenState extends State<ChatScreen> {
     ),
     Message.mock(
       content: '''
-알겠습니다.
+    ```dart
+    import 'package:flutter/material.dart';
+    import 'package:flutter_riverpod/flutter_riverpod.dart';
+    import '../../common/constants/app_colors.dart';
+    import '../../common/constants/ui_constants.dart';
+    import '../../common/utils/ui_helpers.dart';
+    import '../../providers/sidebar_provider.dart';
+    import '../screens/settings_screen.dart';
+    import 'profile_card.dart';
 
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../common/constants/app_colors.dart';
-import '../../common/constants/ui_constants.dart';
-import '../../common/utils/ui_helpers.dart';
-import '../../providers/sidebar_provider.dart';
-import '../screens/settings_screen.dart';
-import 'profile_card.dart';
+    /// 애플리케이션 사이드바 위젯
+    ///
+    /// 마우스 호버 시 확장되며, 대화 내역과 프로필 카드를 표시합니다.
+    class AppSidebar extends ConsumerStatefulWidget {
+      const AppSidebar({super.key});
 
-/// 애플리케이션 사이드바 위젯
-///
-/// 마우스 호버 시 확장되며, 대화 내역과 프로필 카드를 표시합니다.
-class AppSidebar extends ConsumerStatefulWidget {
-  const AppSidebar({super.key});
+      @override
+      ConsumerState<AppSidebar> createState() => _AppSidebarState();
+    }
 
-  @override
-  ConsumerState<AppSidebar> createState() => _AppSidebarState();
-}
+    class _AppSidebarState extends ConsumerState<AppSidebar> {
+      bool _showExpandedContent = false;
 
-class _AppSidebarState extends ConsumerState<AppSidebar> {
-  bool _showExpandedContent = false;
+      @override
+      Widget build(BuildContext context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final isExpanded = ref.watch(sidebarExpandedProvider);
 
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isExpanded = ref.watch(sidebarExpandedProvider);
-
-    return MouseRegion(
-      onEnter: (_) => _handleExpand(),
-      onExit: (_) => _handleCollapse(),
-      child: AnimatedContainer(
-        duration: UIConstants.animationNormal,
-        width: isExpanded
-            ? UIConstants.sidebarWidthExpanded
-            : UIConstants.sidebarWidthCollapsed,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [
-                    AppColors.darkSurface.withValues(alpha: 0.95),
-                    AppColors.darkSurface.withValues(alpha: 0.85),
-                  ]
-                : [
-                    Colors.white.withValues(alpha: 0.95),
-                    Colors.white.withValues(alpha: 0.85),
-                  ],
-          ),
-          border: Border(
-            right: BorderSide(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.black.withValues(alpha: 0.1),
-              width: 1,
+        return MouseRegion(
+          onEnter: (_) => _handleExpand(),
+          onExit: (_) => _handleCollapse(),
+          child: AnimatedContainer(
+            duration: UIConstants.animationNormal,
+            width: isExpanded
+                ? UIConstants.sidebarWidthExpanded
+                : UIConstants.sidebarWidthCollapsed,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        AppColors.darkSurface.withValues(alpha: 0.95),
+                        AppColors.darkSurface.withValues(alpha: 0.85),
+                      ]
+                    : [
+                        Colors.white.withValues(alpha: 0.95),
+                        Colors.white.withValues(alpha: 0.85),
+                      ],
+              ),
+              border: Border(
+                right: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.black.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: UIConstants.spacing24,
+                  offset: const Offset(4, 0),
+                ),
+              ],
             ),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: UIConstants.spacing24,
-              offset: const Offset(4, 0),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            _buildHeader(isDark, isExpanded),
-            const SizedBox(height: UIConstants.spacing16),
-            _buildNewChatButton(isDark, isExpanded),
-            const SizedBox(height: UIConstants.spacing16),
-            Expanded(
-              child: _buildConversationList(isDark, isExpanded),
-            ),
-            _buildBottomSection(isDark, isExpanded),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 확장 처리
-  void _handleExpand() {
-    ref.read(sidebarExpandedProvider.notifier).expand();
-    Future.delayed(
-      const Duration(milliseconds: 150),
-      () {
-        if (mounted) {
-          setState(() => _showExpandedContent = true);
-        }
-      },
-    );
-  }
-
-  /// 축소 처리
-  void _handleCollapse() {
-    ref.read(sidebarExpandedProvider.notifier).collapse();
-    setState(() => _showExpandedContent = false);
-  }
-
-  /// 헤더 빌더
-  Widget _buildHeader(bool isDark, bool isExpanded) {
-    return Padding(
-      padding: const EdgeInsets.all(UIConstants.spacing16),
-      child: isExpanded
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+            child: Column(
               children: [
-                Container(
-                  width: UIConstants.iconLarge,
-                  height: UIConstants.iconLarge,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.gradient,
-                    borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
-                  ),
-                  child: const Icon(
-                    Icons.code_rounded,
-                    color: Colors.white,
-                    size: UIConstants.iconMedium,
+                _buildHeader(isDark, isExpanded),
+                const SizedBox(height: UIConstants.spacing16),
+                _buildNewChatButton(isDark, isExpanded),
+                const SizedBox(height: UIConstants.spacing16),
+                Expanded(
+                  child: _buildConversationList(isDark, isExpanded),
+                ),
+                _buildBottomSection(isDark, isExpanded),
+              ],
+            ),
+          ),
+        );
+      }
+
+      /// 확장 처리
+      void _handleExpand() {
+        ref.read(sidebarExpandedProvider.notifier).expand();
+        Future.delayed(
+          const Duration(milliseconds: 150),
+          () {
+            if (mounted) {
+              setState(() => _showExpandedContent = true);
+            }
+          },
+        );
+      }
+
+      /// 축소 처리
+      void _handleCollapse() {
+        ref.read(sidebarExpandedProvider.notifier).collapse();
+        setState(() => _showExpandedContent = false);
+      }
+
+      /// 헤더 빌더
+      Widget _buildHeader(bool isDark, bool isExpanded) {
+        return Padding(
+          padding: const EdgeInsets.all(UIConstants.spacing16),
+          child: isExpanded
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: UIConstants.iconLarge,
+                      height: UIConstants.iconLarge,
+                      decoration: BoxDecoration(
+                        gradient: AppColors.gradient,
+                        borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
+                      ),
+                      child: const Icon(
+                        Icons.code_rounded,
+                        color: Colors.white,
+                        size: UIConstants.iconMedium,
+                      ),
+                    ),
+                    if (_showExpandedContent) ...[
+                      const SizedBox(width: UIConstants.spacing12),
+                      Flexible(
+                        child: Text(
+                          'Vibe Code',
+                          style: UIHelpers.getTextStyle(
+                            isDark: isDark,
+                            fontSize: UIConstants.fontLarge,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                )
+              : Center(
+                  child: Container(
+                    width: UIConstants.iconLarge,
+                    height: UIConstants.iconLarge,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.gradient,
+                      borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
+                    ),
+                    child: const Icon(
+                      Icons.code_rounded,
+                      color: Colors.white,
+                      size: UIConstants.iconMedium,
+                    ),
                   ),
                 ),
-                if (_showExpandedContent) ...[
-                  const SizedBox(width: UIConstants.spacing12),
-                  Flexible(
-                    child: Text(
-                      'Vibe Code',
-                      style: UIHelpers.getTextStyle(
-                        isDark: isDark,
-                        fontSize: UIConstants.fontLarge,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+        );
+      }
+
+      /// 새 대화 버튼 빌더
+      Widget _buildNewChatButton(bool isDark, bool isExpanded) {
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
+          ),
+          child: UIHelpers.buildFloatingButton(
+            isDark: isDark,
+            onTap: () {
+              // TODO: 새 대화 시작 로직
+            },
+            opacity: UIConstants.glassOpacityLow,
+            padding: EdgeInsets.symmetric(
+              horizontal: UIConstants.spacing12,
+              vertical: isExpanded ? UIConstants.spacing12 : UIConstants.spacing10,
+            ),
+            child: Row(
+              mainAxisAlignment: isExpanded
+                  ? MainAxisAlignment.start
+                  : MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.add_rounded,
+                  size: UIConstants.iconMedium,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                if (isExpanded && _showExpandedContent) ...[
+                  const SizedBox(width: UIConstants.spacing8),
+                  Text(
+                    '새 대화',
+                    style: UIHelpers.getTextStyle(
+                      isDark: isDark,
+                      fontSize: UIConstants.fontMedium,
                     ),
                   ),
                 ],
               ],
-            )
-          : Center(
-              child: Container(
-                width: UIConstants.iconLarge,
-                height: UIConstants.iconLarge,
-                decoration: BoxDecoration(
-                  gradient: AppColors.gradient,
-                  borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
-                ),
-                child: const Icon(
-                  Icons.code_rounded,
-                  color: Colors.white,
-                  size: UIConstants.iconMedium,
-                ),
-              ),
             ),
-    );
-  }
+          ),
+        );
+      }
 
-  /// 새 대화 버튼 빌더
-  Widget _buildNewChatButton(bool isDark, bool isExpanded) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
-      ),
-      child: UIHelpers.buildFloatingButton(
-        isDark: isDark,
-        onTap: () {
-          // TODO: 새 대화 시작 로직
-        },
-        opacity: UIConstants.glassOpacityLow,
-        padding: EdgeInsets.symmetric(
-          horizontal: UIConstants.spacing12,
-          vertical: isExpanded ? UIConstants.spacing12 : UIConstants.spacing10,
-        ),
-        child: Row(
-          mainAxisAlignment: isExpanded
-              ? MainAxisAlignment.start
-              : MainAxisAlignment.center,
+      /// 대화 목록 빌더
+      Widget _buildConversationList(bool isDark, bool isExpanded) {
+        return ListView(
+          padding: EdgeInsets.symmetric(
+            horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
+          ),
           children: [
-            Icon(
-              Icons.add_rounded,
-              size: UIConstants.iconMedium,
-              color: isDark ? Colors.white : Colors.black87,
+            _buildConversationItem(
+              isDark: isDark,
+              isExpanded: isExpanded,
+              title: 'Flutter 프로젝트 구조',
+              lastMessage: 'MVVM 패턴 설명...',
+              isActive: true,
             ),
-            if (isExpanded && _showExpandedContent) ...[
-              const SizedBox(width: UIConstants.spacing8),
-              Text(
-                '새 대화',
-                style: UIHelpers.getTextStyle(
-                  isDark: isDark,
-                  fontSize: UIConstants.fontMedium,
-                ),
-              ),
-            ],
+            const SizedBox(height: UIConstants.spacing8),
+            _buildConversationItem(
+              isDark: isDark,
+              isExpanded: isExpanded,
+              title: 'Riverpod 3.0 사용법',
+              lastMessage: '상태 관리 방법...',
+              isActive: false,
+            ),
           ],
-        ),
-      ),
-    );
-  }
+        );
+      }
 
-  /// 대화 목록 빌더
-  Widget _buildConversationList(bool isDark, bool isExpanded) {
-    return ListView(
-      padding: EdgeInsets.symmetric(
-        horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
-      ),
-      children: [
-        _buildConversationItem(
+      /// 대화 항목 빌더
+      Widget _buildConversationItem({
+        required bool isDark,
+        required bool isExpanded,
+        required String title,
+        required String lastMessage,
+        required bool isActive,
+      }) {
+        return UIHelpers.buildFloatingButton(
           isDark: isDark,
-          isExpanded: isExpanded,
-          title: 'Flutter 프로젝트 구조',
-          lastMessage: 'MVVM 패턴 설명...',
-          isActive: true,
-        ),
-        const SizedBox(height: UIConstants.spacing8),
-        _buildConversationItem(
-          isDark: isDark,
-          isExpanded: isExpanded,
-          title: 'Riverpod 3.0 사용법',
-          lastMessage: '상태 관리 방법...',
-          isActive: false,
-        ),
-      ],
-    );
-  }
-
-  /// 대화 항목 빌더
-  Widget _buildConversationItem({
-    required bool isDark,
-    required bool isExpanded,
-    required String title,
-    required String lastMessage,
-    required bool isActive,
-  }) {
-    return UIHelpers.buildFloatingButton(
-      isDark: isDark,
-      onTap: () {
-        // TODO: 대화 선택 로직
-      },
-      opacity: isActive
-          ? UIConstants.glassOpacityMedium
-          : UIConstants.glassOpacityLow,
-      padding: const EdgeInsets.symmetric(
-        horizontal: UIConstants.spacing12,
-        vertical: UIConstants.spacing10,
-      ),
-      child: isExpanded && _showExpandedContent
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: UIHelpers.getTextStyle(
-                    isDark: isDark,
-                    fontSize: UIConstants.fontSmall,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          onTap: () {
+            // TODO: 대화 선택 로직
+          },
+          opacity: isActive
+              ? UIConstants.glassOpacityMedium
+              : UIConstants.glassOpacityLow,
+          padding: const EdgeInsets.symmetric(
+            horizontal: UIConstants.spacing12,
+            vertical: UIConstants.spacing10,
+          ),
+          child: isExpanded && _showExpandedContent
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: UIHelpers.getTextStyle(
+                        isDark: isDark,
+                        fontSize: UIConstants.fontSmall,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: UIConstants.spacing3),
+                    Text(
+                      lastMessage,
+                      style: UIHelpers.getTextStyle(
+                        isDark: isDark,
+                        fontSize: UIConstants.fontTiny,
+                        isSecondary: true,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                )
+              : Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: UIConstants.iconMedium,
+                  color: isDark ? Colors.white70 : Colors.black54,
                 ),
-                const SizedBox(height: UIConstants.spacing3),
-                Text(
-                  lastMessage,
-                  style: UIHelpers.getTextStyle(
-                    isDark: isDark,
-                    fontSize: UIConstants.fontTiny,
-                    isSecondary: true,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            )
-          : Icon(
-              Icons.chat_bubble_outline_rounded,
-              size: UIConstants.iconMedium,
-              color: isDark ? Colors.white70 : Colors.black54,
-            ),
-    );
-  }
+        );
+      }
 
-  /// 하단 섹션 빌더
-  Widget _buildBottomSection(bool isDark, bool isExpanded) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
-        vertical: UIConstants.spacing16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildSettingsButton(isDark, isExpanded),
-          const SizedBox(height: UIConstants.spacing8),
-          ProfileCard(isExpanded: isExpanded),
-        ],
-      ),
-    );
-  }
-```
-요청하신 코드 제공이 완료되었습니다.
-''',
+      /// 하단 섹션 빌더
+      Widget _buildBottomSection(bool isDark, bool isExpanded) {
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
+            vertical: UIConstants.spacing16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildSettingsButton(isDark, isExpanded),
+              const SizedBox(height: UIConstants.spacing8),
+              ProfileCard(isExpanded: isExpanded),
+            ],
+          ),
+        );
+      }
+    ```
+    요청하신 코드 제공이 완료되었습니다.
+    ''',
       role: MessageRole.assistant,
     ),
     Message.mock(
       content: '''
-알겠습니다.
+    알겠습니다.
+    코드를 제공합니다.
+    ```dart
+    import 'package:flutter/material.dart';
+    import 'package:flutter_riverpod/flutter_riverpod.dart';
+    import '../../common/constants/app_colors.dart';
+    import '../../common/constants/ui_constants.dart';
+    import '../../common/utils/ui_helpers.dart';
+    import '../../providers/sidebar_provider.dart';
+    import '../screens/settings_screen.dart';
+    import 'profile_card.dart';
 
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../common/constants/app_colors.dart';
-import '../../common/constants/ui_constants.dart';
-import '../../common/utils/ui_helpers.dart';
-import '../../providers/sidebar_provider.dart';
-import '../screens/settings_screen.dart';
-import 'profile_card.dart';
+    /// 애플리케이션 사이드바 위젯
+    ///
+    /// 마우스 호버 시 확장되며, 대화 내역과 프로필 카드를 표시합니다.
+    class AppSidebar extends ConsumerStatefulWidget {
+      const AppSidebar({super.key});
 
-/// 애플리케이션 사이드바 위젯
-///
-/// 마우스 호버 시 확장되며, 대화 내역과 프로필 카드를 표시합니다.
-class AppSidebar extends ConsumerStatefulWidget {
-  const AppSidebar({super.key});
+      @override
+      ConsumerState<AppSidebar> createState() => _AppSidebarState();
+    }
 
-  @override
-  ConsumerState<AppSidebar> createState() => _AppSidebarState();
-}
+    class _AppSidebarState extends ConsumerState<AppSidebar> {
+      bool _showExpandedContent = false;
 
-class _AppSidebarState extends ConsumerState<AppSidebar> {
-  bool _showExpandedContent = false;
+      @override
+      Widget build(BuildContext context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final isExpanded = ref.watch(sidebarExpandedProvider);
 
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isExpanded = ref.watch(sidebarExpandedProvider);
-
-    return MouseRegion(
-      onEnter: (_) => _handleExpand(),
-      onExit: (_) => _handleCollapse(),
-      child: AnimatedContainer(
-        duration: UIConstants.animationNormal,
-        width: isExpanded
-            ? UIConstants.sidebarWidthExpanded
-            : UIConstants.sidebarWidthCollapsed,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [
-                    AppColors.darkSurface.withValues(alpha: 0.95),
-                    AppColors.darkSurface.withValues(alpha: 0.85),
-                  ]
-                : [
-                    Colors.white.withValues(alpha: 0.95),
-                    Colors.white.withValues(alpha: 0.85),
-                  ],
-          ),
-          border: Border(
-            right: BorderSide(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.black.withValues(alpha: 0.1),
-              width: 1,
+        return MouseRegion(
+          onEnter: (_) => _handleExpand(),
+          onExit: (_) => _handleCollapse(),
+          child: AnimatedContainer(
+            duration: UIConstants.animationNormal,
+            width: isExpanded
+                ? UIConstants.sidebarWidthExpanded
+                : UIConstants.sidebarWidthCollapsed,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        AppColors.darkSurface.withValues(alpha: 0.95),
+                        AppColors.darkSurface.withValues(alpha: 0.85),
+                      ]
+                    : [
+                        Colors.white.withValues(alpha: 0.95),
+                        Colors.white.withValues(alpha: 0.85),
+                      ],
+              ),
+              border: Border(
+                right: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.black.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: UIConstants.spacing24,
+                  offset: const Offset(4, 0),
+                ),
+              ],
             ),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: UIConstants.spacing24,
-              offset: const Offset(4, 0),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            _buildHeader(isDark, isExpanded),
-            const SizedBox(height: UIConstants.spacing16),
-            _buildNewChatButton(isDark, isExpanded),
-            const SizedBox(height: UIConstants.spacing16),
-            Expanded(
-              child: _buildConversationList(isDark, isExpanded),
-            ),
-            _buildBottomSection(isDark, isExpanded),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 확장 처리
-  void _handleExpand() {
-    ref.read(sidebarExpandedProvider.notifier).expand();
-    Future.delayed(
-      const Duration(milliseconds: 150),
-      () {
-        if (mounted) {
-          setState(() => _showExpandedContent = true);
-        }
-      },
-    );
-  }
-
-  /// 축소 처리
-  void _handleCollapse() {
-    ref.read(sidebarExpandedProvider.notifier).collapse();
-    setState(() => _showExpandedContent = false);
-  }
-
-  /// 헤더 빌더
-  Widget _buildHeader(bool isDark, bool isExpanded) {
-    return Padding(
-      padding: const EdgeInsets.all(UIConstants.spacing16),
-      child: isExpanded
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+            child: Column(
               children: [
-                Container(
-                  width: UIConstants.iconLarge,
-                  height: UIConstants.iconLarge,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.gradient,
-                    borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
-                  ),
-                  child: const Icon(
-                    Icons.code_rounded,
-                    color: Colors.white,
-                    size: UIConstants.iconMedium,
+                _buildHeader(isDark, isExpanded),
+                const SizedBox(height: UIConstants.spacing16),
+                _buildNewChatButton(isDark, isExpanded),
+                const SizedBox(height: UIConstants.spacing16),
+                Expanded(
+                  child: _buildConversationList(isDark, isExpanded),
+                ),
+                _buildBottomSection(isDark, isExpanded),
+              ],
+            ),
+          ),
+        );
+      }
+
+      /// 확장 처리
+      void _handleExpand() {
+        ref.read(sidebarExpandedProvider.notifier).expand();
+        Future.delayed(
+          const Duration(milliseconds: 150),
+          () {
+            if (mounted) {
+              setState(() => _showExpandedContent = true);
+            }
+          },
+        );
+      }
+
+      /// 축소 처리
+      void _handleCollapse() {
+        ref.read(sidebarExpandedProvider.notifier).collapse();
+        setState(() => _showExpandedContent = false);
+      }
+
+      /// 헤더 빌더
+      Widget _buildHeader(bool isDark, bool isExpanded) {
+        return Padding(
+          padding: const EdgeInsets.all(UIConstants.spacing16),
+          child: isExpanded
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: UIConstants.iconLarge,
+                      height: UIConstants.iconLarge,
+                      decoration: BoxDecoration(
+                        gradient: AppColors.gradient,
+                        borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
+                      ),
+                      child: const Icon(
+                        Icons.code_rounded,
+                        color: Colors.white,
+                        size: UIConstants.iconMedium,
+                      ),
+                    ),
+                    if (_showExpandedContent) ...[
+                      const SizedBox(width: UIConstants.spacing12),
+                      Flexible(
+                        child: Text(
+                          'Vibe Code',
+                          style: UIHelpers.getTextStyle(
+                            isDark: isDark,
+                            fontSize: UIConstants.fontLarge,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                )
+              : Center(
+                  child: Container(
+                    width: UIConstants.iconLarge,
+                    height: UIConstants.iconLarge,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.gradient,
+                      borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
+                    ),
+                    child: const Icon(
+                      Icons.code_rounded,
+                      color: Colors.white,
+                      size: UIConstants.iconMedium,
+                    ),
                   ),
                 ),
-                if (_showExpandedContent) ...[
-                  const SizedBox(width: UIConstants.spacing12),
-                  Flexible(
-                    child: Text(
-                      'Vibe Code',
-                      style: UIHelpers.getTextStyle(
-                        isDark: isDark,
-                        fontSize: UIConstants.fontLarge,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+        );
+      }
+
+      /// 새 대화 버튼 빌더
+      Widget _buildNewChatButton(bool isDark, bool isExpanded) {
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
+          ),
+          child: UIHelpers.buildFloatingButton(
+            isDark: isDark,
+            onTap: () {
+              // TODO: 새 대화 시작 로직
+            },
+            opacity: UIConstants.glassOpacityLow,
+            padding: EdgeInsets.symmetric(
+              horizontal: UIConstants.spacing12,
+              vertical: isExpanded ? UIConstants.spacing12 : UIConstants.spacing10,
+            ),
+            child: Row(
+              mainAxisAlignment: isExpanded
+                  ? MainAxisAlignment.start
+                  : MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.add_rounded,
+                  size: UIConstants.iconMedium,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                if (isExpanded && _showExpandedContent) ...[
+                  const SizedBox(width: UIConstants.spacing8),
+                  Text(
+                    '새 대화',
+                    style: UIHelpers.getTextStyle(
+                      isDark: isDark,
+                      fontSize: UIConstants.fontMedium,
                     ),
                   ),
                 ],
               ],
-            )
-          : Center(
-              child: Container(
-                width: UIConstants.iconLarge,
-                height: UIConstants.iconLarge,
-                decoration: BoxDecoration(
-                  gradient: AppColors.gradient,
-                  borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
-                ),
-                child: const Icon(
-                  Icons.code_rounded,
-                  color: Colors.white,
-                  size: UIConstants.iconMedium,
-                ),
-              ),
             ),
-    );
-  }
+          ),
+        );
+      }
 
-  /// 새 대화 버튼 빌더
-  Widget _buildNewChatButton(bool isDark, bool isExpanded) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
-      ),
-      child: UIHelpers.buildFloatingButton(
-        isDark: isDark,
-        onTap: () {
-          // TODO: 새 대화 시작 로직
-        },
-        opacity: UIConstants.glassOpacityLow,
-        padding: EdgeInsets.symmetric(
-          horizontal: UIConstants.spacing12,
-          vertical: isExpanded ? UIConstants.spacing12 : UIConstants.spacing10,
-        ),
-        child: Row(
-          mainAxisAlignment: isExpanded
-              ? MainAxisAlignment.start
-              : MainAxisAlignment.center,
+      /// 대화 목록 빌더
+      Widget _buildConversationList(bool isDark, bool isExpanded) {
+        return ListView(
+          padding: EdgeInsets.symmetric(
+            horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
+          ),
           children: [
-            Icon(
-              Icons.add_rounded,
-              size: UIConstants.iconMedium,
-              color: isDark ? Colors.white : Colors.black87,
+            _buildConversationItem(
+              isDark: isDark,
+              isExpanded: isExpanded,
+              title: 'Flutter 프로젝트 구조',
+              lastMessage: 'MVVM 패턴 설명...',
+              isActive: true,
             ),
-            if (isExpanded && _showExpandedContent) ...[
-              const SizedBox(width: UIConstants.spacing8),
-              Text(
-                '새 대화',
-                style: UIHelpers.getTextStyle(
-                  isDark: isDark,
-                  fontSize: UIConstants.fontMedium,
-                ),
-              ),
-            ],
+            const SizedBox(height: UIConstants.spacing8),
+            _buildConversationItem(
+              isDark: isDark,
+              isExpanded: isExpanded,
+              title: 'Riverpod 3.0 사용법',
+              lastMessage: '상태 관리 방법...',
+              isActive: false,
+            ),
           ],
-        ),
-      ),
-    );
-  }
+        );
+      }
 
-  /// 대화 목록 빌더
-  Widget _buildConversationList(bool isDark, bool isExpanded) {
-    return ListView(
-      padding: EdgeInsets.symmetric(
-        horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
-      ),
-      children: [
-        _buildConversationItem(
+      /// 대화 항목 빌더
+      Widget _buildConversationItem({
+        required bool isDark,
+        required bool isExpanded,
+        required String title,
+        required String lastMessage,
+        required bool isActive,
+      }) {
+        return UIHelpers.buildFloatingButton(
           isDark: isDark,
-          isExpanded: isExpanded,
-          title: 'Flutter 프로젝트 구조',
-          lastMessage: 'MVVM 패턴 설명...',
-          isActive: true,
-        ),
-        const SizedBox(height: UIConstants.spacing8),
-        _buildConversationItem(
-          isDark: isDark,
-          isExpanded: isExpanded,
-          title: 'Riverpod 3.0 사용법',
-          lastMessage: '상태 관리 방법...',
-          isActive: false,
-        ),
-      ],
-    );
-  }
-
-  /// 대화 항목 빌더
-  Widget _buildConversationItem({
-    required bool isDark,
-    required bool isExpanded,
-    required String title,
-    required String lastMessage,
-    required bool isActive,
-  }) {
-    return UIHelpers.buildFloatingButton(
-      isDark: isDark,
-      onTap: () {
-        // TODO: 대화 선택 로직
-      },
-      opacity: isActive
-          ? UIConstants.glassOpacityMedium
-          : UIConstants.glassOpacityLow,
-      padding: const EdgeInsets.symmetric(
-        horizontal: UIConstants.spacing12,
-        vertical: UIConstants.spacing10,
-      ),
-      child: isExpanded && _showExpandedContent
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: UIHelpers.getTextStyle(
-                    isDark: isDark,
-                    fontSize: UIConstants.fontSmall,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          onTap: () {
+            // TODO: 대화 선택 로직
+          },
+          opacity: isActive
+              ? UIConstants.glassOpacityMedium
+              : UIConstants.glassOpacityLow,
+          padding: const EdgeInsets.symmetric(
+            horizontal: UIConstants.spacing12,
+            vertical: UIConstants.spacing10,
+          ),
+          child: isExpanded && _showExpandedContent
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: UIHelpers.getTextStyle(
+                        isDark: isDark,
+                        fontSize: UIConstants.fontSmall,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: UIConstants.spacing3),
+                    Text(
+                      lastMessage,
+                      style: UIHelpers.getTextStyle(
+                        isDark: isDark,
+                        fontSize: UIConstants.fontTiny,
+                        isSecondary: true,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                )
+              : Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: UIConstants.iconMedium,
+                  color: isDark ? Colors.white70 : Colors.black54,
                 ),
-                const SizedBox(height: UIConstants.spacing3),
-                Text(
-                  lastMessage,
-                  style: UIHelpers.getTextStyle(
-                    isDark: isDark,
-                    fontSize: UIConstants.fontTiny,
-                    isSecondary: true,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            )
-          : Icon(
-              Icons.chat_bubble_outline_rounded,
-              size: UIConstants.iconMedium,
-              color: isDark ? Colors.white70 : Colors.black54,
-            ),
-    );
-  }
+        );
+      }
 
-  /// 하단 섹션 빌더
-  Widget _buildBottomSection(bool isDark, bool isExpanded) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
-        vertical: UIConstants.spacing16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildSettingsButton(isDark, isExpanded),
-          const SizedBox(height: UIConstants.spacing8),
-          ProfileCard(isExpanded: isExpanded),
-        ],
-      ),
-    );
-  }
-```
-요청하신 코드 제공이 완료되었습니다.
-''',
+      /// 하단 섹션 빌더
+      Widget _buildBottomSection(bool isDark, bool isExpanded) {
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isExpanded ? UIConstants.spacing16 : UIConstants.spacing8,
+            vertical: UIConstants.spacing16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildSettingsButton(isDark, isExpanded),
+              const SizedBox(height: UIConstants.spacing8),
+              ProfileCard(isExpanded: isExpanded),
+            ],
+          ),
+        );
+      }
+    ```
+    요청하신 코드 제공이 완료되었습니다.
+    ''',
       role: MessageRole.user,
     ),
   ];
@@ -725,11 +721,13 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
             children: [
               const AppSidebar(),
               Expanded(
-                child: Column(
+                child: Stack(
                   children: [
-                    _buildAppBar(context, isDark),
-                    Expanded(child: _buildMessageList()),
-                    ChatInput(onSendMessage: _handleSendMessage),
+                    _buildMessageList(),
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: ChatInput(onSendMessage: _handleSendMessage),
+                    ),
                   ],
                 ),
               ),
@@ -755,69 +753,13 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
     );
   }
 
-  /// AppBar 빌더
-  Widget _buildAppBar(BuildContext context, bool isDark) {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: UIConstants.blurSigmaMedium,
-          sigmaY: UIConstants.blurSigmaMedium,
-        ),
-        child: Container(
-          height: UIConstants.appBarHeight,
-          decoration: BoxDecoration(
-            color: isDark
-                ? AppColors.darkSurface.withAlpha(UIConstants.glassAlphaVeryHigh)
-                : Colors.white.withAlpha(UIConstants.glassAlphaVeryHigh),
-            border: Border(
-              bottom: BorderSide(
-                color: isDark
-                    ? Colors.white.withAlpha(UIConstants.glassAlphaLow)
-                    : Colors.black.withAlpha(UIConstants.glassAlphaLow),
-                width: 1,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              const SizedBox(width: UIConstants.spacing16),
-              Text(
-                'Vibe Code AI',
-                style: UIHelpers.getTextStyle(
-                  isDark: isDark,
-                  fontSize: UIConstants.fontLarge,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: Icon(
-                  Icons.settings_outlined,
-                  color: isDark ? Colors.white70 : Colors.black54,
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
-                    ),
-                  );
-                },
-                tooltip: '설정',
-              ),
-              const SizedBox(width: UIConstants.spacing8),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   /// 메시지 리스트 빌더
   Widget _buildMessageList() {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
+        // Sliver로 변환된 AppBar를 CustomScrollView의 첫 번째 자식으로 추가
+        const ChatAppBar(),
         const SliverToBoxAdapter(
           child: SizedBox(height: UIConstants.spacing16),
         ),
@@ -825,8 +767,9 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
         // Sliver 리스트를 가져온 뒤, spread operator(...)를 사용해 펼쳐 넣습니다.
         ..._messages.expand(
                 (message) => ChatBubble(message: message).buildSlivers(context)),
+        // 하단 입력창 높이만큼 여백 추가
         const SliverToBoxAdapter(
-          child: SizedBox(height: UIConstants.spacing16),
+          child: SizedBox(height: 100), // 입력창 영역 확보
         ),
       ],
     );

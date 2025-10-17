@@ -30,7 +30,9 @@ class StickyCodeSnippet extends StatelessWidget {
     return SliverPadding(
       padding: EdgeInsets.symmetric(
         horizontal: UIConstants.spacing16,
-        vertical: isFirstInSection && isLastInSection ? UIConstants.spacing4 : 0,
+        vertical: isFirstInSection && isLastInSection
+            ? UIConstants.spacing4
+            : 0,
       ),
       sliver: SliverMainAxisGroup(
         slivers: [
@@ -43,24 +45,10 @@ class StickyCodeSnippet extends StatelessWidget {
               isFirstInSection: isFirstInSection,
             ),
           ),
-          SliverToBoxAdapter(
-            child: _buildCodeContent(isDark),
-          ),
+          SliverToBoxAdapter(child: _buildCodeContent(isDark)),
         ],
       ),
     );
-  }
-
-  /// 코드 높이 계산 (✅ 수정된 함수)
-  double _calculateCodeHeight() {
-    final trimmedCode = code.trim();
-    // 코드가 비어있으면 높이를 0으로 반환합니다.
-    if (trimmedCode.isEmpty) {
-      return 0.0;
-    }
-    // 올바른 줄 수를 세어 높이를 계산합니다.
-    final lineCount = trimmedCode.split('\n').length;
-    return lineCount * UIConstants.codeLineHeight;
   }
 
   /// 코드 콘텐츠 빌더
@@ -84,9 +72,9 @@ class StickyCodeSnippet extends StatelessWidget {
         ),
         borderRadius: isLastInSection
             ? const BorderRadius.only(
-          bottomLeft: Radius.circular(UIConstants.radiusLarge),
-          bottomRight: Radius.circular(UIConstants.radiusLarge),
-        )
+                bottomLeft: Radius.circular(UIConstants.radiusLarge),
+                bottomRight: Radius.circular(UIConstants.radiusLarge),
+              )
             : null,
       ),
       padding: const EdgeInsets.all(UIConstants.spacing16),
@@ -131,16 +119,16 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context,
-      double shrinkOffset,
-      bool overlapsContent,
-      ) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     final isSticky = shrinkOffset > 0;
     final borderRadius = (isFirstInSection && !isSticky)
         ? const BorderRadius.only(
-      topLeft: Radius.circular(UIConstants.radiusLarge),
-      topRight: Radius.circular(UIConstants.radiusLarge),
-    )
+            topLeft: Radius.circular(UIConstants.radiusLarge),
+            topRight: Radius.circular(UIConstants.radiusLarge),
+          )
         : BorderRadius.zero;
 
     return Container(
