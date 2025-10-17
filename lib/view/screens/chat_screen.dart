@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../common/constants/app_colors.dart';
 import '../../common/constants/ui_constants.dart';
@@ -767,9 +768,9 @@ class _ChatScreenState extends State<ChatScreen> {
         // Sliver 리스트를 가져온 뒤, spread operator(...)를 사용해 펼쳐 넣습니다.
         ..._messages.expand(
                 (message) => ChatBubble(message: message).buildSlivers(context)),
-        // 하단 입력창 높이만큼 여백 추가
+        // 하단 입력창(ChatInput) 영역이 가려지지 않도록 여백 추가
         const SliverToBoxAdapter(
-          child: SizedBox(height: 100), // 입력창 영역 확보
+          child: SizedBox(height: 150), // 대략적인 ChatInput 높이 + 추가 여유 공간
         ),
       ],
     );

@@ -33,8 +33,8 @@ class ChatAppBar extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.gradientStart.withAlpha(UIConstants.glassAlphaHigh),
-                  AppColors.gradientEnd.withAlpha(UIConstants.glassAlphaHigh),
+                  AppColors.gradientStart.withAlpha(UIConstants.glassAlphaVeryHigh),
+                  AppColors.gradientEnd.withAlpha(UIConstants.glassAlphaVeryHigh),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
