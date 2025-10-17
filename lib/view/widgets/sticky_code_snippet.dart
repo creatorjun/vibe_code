@@ -8,25 +8,36 @@ import '../../common/constants/ui_constants.dart';
 ///
 /// 스크롤 시 헤더가 화면 상단에 고정되며,
 /// 코드 내용은 가로 스크롤을 지원합니다.
+/// 통합된 말풍선의 일부로 표시될 수 있도록 isFirst/LastInSection 속성을 가집니다.
 class StickyCodeSnippet extends StatelessWidget {
   final String code;
   final String language;
+  final bool isFirstInSection;
+  final bool isLastInSection;
 
   const StickyCodeSnippet({
     super.key,
     required this.code,
     this.language = 'dart',
+    this.isFirstInSection = true,
+    this.isLastInSection = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final codeHeight = _calculateCodeHeight();
+    // ✅ 수정: 높이 계산 로직이 수정된 함수를 사용합니다.
+    final codeContentHeight = _calculateCodeHeight();
+
+    // 내용이 없으면 위젯을 렌더링하지 않습니다.
+    if (codeContentHeight <= 0) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
 
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(
+      padding: EdgeInsets.symmetric(
         horizontal: UIConstants.spacing16,
-        vertical: UIConstants.spacing4,
+        vertical: isFirstInSection && isLastInSection ? UIConstants.spacing4 : 0,
       ),
       sliver: SliverMainAxisGroup(
         slivers: [
@@ -36,56 +47,67 @@ class StickyCodeSnippet extends StatelessWidget {
               language: language,
               code: code,
               isDark: isDark,
+              isFirstInSection: isFirstInSection,
             ),
           ),
           SliverToBoxAdapter(
-            child: _buildCodeContent(isDark, codeHeight),
+            child: _buildCodeContent(isDark, codeContentHeight),
           ),
         ],
       ),
     );
   }
 
-  /// 코드 높이 계산
+  /// 코드 높이 계산 (✅ 수정된 함수)
   double _calculateCodeHeight() {
-    final lineCount = code.split('\n').length;
+    final trimmedCode = code.trim();
+    // 코드가 비어있으면 높이를 0으로 반환합니다.
+    if (trimmedCode.isEmpty) {
+      return 0.0;
+    }
+    // 올바른 줄 수를 세어 높이를 계산합니다.
+    final lineCount = trimmedCode.split('\n').length;
     return lineCount * UIConstants.codeLineHeight;
   }
 
-
   /// 코드 콘텐츠 빌더
   Widget _buildCodeContent(bool isDark, double height) {
+    // ✅ 수정: 컨테이너의 전체 높이는 텍스트 높이 + 상하 패딩입니다.
+    final totalHeight = height + UIConstants.spacing16 * 2;
+
     return Container(
-      height: height,
+      height: totalHeight,
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.black.withValues(alpha: 0.3)
-            : Colors.black.withValues(alpha: 0.2),
+            ? Colors.black.withOpacity(0.3)
+            : Colors.black.withOpacity(0.2),
         border: Border(
           left: BorderSide(
-            color: Colors.white.withValues(alpha: UIConstants.glassBorderOpacity),
+            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
             width: UIConstants.codeBorderWidth,
           ),
           right: BorderSide(
-            color: Colors.white.withValues(alpha: UIConstants.glassBorderOpacity),
+            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
             width: UIConstants.codeBorderWidth,
           ),
           bottom: BorderSide(
-            color: Colors.white.withValues(alpha: UIConstants.glassBorderOpacity),
+            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
             width: UIConstants.codeBorderWidth,
           ),
         ),
-        borderRadius: const BorderRadius.only(
+        borderRadius: isLastInSection
+            ? const BorderRadius.only(
           bottomLeft: Radius.circular(UIConstants.radiusLarge),
           bottomRight: Radius.circular(UIConstants.radiusLarge),
-        ),
+        )
+            : null,
       ),
       padding: const EdgeInsets.all(UIConstants.spacing16),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SelectableText(
           code,
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'monospace',
             fontSize: UIConstants.fontMedium,
             color: Colors.white,
@@ -100,16 +122,18 @@ class StickyCodeSnippet extends StatelessWidget {
 /// 코드 스니펫 헤더 Delegate
 ///
 /// SliverPersistentHeader에 사용되는 delegate로,
-/// 스티키 상태에 따라 border radius를 조정합니다.
+/// 스티키 상태와 섹션 내 위치에 따라 border radius를 조정합니다.
 class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String language;
   final String code;
   final bool isDark;
+  final bool isFirstInSection;
 
   _CodeHeaderDelegate({
     required this.language,
     required this.code,
     required this.isDark,
+    required this.isFirstInSection,
   });
 
   @override
@@ -125,41 +149,37 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
       bool overlapsContent,
       ) {
     final isSticky = shrinkOffset > 0;
+    final borderRadius = (isFirstInSection && !isSticky)
+        ? const BorderRadius.only(
+      topLeft: Radius.circular(UIConstants.radiusLarge),
+      topRight: Radius.circular(UIConstants.radiusLarge),
+    )
+        : BorderRadius.zero;
 
     return Container(
       height: UIConstants.codeHeaderHeight,
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.black.withValues(alpha: UIConstants.glassOpacityVeryHigh)
-            : Colors.black.withValues(alpha: UIConstants.glassOpacityHigh),
+            ? Colors.black.withOpacity(UIConstants.glassOpacityVeryHigh)
+            : Colors.black.withOpacity(UIConstants.glassOpacityHigh),
         border: Border(
           left: BorderSide(
-            color: Colors.white.withValues(alpha: UIConstants.glassBorderOpacity),
+            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
             width: UIConstants.codeBorderWidth,
           ),
           right: BorderSide(
-            color: Colors.white.withValues(alpha: UIConstants.glassBorderOpacity),
+            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
             width: UIConstants.codeBorderWidth,
           ),
           top: BorderSide(
-            color: Colors.white.withValues(alpha: UIConstants.glassBorderOpacity),
+            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
             width: UIConstants.codeBorderWidth,
           ),
         ),
-        borderRadius: isSticky
-            ? BorderRadius.zero
-            : const BorderRadius.only(
-          topLeft: Radius.circular(UIConstants.radiusLarge),
-          topRight: Radius.circular(UIConstants.radiusLarge),
-        ),
+        borderRadius: borderRadius,
       ),
       child: ClipRRect(
-        borderRadius: isSticky
-            ? BorderRadius.zero
-            : const BorderRadius.only(
-          topLeft: Radius.circular(UIConstants.radiusLarge),
-          topRight: Radius.circular(UIConstants.radiusLarge),
-        ),
+        borderRadius: borderRadius,
         child: BackdropFilter(
           filter: ImageFilter.blur(
             sigmaX: UIConstants.blurSigmaMedium,
@@ -258,6 +278,7 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_CodeHeaderDelegate oldDelegate) {
     return language != oldDelegate.language ||
         code != oldDelegate.code ||
-        isDark != oldDelegate.isDark;
+        isDark != oldDelegate.isDark ||
+        isFirstInSection != oldDelegate.isFirstInSection;
   }
 }

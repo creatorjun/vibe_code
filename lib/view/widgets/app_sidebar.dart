@@ -99,8 +99,8 @@ class AppSidebar extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Container(
-            width: UIConstants.iconLarge,
-            height: UIConstants.iconLarge,
+            width: UIConstants.iconXLarge,
+            height: UIConstants.iconXLarge,
             decoration: BoxDecoration(
               gradient: AppColors.gradient,
               borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
@@ -108,7 +108,7 @@ class AppSidebar extends ConsumerWidget {
             child: const Icon(
               Icons.code_rounded,
               color: Colors.white,
-              size: UIConstants.iconMedium,
+              size: UIConstants.iconLarge,
             ),
           ),
           if (showContent) ...[
@@ -118,7 +118,7 @@ class AppSidebar extends ConsumerWidget {
                 'Vibe Code',
                 style: UIHelpers.getTextStyle(
                   isDark: isDark,
-                  fontSize: UIConstants.fontLarge,
+                  fontSize: UIConstants.fontXLarge,
                   fontWeight: FontWeight.bold,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -129,8 +129,8 @@ class AppSidebar extends ConsumerWidget {
       )
           : Center(
         child: Container(
-          width: UIConstants.iconLarge,
-          height: UIConstants.iconLarge,
+          width: UIConstants.iconXLarge,
+          height: UIConstants.iconXLarge,
           decoration: BoxDecoration(
             gradient: AppColors.gradient,
             borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
@@ -138,7 +138,7 @@ class AppSidebar extends ConsumerWidget {
           child: const Icon(
             Icons.code_rounded,
             color: Colors.white,
-            size: UIConstants.iconMedium,
+            size: UIConstants.iconLarge,
           ),
         ),
       ),
@@ -286,12 +286,12 @@ class AppSidebar extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildSettingsButton(context, isDark, isExpanded, showContent),
-          const SizedBox(height: UIConstants.spacing8),
           ProfileCard(
             isExpanded: isExpanded,
             showContent: showContent,
           ),
+          const SizedBox(height: UIConstants.spacing8),
+          _buildSettingsButton(context, isDark, isExpanded, showContent),
         ],
       ),
     );

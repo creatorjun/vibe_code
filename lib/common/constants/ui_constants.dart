@@ -56,6 +56,7 @@ class UIConstants {
   static const double fontMedium = 14.0;
   static const double fontNormal = 15.0;
   static const double fontLarge = 18.0;
+  static const double fontXLarge = 24.0;
 
   // ==================== Code Snippet ====================
   static const double codeLineHeight = 22.4;

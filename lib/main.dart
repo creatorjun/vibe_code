@@ -4,7 +4,6 @@ import 'package:window_manager/window_manager.dart';
 
 import 'common/theme/app_theme.dart';
 import 'view/screens/chat_screen.dart';
-// import 'providers/theme_provider.dart'; // 생성 후 주석 해제
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

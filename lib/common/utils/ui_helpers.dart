@@ -10,28 +10,30 @@ class UIHelpers {
     required bool isDark,
     double opacity = 0.5,
     double borderRadius = 16,
+    BorderRadiusGeometry? customBorderRadius, // ✅ 추가
     double borderOpacity = 0.2,
     bool withElevation = true,
   }) {
     return BoxDecoration(
       color: isDark
-          ? AppColors.darkSurface.withValues(alpha: opacity)
-          : Colors.white.withValues(alpha: opacity * 0.3),
-      borderRadius: BorderRadius.circular(borderRadius),
+          ? AppColors.darkSurface.withOpacity(opacity)
+          : Colors.white.withOpacity(opacity * 0.3),
+      // ✅ customBorderRadius가 있으면 사용, 없으면 기존 방식 사용
+      borderRadius: customBorderRadius ?? BorderRadius.circular(borderRadius),
       border: Border.all(
-        color: Colors.white.withValues(alpha: borderOpacity),
+        color: Colors.white.withOpacity(borderOpacity),
         width: 1,
       ),
       boxShadow: withElevation
           ? [
         BoxShadow(
-          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.15),
+          color: Colors.black.withOpacity(isDark ? 0.3 : 0.15),
           blurRadius: 16,
           spreadRadius: 0,
           offset: const Offset(0, 4),
         ),
         BoxShadow(
-          color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.08),
+          color: Colors.black.withOpacity(isDark ? 0.15 : 0.08),
           blurRadius: 8,
           spreadRadius: 0,
           offset: const Offset(0, 2),
@@ -47,16 +49,21 @@ class UIHelpers {
     required bool isDark,
     double opacity = 0.5,
     double borderRadius = 16,
+    BorderRadiusGeometry? customBorderRadius, // ✅ 추가
     double borderOpacity = 0.2,
     double blurSigma = 10,
     EdgeInsetsGeometry? padding,
     EdgeInsetsGeometry? margin,
     bool withElevation = true,
   }) {
+    // ✅ customBorderRadius가 있으면 사용, 없으면 기존 방식 사용
+    final effectiveBorderRadius =
+        customBorderRadius ?? BorderRadius.circular(borderRadius);
+
     return Container(
       margin: margin,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
+        borderRadius: effectiveBorderRadius,
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
           child: Container(
@@ -65,6 +72,7 @@ class UIHelpers {
               isDark: isDark,
               opacity: opacity,
               borderRadius: borderRadius,
+              customBorderRadius: customBorderRadius, // ✅ 전달
               borderOpacity: borderOpacity,
               withElevation: withElevation,
             ),
@@ -125,16 +133,16 @@ class UIHelpers {
   }) {
     return BoxDecoration(
       color: isDark
-          ? AppColors.darkSurface.withValues(alpha: 0.5)
-          : Colors.white.withValues(alpha: 0.1),
+          ? AppColors.darkSurface.withOpacity(0.5)
+          : Colors.white.withOpacity(0.1),
       borderRadius: BorderRadius.circular(16),
       border: Border.all(
-        color: Colors.white.withValues(alpha: 0.2),
+        color: Colors.white.withOpacity(0.2),
         width: 1,
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.1),
+          color: Colors.black.withOpacity(isDark ? 0.2 : 0.1),
           blurRadius: 12,
           spreadRadius: 0,
           offset: const Offset(0, 2),
@@ -156,12 +164,12 @@ class UIHelpers {
       color = isSecondary ? AppColors.darkTextSecondary : AppColors.darkText;
     } else {
       color = isSecondary
-          ? Colors.white.withValues(alpha: 0.6)
+          ? Colors.white.withOpacity(0.6)
           : Colors.white;
     }
 
     if (opacity != 1.0) {
-      color = color.withValues(alpha: opacity);
+      color = color.withOpacity(opacity);
     }
 
     return TextStyle(
@@ -180,16 +188,16 @@ class UIHelpers {
   }) {
     return BoxDecoration(
       gradient: isActive ? AppColors.gradient : null,
-      color: !isActive ? Colors.grey.withValues(alpha: 0.3) : null,
+      color: !isActive ? Colors.grey.withOpacity(0.3) : null,
       borderRadius: BorderRadius.circular(borderRadius),
       border: Border.all(
-        color: Colors.white.withValues(alpha: 0.2),
+        color: Colors.white.withOpacity(0.2),
         width: 1,
       ),
       boxShadow: withElevation && isActive
           ? [
         BoxShadow(
-          color: AppColors.gradientStart.withValues(alpha: 0.3),
+          color: AppColors.gradientStart.withOpacity(0.3),
           blurRadius: 12,
           spreadRadius: 0,
           offset: const Offset(0, 4),
@@ -206,7 +214,7 @@ class UIHelpers {
   }) {
     return Divider(
       height: 1,
-      color: Colors.white.withValues(alpha: opacity),
+      color: Colors.white.withOpacity(opacity),
     );
   }
 
@@ -219,7 +227,7 @@ class UIHelpers {
     if (isDark) {
       return isSecondary ? AppColors.darkTextSecondary : AppColors.darkText;
     } else {
-      return Colors.white.withValues(alpha: opacity);
+      return Colors.white.withOpacity(opacity);
     }
   }
 }
