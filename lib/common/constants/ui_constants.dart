@@ -31,12 +31,19 @@ class UIConstants {
   static const Duration animationNormal = Duration(milliseconds: 300);
   static const Duration animationSlow = Duration(milliseconds: 500);
 
-  // ==================== Glass Effect Opacity ====================
+  // ==================== Glass Effect Opacity (double) ====================
   static const double glassOpacityLow = 0.3;
   static const double glassOpacityMedium = 0.4;
   static const double glassOpacityHigh = 0.6;
   static const double glassOpacityVeryHigh = 0.8;
   static const double glassBorderOpacity = 0.2;
+
+  // ==================== Glass Effect Alpha (int, withAlpha용) ====================
+  static const int glassAlphaLow = 77;           // 0.3 * 255
+  static const int glassAlphaMedium = 102;       // 0.4 * 255
+  static const int glassAlphaHigh = 153;         // 0.6 * 255
+  static const int glassAlphaVeryHigh = 204;     // 0.8 * 255
+  static const int glassAlphaBorder = 51;        // 0.2 * 255
 
   // ==================== Blur ====================
   static const double blurSigmaSmall = 5.0;

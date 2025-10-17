@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../constants/ui_constants.dart';
 
 class UIHelpers {
   UIHelpers._();
@@ -8,31 +9,31 @@ class UIHelpers {
   /// 플로팅 글래스 컨테이너 데코레이션
   static BoxDecoration floatingGlassDecoration({
     required bool isDark,
-    double opacity = 0.5,
+    int alpha = UIConstants.glassAlphaMedium,
     double borderRadius = 16,
     BorderRadiusGeometry? customBorderRadius,
-    double borderOpacity = 0.2,
+    int borderAlpha = UIConstants.glassAlphaBorder,
     bool withElevation = true,
   }) {
     return BoxDecoration(
       color: isDark
-          ? AppColors.darkSurface.withOpacity(opacity)
-          : Colors.white.withOpacity(opacity * 0.3),
+          ? AppColors.darkSurface.withAlpha(alpha)
+          : Colors.white.withAlpha((alpha * 0.3).round()),
       borderRadius: customBorderRadius ?? BorderRadius.circular(borderRadius),
       border: Border.all(
-        color: Colors.white.withOpacity(borderOpacity),
+        color: Colors.white.withAlpha(borderAlpha),
         width: 1,
       ),
       boxShadow: withElevation
           ? [
         BoxShadow(
-          color: Colors.black.withOpacity(isDark ? 0.3 : 0.15),
+          color: Colors.black.withAlpha(isDark ? UIConstants.glassAlphaLow : 38),
           blurRadius: 16,
           spreadRadius: 0,
           offset: const Offset(0, 4),
         ),
         BoxShadow(
-          color: Colors.black.withOpacity(isDark ? 0.15 : 0.08),
+          color: Colors.black.withAlpha(isDark ? 38 : 20),
           blurRadius: 8,
           spreadRadius: 0,
           offset: const Offset(0, 2),
@@ -46,10 +47,10 @@ class UIHelpers {
   static Widget buildFloatingGlass({
     required Widget child,
     required bool isDark,
-    double opacity = 0.5,
+    int alpha = UIConstants.glassAlphaMedium,
     double borderRadius = 16,
     BorderRadiusGeometry? customBorderRadius,
-    double borderOpacity = 0.2,
+    int borderAlpha = UIConstants.glassAlphaBorder,
     double blurSigma = 10,
     EdgeInsetsGeometry? padding,
     EdgeInsetsGeometry? margin,
@@ -68,10 +69,10 @@ class UIHelpers {
             padding: padding,
             decoration: floatingGlassDecoration(
               isDark: isDark,
-              opacity: opacity,
+              alpha: alpha,
               borderRadius: borderRadius,
               customBorderRadius: customBorderRadius,
-              borderOpacity: borderOpacity,
+              borderAlpha: borderAlpha,
               withElevation: withElevation,
             ),
             child: child,
@@ -86,9 +87,9 @@ class UIHelpers {
     required Widget child,
     required bool isDark,
     required VoidCallback? onTap,
-    double opacity = 0.3,
+    int alpha = UIConstants.glassAlphaLow,
     double borderRadius = 12,
-    double borderOpacity = 0.1,
+    int borderAlpha = UIConstants.glassAlphaBorder,
     double blurSigma = 5,
     EdgeInsetsGeometry? padding,
     EdgeInsetsGeometry? margin,
@@ -103,9 +104,9 @@ class UIHelpers {
           child: Container(
             decoration: floatingGlassDecoration(
               isDark: isDark,
-              opacity: opacity,
+              alpha: alpha,
               borderRadius: borderRadius,
-              borderOpacity: borderOpacity,
+              borderAlpha: borderAlpha,
               withElevation: withElevation,
             ),
             child: Material(
@@ -131,16 +132,16 @@ class UIHelpers {
   }) {
     return BoxDecoration(
       color: isDark
-          ? AppColors.darkSurface.withOpacity(0.5)
-          : Colors.white.withOpacity(0.1),
+          ? AppColors.darkSurface.withAlpha(UIConstants.glassAlphaHigh)
+          : Colors.white.withAlpha(26),
       borderRadius: BorderRadius.circular(16),
       border: Border.all(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withAlpha(UIConstants.glassAlphaBorder),
         width: 1,
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(isDark ? 0.2 : 0.1),
+          color: Colors.black.withAlpha(isDark ? UIConstants.glassAlphaBorder : 26),
           blurRadius: 12,
           spreadRadius: 0,
           offset: const Offset(0, 2),
@@ -155,19 +156,19 @@ class UIHelpers {
     double fontSize = 14,
     FontWeight fontWeight = FontWeight.normal,
     bool isSecondary = false,
-    double opacity = 1.0,
+    int? alpha,
   }) {
     Color color;
     if (isDark) {
       color = isSecondary ? AppColors.darkTextSecondary : AppColors.darkText;
     } else {
       color = isSecondary
-          ? Colors.white.withOpacity(0.6)
+          ? Colors.white.withAlpha(UIConstants.glassAlphaHigh)
           : Colors.white;
     }
 
-    if (opacity != 1.0) {
-      color = color.withOpacity(opacity);
+    if (alpha != null) {
+      color = color.withAlpha(alpha);
     }
 
     return TextStyle(
@@ -186,16 +187,16 @@ class UIHelpers {
   }) {
     return BoxDecoration(
       gradient: isActive ? AppColors.gradient : null,
-      color: !isActive ? Colors.grey.withOpacity(0.3) : null,
+      color: !isActive ? Colors.grey.withAlpha(UIConstants.glassAlphaLow) : null,
       borderRadius: BorderRadius.circular(borderRadius),
       border: Border.all(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withAlpha(UIConstants.glassAlphaBorder),
         width: 1,
       ),
       boxShadow: withElevation && isActive
           ? [
         BoxShadow(
-          color: AppColors.gradientStart.withOpacity(0.3),
+          color: AppColors.gradientStart.withAlpha(UIConstants.glassAlphaLow),
           blurRadius: 12,
           spreadRadius: 0,
           offset: const Offset(0, 4),
@@ -208,11 +209,11 @@ class UIHelpers {
   /// Divider 스타일
   static Widget buildDivider({
     required bool isDark,
-    double opacity = 0.1,
+    int alpha = 26, // 0.1
   }) {
     return Divider(
       height: 1,
-      color: Colors.white.withOpacity(opacity),
+      color: Colors.white.withAlpha(alpha),
     );
   }
 
@@ -220,12 +221,12 @@ class UIHelpers {
   static Color getIconColor({
     required bool isDark,
     bool isSecondary = false,
-    double opacity = 0.7,
+    int alpha = 178, // 0.7
   }) {
     if (isDark) {
       return isSecondary ? AppColors.darkTextSecondary : AppColors.darkText;
     } else {
-      return Colors.white.withOpacity(opacity);
+      return Colors.white.withAlpha(alpha);
     }
   }
 }

@@ -170,7 +170,7 @@ class ChatBubble {
 
     final code = codeBlockFull
         .substring(firstLineEnd + 1)
-        .replaceAll(RegExp(r'^```$'), '').trim();
+        .replaceAll(RegExp(r'```$'), '').trim();
 
     return (code: code, language: language);
     }
@@ -184,7 +184,7 @@ class ChatBubble {
     return SliverToBoxAdapter(
       child: UIHelpers.buildFloatingGlass(
         isDark: isDark,
-        opacity: UIConstants.glassOpacityMedium,
+        alpha: UIConstants.glassAlphaMedium,
         borderRadius: 0,
         customBorderRadius: BorderRadius.vertical(
           top: isFirstInSection ? cornerRadius : Radius.zero,
@@ -219,10 +219,10 @@ class ChatBubble {
           vertical: UIConstants.spacing4,
         ),
         decoration: BoxDecoration(
-          color: Colors.orange.withOpacity(UIConstants.glassOpacityLow),
+          color: Colors.orange.withAlpha(UIConstants.glassAlphaLow),
           borderRadius: BorderRadius.circular(UIConstants.radiusMedium),
           border: Border.all(
-            color: Colors.orange.withOpacity(UIConstants.glassOpacityVeryHigh),
+            color: Colors.orange.withAlpha(UIConstants.glassAlphaVeryHigh),
             width: 1,
           ),
         ),
@@ -343,7 +343,7 @@ class _UserMessageBubbleState extends ConsumerState<_UserMessageBubble> {
                           vertical: UIConstants.spacing3,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withAlpha(UIConstants.glassAlphaLow),
                           borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
                         ),
                         child: Row(
@@ -361,7 +361,7 @@ class _UserMessageBubbleState extends ConsumerState<_UserMessageBubble> {
                             Icon(
                               isExpanded ? Icons.expand_less : Icons.expand_more,
                               size: UIConstants.iconSmall,
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withAlpha(UIConstants.glassAlphaVeryHigh),
                             ),
                           ],
                         ),

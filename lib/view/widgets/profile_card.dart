@@ -26,7 +26,7 @@ class ProfileCard extends StatelessWidget {
       onTap: () {
         // TODO: 프로필 상세 보기 구현
       },
-      opacity: UIConstants.glassOpacityLow,
+      alpha: UIConstants.glassAlphaLow,
       padding: isExpanded
           ? const EdgeInsets.symmetric(
               horizontal: UIConstants.spacing12,

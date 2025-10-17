@@ -26,13 +26,6 @@ class StickyCodeSnippet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // ✅ 수정: 높이 계산 로직이 수정된 함수를 사용합니다.
-    final codeContentHeight = _calculateCodeHeight();
-
-    // 내용이 없으면 위젯을 렌더링하지 않습니다.
-    if (codeContentHeight <= 0) {
-      return const SliverToBoxAdapter(child: SizedBox.shrink());
-    }
 
     return SliverPadding(
       padding: EdgeInsets.symmetric(
@@ -51,7 +44,7 @@ class StickyCodeSnippet extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(
-            child: _buildCodeContent(isDark, codeContentHeight),
+            child: _buildCodeContent(isDark),
           ),
         ],
       ),
@@ -71,27 +64,21 @@ class StickyCodeSnippet extends StatelessWidget {
   }
 
   /// 코드 콘텐츠 빌더
-  Widget _buildCodeContent(bool isDark, double height) {
-    // ✅ 수정: 컨테이너의 전체 높이는 텍스트 높이 + 상하 패딩입니다.
-    final totalHeight = height + UIConstants.spacing16 * 2;
-
+  Widget _buildCodeContent(bool isDark) {
     return Container(
-      height: totalHeight,
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.black.withOpacity(0.3)
-            : Colors.black.withOpacity(0.2),
+        color: Colors.black.withAlpha(UIConstants.glassAlphaLow),
         border: Border(
           left: BorderSide(
-            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
+            color: Colors.white.withAlpha(UIConstants.glassAlphaBorder),
             width: UIConstants.codeBorderWidth,
           ),
           right: BorderSide(
-            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
+            color: Colors.white.withAlpha(UIConstants.glassAlphaBorder),
             width: UIConstants.codeBorderWidth,
           ),
           bottom: BorderSide(
-            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
+            color: Colors.white.withAlpha(UIConstants.glassAlphaBorder),
             width: UIConstants.codeBorderWidth,
           ),
         ),
@@ -160,19 +147,19 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
       height: UIConstants.codeHeaderHeight,
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.black.withOpacity(UIConstants.glassOpacityVeryHigh)
-            : Colors.black.withOpacity(UIConstants.glassOpacityHigh),
+            ? Colors.black.withAlpha(UIConstants.glassAlphaVeryHigh)
+            : Colors.black.withAlpha(UIConstants.glassAlphaHigh),
         border: Border(
           left: BorderSide(
-            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
+            color: Colors.white.withAlpha(UIConstants.glassAlphaBorder),
             width: UIConstants.codeBorderWidth,
           ),
           right: BorderSide(
-            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
+            color: Colors.white.withAlpha(UIConstants.glassAlphaBorder),
             width: UIConstants.codeBorderWidth,
           ),
           top: BorderSide(
-            color: Colors.white.withOpacity(UIConstants.glassBorderOpacity),
+            color: Colors.white.withAlpha(UIConstants.glassAlphaBorder),
             width: UIConstants.codeBorderWidth,
           ),
         ),

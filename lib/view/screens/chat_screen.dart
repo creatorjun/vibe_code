@@ -767,13 +767,13 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
           height: UIConstants.appBarHeight,
           decoration: BoxDecoration(
             color: isDark
-                ? AppColors.darkSurface.withOpacity(0.8)
-                : Colors.white.withOpacity(0.8),
+                ? AppColors.darkSurface.withAlpha(UIConstants.glassAlphaVeryHigh)
+                : Colors.white.withAlpha(UIConstants.glassAlphaVeryHigh),
             border: Border(
               bottom: BorderSide(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withAlpha(UIConstants.glassAlphaLow)
+                    : Colors.black.withAlpha(UIConstants.glassAlphaLow),
                 width: 1,
               ),
             ),

@@ -177,7 +177,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }) {
     return UIHelpers.buildFloatingGlass(
       isDark: isDark,
-      opacity: UIConstants.glassOpacityMedium,
+      alpha: UIConstants.glassAlphaMedium,
       borderRadius: UIConstants.radiusXLarge,
       padding: const EdgeInsets.all(UIConstants.spacing24),
       child: Column(
@@ -223,9 +223,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         // TODO: 테마 변경 provider 호출
         _showSnackBar('테마가 변경되었습니다');
       },
-      opacity: _selectedThemeMode == value
-          ? UIConstants.glassOpacityHigh
-          : UIConstants.glassOpacityLow,
+      alpha: _selectedThemeMode == value
+          ? UIConstants.glassAlphaHigh
+          : UIConstants.glassAlphaLow,
       padding: const EdgeInsets.symmetric(
         horizontal: UIConstants.spacing16,
         vertical: UIConstants.spacing12,
@@ -331,7 +331,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: UIHelpers.buildFloatingButton(
         isDark: isDark,
         onTap: onPressed,
-        opacity: UIConstants.glassOpacityMedium,
+        alpha: UIConstants.glassAlphaMedium,
         padding: const EdgeInsets.symmetric(
           horizontal: UIConstants.spacing16,
           vertical: UIConstants.spacing12,

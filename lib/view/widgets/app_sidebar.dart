@@ -156,7 +156,7 @@ class AppSidebar extends ConsumerWidget {
         onTap: () {
           // TODO: 새 대화 시작 로직
         },
-        opacity: UIConstants.glassOpacityLow,
+        alpha: UIConstants.glassAlphaLow,
         padding: EdgeInsets.symmetric(
           horizontal: UIConstants.spacing12,
           vertical: isExpanded ? UIConstants.spacing12 : UIConstants.spacing10,
@@ -229,9 +229,9 @@ class AppSidebar extends ConsumerWidget {
       onTap: () {
         // TODO: 대화 선택 로직
       },
-      opacity: isActive
-          ? UIConstants.glassOpacityMedium
-          : UIConstants.glassOpacityLow,
+      alpha: isActive
+          ? UIConstants.glassAlphaMedium
+          : UIConstants.glassAlphaLow,
       padding: const EdgeInsets.symmetric(
         horizontal: UIConstants.spacing12,
         vertical: UIConstants.spacing10,
@@ -314,7 +314,7 @@ class AppSidebar extends ConsumerWidget {
           ),
         );
       },
-      opacity: UIConstants.glassOpacityLow,
+      alpha: UIConstants.glassAlphaLow,
       padding: EdgeInsets.symmetric(
         horizontal: UIConstants.spacing12,
         vertical: isExpanded ? UIConstants.spacing10 : UIConstants.spacing8,
