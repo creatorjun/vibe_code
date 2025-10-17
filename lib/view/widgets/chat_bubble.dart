@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vibe_code/common/constants/app_colors.dart';
 import '../../models/message.dart';
 import '../../common/constants/ui_constants.dart';
 import '../../common/utils/ui_helpers.dart';
+import '../../providers/chat_provider.dart';
 import 'sticky_code_snippet.dart';
 
 // 파싱된 콘텐츠 조각의 타입을 정의합니다.
@@ -33,33 +36,14 @@ class ChatBubble {
     }
   }
 
-  /// 사용자 메시지 Sliver를 빌드합니다.
+  /// 사용자 메시지 Sliver를 빌드합니다. (3줄 초과 시 폴딩 기능 포함)
   Widget _buildUserMessageSliver(bool isDark) {
     return SliverToBoxAdapter(
       child: Align(
         alignment: Alignment.centerRight,
-        child: UIHelpers.buildFloatingGlass(
+        child: _UserMessageBubble(
+          message: message,
           isDark: isDark,
-          opacity: UIConstants.glassOpacityHigh,
-          borderRadius: UIConstants.radiusXXLarge,
-          blurSigma: UIConstants.blurSigmaMedium,
-          padding: const EdgeInsets.symmetric(
-            horizontal: UIConstants.spacing16,
-            vertical: UIConstants.spacing12,
-          ),
-          margin: const EdgeInsets.only(
-            left: UIConstants.chatBubbleMaxWidth,
-            right: UIConstants.spacing16,
-            top: UIConstants.spacing4,
-            bottom: UIConstants.spacing4,
-          ),
-          child: Text(
-            message.content,
-            style: UIHelpers.getTextStyle(
-              isDark: isDark,
-              fontSize: UIConstants.fontNormal,
-            ),
-          ),
         ),
       ),
     );
@@ -77,7 +61,6 @@ class ChatBubble {
     if (segments.any((s) => s.type == _ContentType.text && s.content.contains('__ODD_BACKTICK_WARNING__'))) {
       return [_buildOddBacktickWarningSliver(isDark)];
     }
-
 
     final slivers = <Widget>[];
     for (int i = 0; i < segments.length; i++) {
@@ -114,12 +97,12 @@ class ChatBubble {
     content = content.trim();
 
     final backtickPattern = RegExp(r'```');
-    final matches = backtickPattern.allMatches(content).toList();
+        final matches = backtickPattern.allMatches(content).toList();
 
     // 백틱 개수가 홀수이면 경고와 함께 원본 텍스트 반환
     if (matches.length % 2 != 0) {
       return [
-        (content: content + '__ODD_BACKTICK_WARNING__', type: _ContentType.text, language: '')
+        (content: '${content}__ODD_BACKTICK_WARNING__', type: _ContentType.text, language: '')
       ];
     }
 
@@ -177,7 +160,6 @@ class ChatBubble {
     final firstLine = codeBlockFull.substring(0, firstLineEnd);
     final languageMatch = RegExp(r'```(\w*)').firstMatch(firstLine);
 
-    // ✅ 수정된 부분: Null-safe하게 언어를 추출합니다.
     String language = 'code';
     if (languageMatch != null) {
       final captured = languageMatch.group(1);
@@ -188,12 +170,10 @@ class ChatBubble {
 
     final code = codeBlockFull
         .substring(firstLineEnd + 1)
-        .replaceAll(RegExp(r'```$'), '')
-        .trim();
+        .replaceAll(RegExp(r'^```$'), '').trim();
 
     return (code: code, language: language);
-  }
-
+    }
 
   /// 텍스트 조각을 위한 Sliver를 빌드합니다.
   Widget _buildTextSliver(String text, bool isDark,
@@ -205,7 +185,6 @@ class ChatBubble {
       child: UIHelpers.buildFloatingGlass(
         isDark: isDark,
         opacity: UIConstants.glassOpacityMedium,
-        // 섹션 내 위치에 따라 borderRadius를 동적으로 설정합니다.
         borderRadius: 0,
         customBorderRadius: BorderRadius.vertical(
           top: isFirstInSection ? cornerRadius : Radius.zero,
@@ -216,7 +195,6 @@ class ChatBubble {
         margin: EdgeInsets.only(
           left: UIConstants.spacing16,
           right: UIConstants.spacing16,
-          // 첫번째와 마지막 요소에만 수직 마진을 적용합니다.
           top: isFirstInSection ? UIConstants.spacing4 : 0,
           bottom: isLastInSection ? UIConstants.spacing4 : 0,
         ),
@@ -268,6 +246,134 @@ class ChatBubble {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 유저 메시지 버블 위젯 (3줄 초과 시 폴딩 기능 포함)
+class _UserMessageBubble extends ConsumerStatefulWidget {
+  final Message message;
+  final bool isDark;
+
+  const _UserMessageBubble({
+    required this.message,
+    required this.isDark,
+  });
+
+  @override
+  ConsumerState<_UserMessageBubble> createState() => _UserMessageBubbleState();
+}
+
+class _UserMessageBubbleState extends ConsumerState<_UserMessageBubble> {
+  bool _needsFolding = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // Provider에서 확장 상태 가져오기
+    final isExpanded = ref.watch(chatBubbleExpansionProvider.select(
+          (state) => state[widget.message.id] ?? false,
+    ));
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 텍스트 스타일 정의
+        final textStyle = UIHelpers.getTextStyle(
+          isDark: widget.isDark,
+          fontSize: UIConstants.fontNormal,
+        );
+
+        // TextPainter로 실제 줄 수 계산
+        final textPainter = TextPainter(
+          text: TextSpan(text: widget.message.content, style: textStyle),
+          maxLines: null,
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: constraints.maxWidth - UIConstants.chatBubbleMaxWidth - UIConstants.spacing16 * 3);
+
+        final lineHeight = textStyle.fontSize! * (textStyle.height ?? 1.2);
+        final totalLines = (textPainter.height / lineHeight).ceil();
+
+        // 3줄 초과 여부 확인
+        if (totalLines > 3 && !_needsFolding) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() => _needsFolding = true);
+            }
+          });
+        }
+
+        return GestureDetector(
+          onTap: _needsFolding
+              ? () {
+            ref.read(chatBubbleExpansionProvider.notifier).toggleExpanded(widget.message.id);
+          }
+              : null,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: AppColors.gradient,
+              borderRadius: BorderRadius.circular(UIConstants.radiusXXLarge),
+            ),
+            margin: const EdgeInsets.only(
+              left: UIConstants.chatBubbleMaxWidth,
+              right: UIConstants.spacing16,
+              top: UIConstants.spacing4,
+              bottom: UIConstants.spacing4,
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: UIConstants.spacing16,
+              vertical: UIConstants.spacing12,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.message.content,
+                  style: textStyle,
+                  maxLines: (_needsFolding && !isExpanded) ? 3 : null,
+                  overflow: (_needsFolding && !isExpanded) ? TextOverflow.ellipsis : null,
+                ),
+                if (_needsFolding) ...[
+                  const SizedBox(height: UIConstants.spacing6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: UIConstants.spacing8,
+                          vertical: UIConstants.spacing3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isExpanded ? '접기' : '더보기',
+                              style: UIHelpers.getTextStyle(
+                                isDark: widget.isDark,
+                                fontSize: UIConstants.fontTiny,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(width: UIConstants.spacing3),
+                            Icon(
+                              isExpanded ? Icons.expand_less : Icons.expand_more,
+                              size: UIConstants.iconSmall,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

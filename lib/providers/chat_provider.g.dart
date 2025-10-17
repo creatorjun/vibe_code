@@ -10,30 +10,30 @@ part of 'chat_provider.dart';
 // ignore_for_file: type=lint, type=warning
 /// 채팅 말풍선의 확장/축소 상태를 관리하는 Provider
 
-@ProviderFor(ChatBubbleState)
-const chatBubbleStateProvider = ChatBubbleStateProvider._();
+@ProviderFor(ChatBubbleExpansion)
+const chatBubbleExpansionProvider = ChatBubbleExpansionProvider._();
 
 /// 채팅 말풍선의 확장/축소 상태를 관리하는 Provider
-final class ChatBubbleStateProvider
-    extends $NotifierProvider<ChatBubbleState, Map<String, bool>> {
+final class ChatBubbleExpansionProvider
+    extends $NotifierProvider<ChatBubbleExpansion, Map<String, bool>> {
   /// 채팅 말풍선의 확장/축소 상태를 관리하는 Provider
-  const ChatBubbleStateProvider._()
+  const ChatBubbleExpansionProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'chatBubbleStateProvider',
+        name: r'chatBubbleExpansionProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$chatBubbleStateHash();
+  String debugGetCreateSourceHash() => _$chatBubbleExpansionHash();
 
   @$internal
   @override
-  ChatBubbleState create() => ChatBubbleState();
+  ChatBubbleExpansion create() => ChatBubbleExpansion();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(Map<String, bool> value) {
@@ -44,11 +44,12 @@ final class ChatBubbleStateProvider
   }
 }
 
-String _$chatBubbleStateHash() => r'462c9080c4696648bae6952449a9a5a55c8f3570';
+String _$chatBubbleExpansionHash() =>
+    r'bcdcc2d45067b6305a54ef0a0f63ae434bd63fc5';
 
 /// 채팅 말풍선의 확장/축소 상태를 관리하는 Provider
 
-abstract class _$ChatBubbleState extends $Notifier<Map<String, bool>> {
+abstract class _$ChatBubbleExpansion extends $Notifier<Map<String, bool>> {
   Map<String, bool> build();
   @$mustCallSuper
   @override

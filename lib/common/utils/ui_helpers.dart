@@ -10,7 +10,7 @@ class UIHelpers {
     required bool isDark,
     double opacity = 0.5,
     double borderRadius = 16,
-    BorderRadiusGeometry? customBorderRadius, // ✅ 추가
+    BorderRadiusGeometry? customBorderRadius,
     double borderOpacity = 0.2,
     bool withElevation = true,
   }) {
@@ -18,7 +18,6 @@ class UIHelpers {
       color: isDark
           ? AppColors.darkSurface.withOpacity(opacity)
           : Colors.white.withOpacity(opacity * 0.3),
-      // ✅ customBorderRadius가 있으면 사용, 없으면 기존 방식 사용
       borderRadius: customBorderRadius ?? BorderRadius.circular(borderRadius),
       border: Border.all(
         color: Colors.white.withOpacity(borderOpacity),
@@ -49,14 +48,13 @@ class UIHelpers {
     required bool isDark,
     double opacity = 0.5,
     double borderRadius = 16,
-    BorderRadiusGeometry? customBorderRadius, // ✅ 추가
+    BorderRadiusGeometry? customBorderRadius,
     double borderOpacity = 0.2,
     double blurSigma = 10,
     EdgeInsetsGeometry? padding,
     EdgeInsetsGeometry? margin,
     bool withElevation = true,
   }) {
-    // ✅ customBorderRadius가 있으면 사용, 없으면 기존 방식 사용
     final effectiveBorderRadius =
         customBorderRadius ?? BorderRadius.circular(borderRadius);
 
@@ -72,7 +70,7 @@ class UIHelpers {
               isDark: isDark,
               opacity: opacity,
               borderRadius: borderRadius,
-              customBorderRadius: customBorderRadius, // ✅ 전달
+              customBorderRadius: customBorderRadius,
               borderOpacity: borderOpacity,
               withElevation: withElevation,
             ),
