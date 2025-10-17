@@ -97,7 +97,7 @@ class ChatBubble {
     content = content.trim();
 
     final backtickPattern = RegExp(r'```');
-        final matches = backtickPattern.allMatches(content).toList();
+    final matches = backtickPattern.allMatches(content).toList();
 
     // 백틱 개수가 홀수이면 경고와 함께 원본 텍스트 반환
     if (matches.length % 2 != 0) {
@@ -173,7 +173,7 @@ class ChatBubble {
         .replaceAll(RegExp(r'```$'), '').trim();
 
     return (code: code, language: language);
-    }
+  }
 
   /// 텍스트 조각을 위한 Sliver를 빌드합니다.
   Widget _buildTextSliver(String text, bool isDark,
@@ -287,7 +287,7 @@ class _UserMessageBubbleState extends ConsumerState<_UserMessageBubble> {
           text: TextSpan(text: widget.message.content, style: textStyle),
           maxLines: null,
           textDirection: TextDirection.ltr,
-        )..layout(maxWidth: constraints.maxWidth - UIConstants.chatBubbleMaxWidth - UIConstants.spacing16 * 3);
+        )..layout(maxWidth: constraints.maxWidth * 0.7); // 최대 너비 70%로 계산
 
         final lineHeight = textStyle.fontSize! * (textStyle.height ?? 1.2);
         final totalLines = (textPainter.height / lineHeight).ceil();
@@ -301,75 +301,79 @@ class _UserMessageBubbleState extends ConsumerState<_UserMessageBubble> {
           });
         }
 
-        return GestureDetector(
-          onTap: _needsFolding
-              ? () {
-            ref.read(chatBubbleExpansionProvider.notifier).toggleExpanded(widget.message.id);
-          }
-              : null,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: AppColors.gradient,
-              borderRadius: BorderRadius.circular(UIConstants.radiusXXLarge),
-            ),
-            margin: const EdgeInsets.only(
-              left: UIConstants.chatBubbleMaxWidth,
-              right: UIConstants.spacing16,
-              top: UIConstants.spacing4,
-              bottom: UIConstants.spacing4,
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: UIConstants.spacing16,
-              vertical: UIConstants.spacing12,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  widget.message.content,
-                  style: textStyle,
-                  maxLines: (_needsFolding && !isExpanded) ? 3 : null,
-                  overflow: (_needsFolding && !isExpanded) ? TextOverflow.ellipsis : null,
-                ),
-                if (_needsFolding) ...[
-                  const SizedBox(height: UIConstants.spacing6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: UIConstants.spacing8,
-                          vertical: UIConstants.spacing3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(UIConstants.glassAlphaLow),
-                          borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              isExpanded ? '접기' : '더보기',
-                              style: UIHelpers.getTextStyle(
-                                isDark: widget.isDark,
-                                fontSize: UIConstants.fontTiny,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(width: UIConstants.spacing3),
-                            Icon(
-                              isExpanded ? Icons.expand_less : Icons.expand_more,
-                              size: UIConstants.iconSmall,
-                              color: Colors.white.withAlpha(UIConstants.glassAlphaVeryHigh),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+        return ConstrainedBox(
+          // 최대 너비를 화면의 70%로 제한
+          constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.7),
+          child: GestureDetector(
+            onTap: _needsFolding
+                ? () {
+              ref.read(chatBubbleExpansionProvider.notifier).toggleExpanded(widget.message.id);
+            }
+                : null,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: AppColors.gradient,
+                borderRadius: BorderRadius.circular(UIConstants.radiusXXLarge),
+              ),
+              margin: const EdgeInsets.only(
+                left: UIConstants.spacing16, // 왼쪽 여백
+                right: UIConstants.spacing16, // 오른쪽 여백 (ConstrainedBox가 너비 조절)
+                top: UIConstants.spacing4,
+                bottom: UIConstants.spacing4,
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: UIConstants.spacing16,
+                vertical: UIConstants.spacing12,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.message.content,
+                    style: textStyle,
+                    maxLines: (_needsFolding && !isExpanded) ? 3 : null,
+                    overflow: (_needsFolding && !isExpanded) ? TextOverflow.ellipsis : null,
                   ),
+                  if (_needsFolding) ...[
+                    const SizedBox(height: UIConstants.spacing6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: UIConstants.spacing8,
+                            vertical: UIConstants.spacing3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(UIConstants.glassAlphaLow),
+                            borderRadius: BorderRadius.circular(UIConstants.radiusSmall),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                isExpanded ? '접기' : '더보기',
+                                style: UIHelpers.getTextStyle(
+                                  isDark: widget.isDark,
+                                  fontSize: UIConstants.fontTiny,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(width: UIConstants.spacing3),
+                              Icon(
+                                isExpanded ? Icons.expand_less : Icons.expand_more,
+                                size: UIConstants.iconSmall,
+                                color: Colors.white.withAlpha(UIConstants.glassAlphaVeryHigh),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         );

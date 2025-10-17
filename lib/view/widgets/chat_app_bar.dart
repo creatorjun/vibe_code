@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../common/constants/app_colors.dart'; // AppColors를 사용하기 위해 추가
+import 'dart:ui'; // BackdropFilter를 사용하기 위해 추가
+import '../../common/constants/app_colors.dart';
 import '../../common/constants/ui_constants.dart';
 import '../../common/utils/ui_helpers.dart';
 
@@ -10,34 +11,57 @@ class ChatAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     // AppBar의 실제 UI 부분
-    final appBarContent = UIHelpers.buildFloatingGlass(
-      isDark: isDark,
+    final appBarContent = Container(
       margin: const EdgeInsets.only(
         left: UIConstants.spacing16,
         right: UIConstants.spacing16,
         top: UIConstants.spacing8,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: UIConstants.spacing16),
-      borderRadius: UIConstants.radiusXLarge,
-      child: SizedBox(
-        height: UIConstants.appBarHeight,
-        child: Row(
-          children: [
-            Text(
-              'Vibe Code AI',
-              style: UIHelpers.getTextStyle(
-                isDark: isDark,
-                fontSize: UIConstants.fontLarge,
-                fontWeight: FontWeight.w600,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(UIConstants.radiusXLarge),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: UIConstants.blurSigmaMedium,
+            sigmaY: UIConstants.blurSigmaMedium,
+          ),
+          child: Container(
+            height: UIConstants.appBarHeight,
+            padding: const EdgeInsets.symmetric(
+              horizontal: UIConstants.spacing16,
+            ),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.gradientStart.withAlpha(UIConstants.glassAlphaHigh),
+                  AppColors.gradientEnd.withAlpha(UIConstants.glassAlphaHigh),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(UIConstants.radiusXLarge),
+              border: Border.all(
+                color: Colors.white.withAlpha(UIConstants.glassAlphaBorder),
+                width: 1,
               ),
             ),
-            const Spacer(),
-            // 설정 버튼 대신 메시지/토큰 정보 위젯 추가
-            _buildUsageInfo(isDark),
-          ],
+            child: Row(
+              children: [
+                Text(
+                  'Vibe Code AI',
+                  style: UIHelpers.getTextStyle(
+                    isDark: Theme.of(context).brightness == Brightness.dark,
+                    fontSize: UIConstants.fontLarge,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                _buildUsageInfo(
+                  Theme.of(context).brightness == Brightness.dark,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
