@@ -98,10 +98,13 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
     }
 
     final updated = [...current.modelPipeline];
-    updated[index] = updated[index].copyWith(
-      modelId: modelId,
-      systemPrompt: systemPrompt,
-      isEnabled: isEnabled,
+    final oldConfig = updated[index];
+
+    // Freezed copyWith 사용
+    updated[index] = oldConfig.copyWith(
+      modelId: modelId ?? oldConfig.modelId,
+      systemPrompt: systemPrompt ?? oldConfig.systemPrompt,
+      isEnabled: isEnabled ?? oldConfig.isEnabled,
     );
 
     await updateModelPipeline(updated);

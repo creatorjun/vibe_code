@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../../domain/mutations/send_message_mutation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../data/database/app_database.dart';
@@ -7,7 +8,6 @@ import '../../../../domain/providers/attachment_provider.dart';
 import '../../../../domain/providers/chat_provider.dart';
 import '../../../../domain/providers/streaming_state_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
-import '../../../../domain/mutations/send_message_mutation.dart';
 import '../../../../domain/mutations/create_session_mutation.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../core/errors/error_handler.dart';

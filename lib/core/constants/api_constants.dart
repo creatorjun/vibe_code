@@ -1,46 +1,19 @@
-class ApiConstants {
-  // Base URL
-  static const String baseUrl = 'https://openrouter.ai/api/v1';
+// lib/core/constants/api_constants.dart (수정)
+import '../config/app_config.dart';
 
-  // Endpoints
-  static const String chatCompletionsEndpoint = '/chat/completions';
+class ApiConstants {
+  // 동적으로 설정 가져오기
+  static String get baseUrl => AppConfig.instance.apiBaseUrl;
+  static Duration get connectTimeout => AppConfig.instance.connectTimeout;
+  static Duration get receiveTimeout => AppConfig.instance.receiveTimeout;
+
+  // 엔드포인트
+  static const String chatEndpoint = '/chat/completions';
   static const String modelsEndpoint = '/models';
 
-  // Headers
-  static const String headerAuthorization = 'Authorization';
-  static const String headerContentType = 'Content-Type';
-  static const String headerHttpReferer = 'HTTP-Referer';
-  static const String headerXTitle = 'X-Title';
+  // 헤더
+  static const String httpReferer = 'https://github.com/creatorjun/vibe_code';
+  static const String xTitle = 'Vibe Code';
 
-  // Content Types
-  static const String contentTypeJson = 'application/json';
-  static const String contentTypeStream = 'text/event-stream';
-
-  // Request Settings
-  static const bool streamEnabled = true;
-  static const double defaultTemperature = 0.7;
-  static const int defaultMaxTokens = 4096;
-
-  // Models
-  static const String defaultModel = 'anthropic/claude-3.5-sonnet';
-  static const List<String> availableModels = [
-    'anthropic/claude-3.5-sonnet',
-    'anthropic/claude-3-opus',
-    'anthropic/claude-3-haiku',
-    'openai/gpt-4-turbo',
-    'openai/gpt-4',
-    'openai/gpt-3.5-turbo',
-    'google/gemini-pro',
-    'meta-llama/llama-3-70b-instruct',
-  ];
-
-  // System Prompts
-  static const String defaultSystemPrompt = '''
-You are a helpful AI assistant specialized in coding and technical discussions.
-You provide clear, concise, and accurate responses.
-When writing code, always use proper formatting and include comments when necessary.
-''';
-
-  // Private constructor
   ApiConstants._();
 }
