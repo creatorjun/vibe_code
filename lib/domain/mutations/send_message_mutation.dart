@@ -11,6 +11,7 @@ import '../providers/ai_service_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/streaming_state_provider.dart';
+import '../providers/selected_model_count_provider.dart';
 
 enum SendMessageStatus {
   idle,
@@ -64,6 +65,8 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
   }) async {
     state = const SendMessageState.sending();
 
+    int? aiMessageId;
+
     try {
       final chatRepo = ref.read(chatRepositoryProvider);
       final attachmentRepo = ref.read(attachmentRepositoryProvider);
@@ -103,12 +106,21 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         content: content,
       ));
 
+      // 선택된 파이프라인 깊이 가져오기
+      final selectedDepth = ref.read(selectedPipelineDepthProvider);
+      final fullPipeline = settingsAsync.modelPipeline;
+
+      // 선택된 깊이만큼만 사용
+      final activePipeline = fullPipeline.take(selectedDepth).toList();
+
+      Logger.info('Using ${activePipeline.length} models (depth: $selectedDepth)');
+
       // AI 응답 메시지 생성
-      final modelId = settingsAsync.modelPipeline.isNotEmpty
-          ? settingsAsync.modelPipeline.first.modelId
+      final modelId = activePipeline.isNotEmpty
+          ? activePipeline.first.modelId
           : 'anthropic/claude-3.5-sonnet';
 
-      final aiMessageId = await chatRepo.addAssistantMessage(
+      aiMessageId = await chatRepo.addAssistantMessage(
         sessionId: sessionId,
         model: modelId,
         isStreaming: true,
@@ -126,18 +138,19 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       final pipelineService = ref.read(pipelineServiceProvider);
 
       await for (final _ in pipelineService.executePipeline(
-        pipeline: settingsAsync.modelPipeline,
+        pipeline: activePipeline,
         initialInput: content,
-        messageHistory: apiMessages.sublist(0, apiMessages.length - 1), // 현재 메시지 제외
+        messageHistory: apiMessages.sublist(0, apiMessages.length - 1),
         onStepStart: (step, config) {
-          Logger.info('Pipeline step ${step + 1}: ${config.modelId}');
+          Logger.info(
+              'Pipeline step ${step + 1}/${activePipeline.length}: ${config.modelId}');
         },
         onChunk: (step, chunk) async {
           responseBuffer.write(chunk);
 
           // DB 업데이트
           await chatRepo.updateMessageContent(
-            aiMessageId,
+            aiMessageId!,
             responseBuffer.toString(),
           );
         },
@@ -158,13 +171,42 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
     } catch (e, stackTrace) {
       Logger.error('Send message failed', e, stackTrace);
       ErrorHandler.logError(e, stackTrace);
-      state = SendMessageState.error(ErrorHandler.getErrorMessage(e));
+
+      final errorMessage = ErrorHandler.getErrorMessage(e);
+      state = SendMessageState.error(errorMessage);
+
+      // AI 메시지를 시스템 에러 메시지로 업데이트
+      if (aiMessageId != null) {
+        final chatRepo = ref.read(chatRepositoryProvider);
+
+        // 에러 메시지 내용 구성
+        final errorContent = '⚠️ 메시지 전송 실패\n\n$errorMessage';
+
+        // 메시지 내용 업데이트
+        await chatRepo.updateMessageContent(aiMessageId, errorContent);
+
+        // 스트리밍 완료 처리
+        await chatRepo.completeStreaming(aiMessageId);
+
+        Logger.info('Error message saved to database: $aiMessageId');
+      }
+
       ref.read(streamingStateProvider.notifier).stop();
       ref.read(currentStreamingMessageProvider.notifier).clear();
     } finally {
       _activeService?.dispose();
       _activeService = null;
     }
+  }
+
+  /// 메시지 전송 취소
+  void cancel() {
+    Logger.info('Cancelling message send');
+    _activeService?.dispose();
+    _activeService = null;
+    ref.read(streamingStateProvider.notifier).stop();
+    ref.read(currentStreamingMessageProvider.notifier).clear();
+    state = const SendMessageState.idle();
   }
 
   /// 메시지 히스토리 구성
@@ -199,15 +241,6 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       await chatRepo.updateSessionTitle(sessionId, title);
       Logger.info('Session title updated: $title');
     }
-  }
-
-  void cancel() {
-    Logger.info('Cancelling message send');
-    _activeService?.dispose();
-    _activeService = null;
-    ref.read(streamingStateProvider.notifier).stop();
-    ref.read(currentStreamingMessageProvider.notifier).clear();
-    state = const SendMessageState.idle();
   }
 }
 

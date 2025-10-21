@@ -300,7 +300,7 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
                 color: Theme.of(context)
                     .colorScheme
                     .onSurface
-                    .withOpacity(0.6),
+                    .withAlpha(153),
               ),
             ),
             const SizedBox(height: UIConstants.spacingSm),
@@ -318,7 +318,7 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withOpacity(0.3),
+                          .withAlpha(153),
                     ),
                     const SizedBox(height: UIConstants.spacingMd),
                     Text(
@@ -397,7 +397,7 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
                               color: Theme.of(context)
                                   .colorScheme
                                   .onSurface
-                                  .withOpacity(0.5),
+                                  .withAlpha(153),
                             ),
                           ),
                         ],

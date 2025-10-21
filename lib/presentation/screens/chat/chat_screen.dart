@@ -24,7 +24,7 @@ class ChatScreen extends ConsumerWidget {
                 ? Column(
               children: [
                 const Expanded(child: EmptyStateWidget()),
-                ChatInput(sessionId: activeSession),
+                const ChatInput(), // ✅ sessionId 제거
               ],
             )
                 : Column(
@@ -32,7 +32,7 @@ class ChatScreen extends ConsumerWidget {
                 Expanded(
                   child: MessageList(sessionId: activeSession),
                 ),
-                ChatInput(sessionId: activeSession),
+                const ChatInput(), // ✅ sessionId 제거
               ],
             ),
           ),

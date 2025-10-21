@@ -1,49 +1,71 @@
+// lib/presentation/screens/chat/widgets/github_analysis_dialog.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
-import '../../../../data/services/github_analysis_service.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../core/utils/logger.dart';
-import '../../../shared/widgets/loading_indicator.dart';
+import '../../../../data/services/github_analysis_service.dart';
 
-class GitHubAnalysisDialog extends ConsumerStatefulWidget {
+class GitHubAnalysisDialog extends StatefulWidget {
   const GitHubAnalysisDialog({super.key});
 
   @override
-  ConsumerState<GitHubAnalysisDialog> createState() => _GitHubAnalysisDialogState();
+  State<GitHubAnalysisDialog> createState() => _GitHubAnalysisDialogState();
 }
 
-class _GitHubAnalysisDialogState extends ConsumerState<GitHubAnalysisDialog> {
-  final TextEditingController _urlController = TextEditingController();
-  String? _selectedDirectory;
-  bool _isAnalyzing = false;
+class _GitHubAnalysisDialogState extends State<GitHubAnalysisDialog>
+    with SingleTickerProviderStateMixin {
   int _selectedTab = 0;
+  bool _isAnalyzing = false;
+  final _urlController = TextEditingController();
+  String? _selectedDirectory;
+  bool _isUrlValid = false;
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        setState(() {
+          _selectedTab = _tabController.index;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
     _urlController.dispose();
+    _tabController.dispose();
     super.dispose();
+  }
+
+  bool _validateGitHubUrl(String url) {
+    final urlPattern = RegExp(
+      r'^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+\/?$',
+      caseSensitive: false,
+    );
+    return urlPattern.hasMatch(url.trim());
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(UIConstants.radiusLg),
-      ),
       child: Container(
-        width: 500,
+        width: 600,
+        height: 500,
         padding: const EdgeInsets.all(UIConstants.spacingLg),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 헤더
             Row(
               children: [
                 const Icon(Icons.code, size: 28),
                 const SizedBox(width: UIConstants.spacingSm),
                 Text(
-                  '프로젝트 분석',
+                  'GitHub 프로젝트 분석',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const Spacer(),
@@ -55,130 +77,106 @@ class _GitHubAnalysisDialogState extends ConsumerState<GitHubAnalysisDialog> {
             ),
             const SizedBox(height: UIConstants.spacingLg),
 
-            SegmentedButton<int>(
-              segments: const [
-                ButtonSegment(
-                  value: 0,
-                  label: Text('GitHub URL'),
-                  icon: Icon(Icons.link),
-                ),
-                ButtonSegment(
-                  value: 1,
-                  label: Text('로컬 폴더'),
-                  icon: Icon(Icons.folder),
-                ),
+            // 탭
+            TabBar(
+              controller: _tabController,
+              tabs: const [
+                Tab(text: '원격 저장소'),
+                Tab(text: '로컬 프로젝트'),
               ],
-              selected: {_selectedTab},
-              onSelectionChanged: (Set<int> selected) {
-                setState(() {
-                  _selectedTab = selected.first;
-                  _urlController.clear();
-                  _selectedDirectory = null;
-                });
-              },
             ),
-
             const SizedBox(height: UIConstants.spacingLg),
 
-            if (_selectedTab == 0) ...[
-              TextField(
-                controller: _urlController,
-                decoration: const InputDecoration(
-                  labelText: 'GitHub 저장소 URL',
-                  hintText: 'https://github.com/user/repo',
-                  prefixIcon: Icon(Icons.link),
-                ),
-              ),
-              const SizedBox(height: UIConstants.spacingSm),
-              Text(
-                '공개 저장소 또는 .env에 GITHUB_TOKEN이 설정된 경우\n비공개 저장소도 분석할 수 있습니다.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).textTheme.bodySmall?.color,
-                ),
-              ),
-            ] else ...[
-              Container(
-                padding: const EdgeInsets.all(UIConstants.spacingMd),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Theme.of(context).dividerColor),
-                  borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.folder_outlined),
-                    const SizedBox(width: UIConstants.spacingSm),
-                    Expanded(
-                      child: Text(
-                        _selectedDirectory ?? '폴더를 선택하세요',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: _selectedDirectory == null
-                              ? Theme.of(context).textTheme.bodySmall?.color
-                              : null,
+            // 컨텐츠
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // 원격 저장소
+                  Column(
+                    children: [
+                      TextField(
+                        controller: _urlController,
+                        decoration: const InputDecoration(
+                          labelText: 'Repository URL',
+                          hintText: 'https://github.com/owner/repo',
+                          prefixIcon: Icon(Icons.link),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _isUrlValid = _validateGitHubUrl(value);
+                          });
+                        },
+                      ),
+                      const SizedBox(height: UIConstants.spacingMd),
+                      Text(
+                        '예: https://github.com/flutter/flutter',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                  // 로컬 프로젝트
+                  Column(
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _pickDirectory,
+                        icon: const Icon(Icons.folder_open),
+                        label: Text(
+                          _selectedDirectory ?? '폴더 선택',
                         ),
                       ),
-                    ),
-                    TextButton(
-                      onPressed: _pickDirectory,
-                      child: const Text('선택'),
-                    ),
-                  ],
+                      if (_selectedDirectory != null) ...[
+                        const SizedBox(height: UIConstants.spacingMd),
+                        Text(
+                          _selectedDirectory!,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // 하단 버튼
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed:
+                  _isAnalyzing ? null : () => Navigator.of(context).pop(),
+                  child: const Text('취소'),
                 ),
-              ),
-            ],
-
-            const SizedBox(height: UIConstants.spacingLg),
-
-            if (_isAnalyzing)
-              const Column(
-                children: [
-                  LoadingIndicator(message: '프로젝트 분석 중...'),
-                  SizedBox(height: UIConstants.spacingSm),
-                  Text(
-                    '프로젝트 크기에 따라 시간이 걸릴 수 있습니다.',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ],
-              )
-            else
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('취소'),
-                  ),
-                  const SizedBox(width: UIConstants.spacingSm),
-                  ElevatedButton.icon(
-                    onPressed: _canAnalyze ? _analyze : null,
-                    icon: const Icon(Icons.analytics),
-                    label: const Text('분석 시작'),
-                  ),
-                ],
-              ),
+                const SizedBox(width: UIConstants.spacingSm),
+                ElevatedButton.icon(
+                  onPressed: _isAnalyzing ||
+                      (_selectedTab == 0 && !_isUrlValid) ||
+                      (_selectedTab == 1 && _selectedDirectory == null)
+                      ? null
+                      : _analyze,
+                  icon: _isAnalyzing
+                      ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                      : const Icon(Icons.analytics),
+                  label: Text(_isAnalyzing ? '분석 중...' : '분석 시작'),
+                ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
 
-  bool get _canAnalyze {
-    if (_selectedTab == 0) {
-      return _urlController.text.trim().isNotEmpty;
-    } else {
-      return _selectedDirectory != null;
-    }
-  }
-
   Future<void> _pickDirectory() async {
-    try {
-      final result = await FilePicker.platform.getDirectoryPath();
-      if (result != null) {
-        setState(() {
-          _selectedDirectory = result;
-        });
-      }
-    } catch (e) {
-      Logger.error('Failed to pick directory', e, null);
+    final result = await FilePicker.platform.getDirectoryPath();
+    if (result != null) {
+      setState(() {
+        _selectedDirectory = result;
+      });
     }
   }
 
@@ -201,6 +199,7 @@ class _GitHubAnalysisDialogState extends ConsumerState<GitHubAnalysisDialog> {
         Navigator.of(context).pop(content);
       }
     } catch (e) {
+      Logger.error('Analysis failed', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

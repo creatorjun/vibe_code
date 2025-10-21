@@ -1,9 +1,8 @@
-// lib/data/services/openrouter_service.dart (전체 코드)
-import 'dart:convert';
+// lib/data/services/openrouter_service.dart
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
-import '../../core/errors/app_exception.dart';
 import '../../core/utils/logger.dart';
 import '../models/api_request.dart';
 import 'ai_service.dart';
@@ -52,15 +51,32 @@ class OpenRouterService implements AIService {
         cancelToken: _cancelToken,
       );
 
+      // 에러 응답 처리
       if (response.statusCode != 200) {
         final errorBytes = await response.data?.stream.toList();
         final errorData = errorBytes != null
             ? utf8.decode(errorBytes.expand((x) => x).toList())
             : '';
+
+        // JSON 파싱 시도
+        dynamic errorJson;
+        try {
+          errorJson = jsonDecode(errorData);
+        } catch (_) {
+          errorJson = null;
+        }
+
         Logger.error('API error: ${response.statusCode} - $errorData');
-        throw ApiException(
-          'API 요청 실패: ${response.statusCode}',
-          statusCode: response.statusCode,
+
+        // DioException으로 던지기 (ErrorHandler가 처리하도록)
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: Response(
+            requestOptions: response.requestOptions,
+            statusCode: response.statusCode,
+            data: errorJson,
+          ),
+          type: DioExceptionType.badResponse,
         );
       }
 
@@ -89,10 +105,7 @@ class OpenRouterService implements AIService {
       Logger.info('Streaming completed successfully');
     } on DioException catch (e) {
       Logger.error('Dio error during streaming', e);
-      if (e.type == DioExceptionType.cancel) {
-        throw const NetworkException('요청이 취소되었습니다');
-      }
-      throw NetworkException('네트워크 오류: ${e.message}');
+      rethrow; // ErrorHandler가 처리하도록
     } catch (e, stackTrace) {
       Logger.error('Unexpected error during streaming', e, stackTrace);
       rethrow;
