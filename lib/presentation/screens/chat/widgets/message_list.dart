@@ -62,7 +62,9 @@ class _MessageListState extends ConsumerState<MessageList> {
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(sessionMessagesProvider(widget.sessionId));
-    final inputHeight = ref.watch(chatInputHeightProvider);
+    final inputHeight = ref.watch(
+      chatInputStateProvider.select((state) => state.height),
+    );
 
     ref.listen(sessionMessagesProvider(widget.sessionId), (previous, next) {
       if (next.hasValue && previous?.hasValue == true) {

@@ -73,6 +73,14 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
         .watch();
   }
 
+  // ✅ 특정 세션의 완료된 메시지 스트림 (스트리밍 중 제외)
+  Stream<List<Message>> watchCompletedMessagesForSession(int sessionId) {
+    return (select(messages)
+      ..where((t) => t.sessionId.equals(sessionId) & t.isStreaming.equals(false))
+      ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .watch();
+  }
+
   // 특정 세션의 메시지 목록 조회
   Future<List<Message>> getMessagesForSession(int sessionId) async {
     return (select(messages)

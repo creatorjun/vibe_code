@@ -90,4 +90,8 @@ class ChatRepository {
   Future<Message?> getLastMessage(int sessionId) async {
     return await _chatDao.getLastMessage(sessionId);
   }
+
+  Stream<List<Message>> watchCompletedMessagesForSession(int sessionId) {
+    return _chatDao.watchCompletedMessagesForSession(sessionId);
+  }
 }

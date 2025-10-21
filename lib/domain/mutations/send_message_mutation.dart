@@ -1,4 +1,6 @@
 // lib/domain/mutations/send_message_mutation.dart
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/errors/error_handler.dart';
@@ -97,13 +99,53 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         );
       }
 
+      // ✅ 첨부파일 내용 로드
+      String fullContent = content;
+      if (attachmentIds.isNotEmpty) {
+        final attachmentContents = <String>[];
+        for (final attachmentId in attachmentIds) {
+          try {
+            final attachment = await attachmentRepo.getAttachment(attachmentId);
+            if (attachment != null) {
+              // 파일 내용 읽기
+              final file = File(attachment.filePath);
+              if (await file.exists()) {
+                final fileContent = await file.readAsString();
+                attachmentContents.add('''
+
+---
+📎 첨부파일: ${attachment.fileName}
+---
+
+$fileContent
+
+---
+''');
+                Logger.info('Attachment loaded: ${attachment.fileName} (${fileContent.length} chars)');
+              }
+            }
+          } catch (e) {
+            Logger.error('Failed to load attachment: $attachmentId', e);
+          }
+        }
+
+        if (attachmentContents.isNotEmpty) {
+          fullContent = '''
+$content
+
+${attachmentContents.join('\n')}
+''';
+          Logger.info('Full content with attachments: ${fullContent.length} chars');
+        }
+      }
+
       // 메시지 히스토리 구성
       final apiMessages = await _buildMessageHistory(sessionId, settingsAsync);
 
-      // 현재 사용자 메시지 추가
+      // ✅ 첨부파일 내용이 포함된 메시지 추가
       apiMessages.add(ChatMessage(
         role: 'user',
-        content: content,
+        content: fullContent,
       ));
 
       // 선택된 파이프라인 깊이 가져오기
@@ -139,7 +181,7 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
 
       await for (final _ in pipelineService.executePipeline(
         pipeline: activePipeline,
-        initialInput: content,
+        initialInput: fullContent, // ✅ 첨부파일 포함된 전체 내용
         messageHistory: apiMessages.sublist(0, apiMessages.length - 1),
         onStepStart: (step, config) {
           Logger.info(
