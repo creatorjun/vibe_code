@@ -37,20 +37,8 @@ final aiServiceFactoryProvider = Provider<AIService Function(String apiKey)>((re
 });
 
 /// Pipeline 서비스 Provider
-final pipelineServiceProvider = Provider.autoDispose<PipelineService>((ref) {
-  final settings = ref.watch(settingsProvider).requireValue;
-  final apiKey = settings.apiKey;
-  final aiServiceFactory = ref.watch(aiServiceFactoryProvider);
-
-  if (apiKey.isEmpty) {
-    Logger.warning('API key is empty for pipeline service');
-    throw Exception('API 키가 설정되지 않았습니다');
-  }
-
+/// 생성자 없이 빈 인스턴스만 제공
+final pipelineServiceProvider = Provider<PipelineService>((ref) {
   Logger.info('Creating PipelineService');
-
-  return PipelineService(
-    apiKey: apiKey,
-    aiServiceFactory: aiServiceFactory,
-  );
+  return PipelineService();
 });

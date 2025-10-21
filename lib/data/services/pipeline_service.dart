@@ -4,102 +4,85 @@ import '../../data/models/settings_state.dart';
 import '../../data/models/api_request.dart';
 import 'ai_service.dart';
 
-/// 모델 파이프라인 실행 결과
-class PipelineStepResult {
-  final int stepIndex;
-  final ModelConfig config;
-  final String output;
-  final DateTime timestamp;
-
-  PipelineStepResult({
-    required this.stepIndex,
-    required this.config,
-    required this.output,
-    required this.timestamp,
-  });
-}
-
-/// AI 모델 파이프라인 실행 서비스
+/// 파이프라인 실행 서비스 (순차 실행)
 class PipelineService {
-  final String apiKey;
-  final AIService Function(String apiKey) aiServiceFactory;
-
-  PipelineService({
-    required this.apiKey,
-    required this.aiServiceFactory,
-  });
-
-  /// 파이프라인 실행 (스트리밍 방식)
+  /// 순차 파이프라인 실행
   ///
-  /// [pipeline]: 실행할 모델 설정 리스트
-  /// [initialInput]: 첫 번째 모델에 입력할 초기 메시지
-  /// [messageHistory]: 이전 대화 히스토리
-  /// [onStepStart]: 각 단계 시작 시 호출되는 콜백
-  /// [onChunk]: 스트리밍 청크 수신 시 호출되는 콜백
-  Stream<String> executePipeline({
+  /// 1. 사용자 → Model1 → 응답1
+  /// 2. (사용자 + 응답1) → Model2 → 응답2
+  /// 3. (사용자 + 응답1 + 응답2) → Model3 → 응답3
+  Stream<void> executePipeline({
     required List<ModelConfig> pipeline,
     required String initialInput,
     required List<ChatMessage> messageHistory,
-    void Function(int step, ModelConfig config)? onStepStart,
-    void Function(int step, String chunk)? onChunk,
+    required Function(int step, ModelConfig config) onStepStart,
+    required Function(int step, String chunk) onChunk,
+    required AIService Function(String apiKey) aiServiceFactory,
+    required String apiKey,
   }) async* {
     if (pipeline.isEmpty) {
       throw Exception('파이프라인이 비어있습니다.');
     }
 
-    Logger.info('Starting pipeline execution with ${pipeline.length} models');
+    // 누적된 대화 히스토리
+    final conversationHistory = <ChatMessage>[...messageHistory];
 
-    String currentInput = initialInput;
-    final stepOutputs = <String>[];
+    // 사용자의 초기 질문
+    conversationHistory.add(ChatMessage(
+      role: 'user',
+      content: initialInput,
+    ));
 
     for (var i = 0; i < pipeline.length; i++) {
       final config = pipeline[i];
 
-      Logger.info(
-        'Pipeline step ${i + 1}/${pipeline.length}: ${config.modelId}',
-      );
-
-      onStepStart?.call(i, config);
-
-      // 메시지 구성
-      final messages = _buildMessages(
-        messageHistory: messageHistory,
-        systemPrompt: config.systemPrompt,
-        userInput: currentInput,
-      );
+      Logger.info('Pipeline step ${i + 1}/${pipeline.length}: ${config.modelId}');
+      onStepStart(i, config);
 
       // AI 서비스 생성
       final aiService = aiServiceFactory(apiKey);
 
       try {
-        final stepBuffer = StringBuffer();
+        final stepOutput = StringBuffer();
+
+        // 현재 모델에 누적된 히스토리 전달
+        final messages = _buildMessages(
+          messageHistory: conversationHistory,
+          systemPrompt: config.systemPrompt,
+        );
 
         // 스트리밍 실행
         await for (final chunk in aiService.streamChat(
           messages: messages,
           model: config.modelId,
         )) {
-          stepBuffer.write(chunk);
-
-          // 청크 콜백 호출
-          onChunk?.call(i, chunk);
-
-          // 스트림으로 청크 전달
-          yield chunk;
+          stepOutput.write(chunk);
+          onChunk(i, chunk);
         }
 
-        final stepOutput = stepBuffer.toString();
+        final output = stepOutput.toString();
 
-        if (stepOutput.isEmpty) {
+        if (output.isEmpty) {
           throw Exception('모델 ${config.modelId}의 출력이 비어있습니다.');
         }
 
-        Logger.info('Pipeline step ${i + 1} completed: ${stepOutput.length} chars');
+        Logger.info('Step ${i + 1} completed: ${output.length} chars');
 
-        stepOutputs.add(stepOutput);
+        // ✅ 응답을 히스토리에 추가 (다음 모델이 참조)
+        conversationHistory.add(ChatMessage(
+          role: 'assistant',
+          content: output,
+        ));
 
-        // 다음 단계를 위해 출력을 입력으로 사용
-        currentInput = stepOutput;
+        // ✅ 마지막 모델이 아니면 다음 단계를 위한 사용자 메시지 추가
+        if (i < pipeline.length - 1) {
+          conversationHistory.add(ChatMessage(
+            role: 'user',
+            content: '위 내용을 바탕으로 계속 답변해주세요.',
+          ));
+        }
+
+        yield null; // progress indicator용
       } catch (e, stackTrace) {
         Logger.error('Pipeline step ${i + 1} failed', e, stackTrace);
         rethrow;
@@ -108,18 +91,17 @@ class PipelineService {
       }
     }
 
-    Logger.info('Pipeline execution completed successfully');
+    Logger.info('Pipeline execution completed');
   }
 
-  /// 메시지 히스토리 구성
+  /// 메시지 구성
   List<ChatMessage> _buildMessages({
     required List<ChatMessage> messageHistory,
     required String systemPrompt,
-    required String userInput,
   }) {
     final messages = <ChatMessage>[];
 
-    // 시스템 프롬프트 추가
+    // 시스템 프롬프트
     if (systemPrompt.isNotEmpty) {
       messages.add(ChatMessage(
         role: 'system',
@@ -127,14 +109,8 @@ class PipelineService {
       ));
     }
 
-    // 기존 히스토리 추가
+    // 누적된 대화 히스토리 전체
     messages.addAll(messageHistory);
-
-    // 현재 사용자 입력 추가
-    messages.add(ChatMessage(
-      role: 'user',
-      content: userInput,
-    ));
 
     return messages;
   }

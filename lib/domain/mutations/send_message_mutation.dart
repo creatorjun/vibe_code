@@ -154,6 +154,8 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
             responseBuffer.toString(),
           );
         },
+        aiServiceFactory: ref.read(aiServiceFactoryProvider),
+        apiKey: settingsAsync.apiKey,
       )) {
         // 스트림 청크는 이미 onChunk에서 처리됨
       }
@@ -175,12 +177,25 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       final errorMessage = ErrorHandler.getErrorMessage(e);
       state = SendMessageState.error(errorMessage);
 
-      // AI 메시지를 시스템 에러 메시지로 업데이트
+      // AI 메시지를 에러 메시지로 업데이트
       if (aiMessageId != null) {
         final chatRepo = ref.read(chatRepositoryProvider);
 
-        // 에러 메시지 내용 구성
-        final errorContent = '⚠️ 메시지 전송 실패\n\n$errorMessage';
+        // 기존 내용 가져오기
+        String existingContent = '';
+        try {
+          final messages = await chatRepo.getMessages(sessionId);
+          final currentMessage =
+          messages.firstWhere((m) => m.id == aiMessageId);
+          existingContent = currentMessage.content;
+        } catch (_) {
+          existingContent = '';
+        }
+
+        // 기존 내용 + 에러 메시지 합치기
+        final errorContent = existingContent.trim().isNotEmpty
+            ? '$existingContent\n\n⚠️ 파이프라인 오류\n\n$errorMessage'
+            : '⚠️ 메시지 전송 실패\n\n$errorMessage';
 
         // 메시지 내용 업데이트
         await chatRepo.updateMessageContent(aiMessageId, errorContent);
@@ -188,7 +203,8 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         // 스트리밍 완료 처리
         await chatRepo.completeStreaming(aiMessageId);
 
-        Logger.info('Error message saved to database: $aiMessageId');
+        Logger.info(
+            'Error message ${existingContent.isEmpty ? "saved" : "appended"} to database: $aiMessageId');
       }
 
       ref.read(streamingStateProvider.notifier).stop();
