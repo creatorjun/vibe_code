@@ -1,7 +1,9 @@
+// lib/presentation/screens/settings/settings_screen.dart
 import 'package:flutter/material.dart';
+import 'package:vibe_code/core/constants/app_constants.dart';
 import '../../../core/constants/ui_constants.dart';
 import 'widgets/api_settings.dart';
-import 'widgets/model_selector.dart';
+import 'widgets/model_pipeline_settings.dart';
 import 'widgets/theme_selector.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -20,12 +22,10 @@ class SettingsScreen extends StatelessWidget {
           children: [
             const ApiSettings(),
             const SizedBox(height: UIConstants.spacingXl),
-            const ModelSelector(),
+            const ModelPipelineSettings(),
             const SizedBox(height: UIConstants.spacingXl),
             const ThemeSelector(),
             const SizedBox(height: UIConstants.spacingXl),
-
-            // 앱 정보
             Text(
               '앱 정보',
               style: Theme.of(context).textTheme.titleLarge,
@@ -34,7 +34,7 @@ class SettingsScreen extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.info_outline),
               title: const Text('버전'),
-              subtitle: const Text('2.0.0'),
+              subtitle: const Text(AppConstants.appVersion),
               contentPadding: EdgeInsets.zero,
             ),
             ListTile(

@@ -1,3 +1,4 @@
+// lib/domain/mutations/send_message_mutation.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/utils/logger.dart';
@@ -21,20 +22,43 @@ class SendMessageState {
   final SendMessageStatus status;
   final String? error;
   final double? progress;
+  final int? currentModelIndex;
 
   const SendMessageState({
     required this.status,
     this.error,
     this.progress,
+    this.currentModelIndex,
   });
 
-  const SendMessageState.idle() : this(status: SendMessageStatus.idle);
-  const SendMessageState.sending() : this(status: SendMessageStatus.sending);
-  const SendMessageState.streaming([double? progress])
-      : this(status: SendMessageStatus.streaming, progress: progress);
-  const SendMessageState.success() : this(status: SendMessageStatus.success);
-  const SendMessageState.error(String error)
-      : this(status: SendMessageStatus.error, error: error);
+  const SendMessageState.idle()
+      : status = SendMessageStatus.idle,
+        error = null,
+        progress = null,
+        currentModelIndex = null;
+
+  const SendMessageState.sending()
+      : status = SendMessageStatus.sending,
+        error = null,
+        progress = null,
+        currentModelIndex = null;
+
+  const SendMessageState.streaming({
+    this.progress,
+    this.currentModelIndex,
+  })  : status = SendMessageStatus.streaming,
+        error = null;
+
+  const SendMessageState.success()
+      : status = SendMessageStatus.success,
+        error = null,
+        progress = null,
+        currentModelIndex = null;
+
+  const SendMessageState.error(String this.error)
+      : status = SendMessageStatus.error,
+        progress = null,
+        currentModelIndex = null;
 }
 
 class SendMessageMutationNotifier extends Notifier<SendMessageState> {
@@ -57,21 +81,28 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       final attachmentRepo = ref.read(attachmentRepositoryProvider);
       final settingsAsync = await ref.read(settingsProvider.future);
 
+      // API 키 검증
       if (settingsAsync.apiKey.isEmpty) {
-        throw const ValidationException(
-          'API 키가 설정되지 않았습니다.\n설정에서 API 키를 입력해주세요.',
-        );
+        throw const ValidationException('API 키를 설정해주세요. 설정 화면에서 API 키를 입력해주세요.');
       }
 
       if (!Validators.isValidApiKey(settingsAsync.apiKey)) {
-        throw const ValidationException('유효하지 않은 API 키입니다.');
+        throw const ValidationException('올바르지 않은 API 키 형식입니다.');
       }
 
+      // 활성화된 모델 파이프라인 가져오기
+      final pipeline = settingsAsync.enabledModels;
+      if (pipeline.isEmpty) {
+        throw const ValidationException('최소 1개의 모델을 활성화해주세요.');
+      }
+
+      // 사용자 메시지 추가
       final userMessageId = await chatRepo.addUserMessage(
         sessionId: sessionId,
         content: content,
       );
 
+      // 첨부파일 링크
       if (attachmentIds.isNotEmpty) {
         await attachmentRepo.linkToMessage(
           messageId: userMessageId,
@@ -79,75 +110,100 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         );
       }
 
-      final messages = await _buildMessageHistory(sessionId);
+      // 파이프라인 실행
+      String currentInput = content;
 
-      final aiMessageId = await chatRepo.addAssistantMessage(
-        sessionId: sessionId,
-        model: settingsAsync.selectedModel,
-        isStreaming: true,
-      );
+      for (var i = 0; i < pipeline.length; i++) {
+        final modelConfig = pipeline[i];
 
-      state = const SendMessageState.streaming();
-      ref.read(streamingStateProvider.notifier).start();
-      ref.read(currentStreamingMessageProvider.notifier).set(aiMessageId);
+        state = SendMessageState.streaming(
+          currentModelIndex: i,
+          progress: (i / pipeline.length),
+        );
 
-      _activeService = OpenRouterService(settingsAsync.apiKey);
-      final contentBuffer = StringBuffer();
+        Logger.info('Pipeline step ${i + 1}/${pipeline.length}: ${modelConfig.modelId}');
 
-      try {
-        await for (final chunk in _activeService!.streamChat(
-          messages: messages,
-          model: settingsAsync.selectedModel,
-        )) {
-          contentBuffer.write(chunk);
-          await chatRepo.updateMessageContent(aiMessageId, contentBuffer.toString());
+        // 메시지 히스토리 구성
+        final messages = await _buildMessageHistory(
+          sessionId: sessionId,
+          userMessage: currentInput,
+          systemPrompt: modelConfig.systemPrompt,
+        );
+
+        // AI 메시지 생성 (스트리밍)
+        final aiMessageId = await chatRepo.addAssistantMessage(
+          sessionId: sessionId,
+          model: modelConfig.modelId,
+          isStreaming: true,
+        );
+
+        ref.read(streamingStateProvider.notifier).start();
+        ref.read(currentStreamingMessageProvider.notifier).set(aiMessageId);
+
+        _activeService = OpenRouterService(settingsAsync.apiKey);
+        final contentBuffer = StringBuffer();
+
+        try {
+          await for (final chunk in _activeService!.streamChat(
+            messages: messages,
+            model: modelConfig.modelId,
+          )) {
+            contentBuffer.write(chunk);
+            await chatRepo.updateMessageContent(aiMessageId, contentBuffer.toString());
+          }
+
+          await chatRepo.completeStreaming(aiMessageId);
+
+          // 다음 파이프라인을 위해 현재 출력을 입력으로 사용
+          currentInput = contentBuffer.toString();
+
+          Logger.info('Pipeline step ${i + 1} completed');
+        } catch (e, stackTrace) {
+          Logger.error('Pipeline step ${i + 1} failed', e, stackTrace);
+          await chatRepo.deleteMessage(aiMessageId);
+          rethrow;
+        } finally {
+          _activeService?.dispose();
+          _activeService = null;
+          ref.read(streamingStateProvider.notifier).stop();
+          ref.read(currentStreamingMessageProvider.notifier).clear();
         }
-
-        await chatRepo.completeStreaming(aiMessageId);
-
-        await _updateSessionTitleIfNeeded(sessionId, content);
-
-        state = const SendMessageState.success();
-        Logger.info('Message sent successfully');
-      } catch (e, stackTrace) {
-        Logger.error('Streaming error', e, stackTrace);
-        await chatRepo.deleteMessage(aiMessageId);
-        rethrow;
-      } finally {
-        _activeService?.dispose();
-        _activeService = null;
-        ref.read(streamingStateProvider.notifier).stop();
-        ref.read(currentStreamingMessageProvider.notifier).clear();
       }
 
-      await Future.delayed(const Duration(seconds: 2));
-      state = const SendMessageState.idle();
+      // 세션 제목 업데이트
+      await _updateSessionTitleIfNeeded(sessionId, content);
+
+      state = const SendMessageState.success();
+      Logger.info('Pipeline completed successfully');
     } catch (e, stackTrace) {
       Logger.error('Send message failed', e, stackTrace);
       ErrorHandler.logError(e, stackTrace);
-
       state = SendMessageState.error(ErrorHandler.getErrorMessage(e));
-
       ref.read(streamingStateProvider.notifier).stop();
       ref.read(currentStreamingMessageProvider.notifier).clear();
     }
   }
 
-  Future<List<ChatMessage>> _buildMessageHistory(int sessionId) async {
+  Future<List<ChatMessage>> _buildMessageHistory({
+    required int sessionId,
+    required String userMessage,
+    required String systemPrompt,
+  }) async {
     final chatRepo = ref.read(chatRepositoryProvider);
     final attachmentRepo = ref.read(attachmentRepositoryProvider);
-    final settingsAsync = await ref.read(settingsProvider.future);
 
     final messages = await chatRepo.getMessages(sessionId);
     final apiMessages = <ChatMessage>[];
 
-    if (settingsAsync.systemPrompt.isNotEmpty) {
+    // 시스템 프롬프트 추가 (모델별로 다름)
+    if (systemPrompt.isNotEmpty) {
       apiMessages.add(ChatMessage(
         role: 'system',
-        content: settingsAsync.systemPrompt,
+        content: systemPrompt,
       ));
     }
 
+    // 기존 메시지 히스토리
     for (final msg in messages) {
       final attachments = await attachmentRepo.getMessageAttachments(msg.id);
       final contentBuffer = StringBuffer();
@@ -157,13 +213,13 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         for (final attachment in attachments) {
           try {
             final fileContent = await attachmentRepo.readAttachment(attachment.id);
-            contentBuffer.writeln('\n[${attachment.fileName}]');
+            contentBuffer.writeln('--- ${attachment.fileName} ---');
             contentBuffer.writeln(fileContent);
           } catch (e) {
             Logger.warning('Failed to read attachment: ${attachment.fileName}');
           }
         }
-        contentBuffer.writeln('\n=== 메시지 ===');
+        contentBuffer.writeln('=================\n');
       }
 
       contentBuffer.write(msg.content);
@@ -204,6 +260,7 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
   }
 }
 
-final sendMessageMutationProvider = NotifierProvider<SendMessageMutationNotifier, SendMessageState>(
+final sendMessageMutationProvider =
+NotifierProvider<SendMessageMutationNotifier, SendMessageState>(
   SendMessageMutationNotifier.new,
 );
