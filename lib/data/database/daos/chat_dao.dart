@@ -144,4 +144,14 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
       ..limit(1))
         .getSingleOrNull();
   }
+
+  // 모든 세션 삭제
+  Future<void> deleteAllSessions() async {
+    await delete(chatSessions).go();
+  }
+
+// 모든 메시지 삭제
+  Future<void> deleteAllMessages() async {
+    await delete(messages).go();
+  }
 }

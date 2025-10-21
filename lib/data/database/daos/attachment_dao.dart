@@ -110,4 +110,15 @@ class AttachmentDao extends DatabaseAccessor<AppDatabase>
 
     return (select(attachments)..where((t) => t.id.isNotIn(usedIds))).get();
   }
+
+  // 모든 첨부파일 조회
+  Future<List<Attachment>> getAllAttachments() async {
+    return select(attachments).get();
+  }
+
+// 모든 첨부파일 삭제
+  Future<void> deleteAllAttachments() async {
+    await delete(messageAttachments).go();
+    await delete(attachments).go();
+  }
 }

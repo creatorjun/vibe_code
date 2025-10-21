@@ -1,3 +1,4 @@
+import 'dart:io';
 import '../../core/utils/logger.dart';
 import '../database/daos/chat_dao.dart';
 import '../database/app_database.dart';
@@ -93,5 +94,45 @@ class ChatRepository {
 
   Stream<List<Message>> watchCompletedMessagesForSession(int sessionId) {
     return _chatDao.watchCompletedMessagesForSession(sessionId);
+  }
+
+  // ✅ 모든 대화 내역 삭제 (첨부파일 포함)
+  Future<void> deleteAllConversations() async {
+    Logger.info('Deleting all conversations...');
+
+    // 1. 모든 첨부파일의 물리적 파일 삭제
+    try {
+      // ✅ attachmentDao 접근 (_chatDao.attachedDatabase)
+      final allAttachments = await _chatDao.attachedDatabase.attachmentDao.getAllAttachments();
+      Logger.info('Found ${allAttachments.length} attachments to delete');
+
+      for (final attachment in allAttachments) {
+        try {
+          final file = File(attachment.filePath);
+          if (await file.exists()) {
+            await file.delete();
+            Logger.debug('Deleted file: ${attachment.fileName}');
+          }
+        } catch (e) {
+          Logger.warning('Failed to delete file: ${attachment.filePath}', e);
+        }
+      }
+
+      // 2. DB에서 첨부파일 삭제
+      await _chatDao.attachedDatabase.attachmentDao.deleteAllAttachments();
+      Logger.info('Deleted all attachments from database');
+    } catch (e) {
+      Logger.error('Failed to delete attachments', e);
+    }
+
+    // 3. 메시지 삭제
+    await _chatDao.deleteAllMessages();
+    Logger.info('Deleted all messages');
+
+    // 4. 세션 삭제
+    await _chatDao.deleteAllSessions();
+    Logger.info('Deleted all sessions');
+
+    Logger.info('✅ All conversations deleted successfully');
   }
 }

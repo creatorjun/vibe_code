@@ -42,9 +42,10 @@ final attachmentRepositoryProvider = Provider<AttachmentRepository>((ref) {
 });
 
 /// 새 세션 생성 Provider
-final sessionCreatorProvider = AsyncNotifierProvider<SessionCreatorNotifier, int?>(
-  SessionCreatorNotifier.new,
-);
+final sessionCreatorProvider =
+    AsyncNotifierProvider<SessionCreatorNotifier, int?>(
+      SessionCreatorNotifier.new,
+    );
 
 class SessionCreatorNotifier extends AsyncNotifier<int?> {
   @override
@@ -72,9 +73,10 @@ class SessionCreatorNotifier extends AsyncNotifier<int?> {
 }
 
 /// 세션 삭제 Provider
-final sessionDeleterProvider = AsyncNotifierProvider<SessionDeleterNotifier, void>(
-  SessionDeleterNotifier.new,
-);
+final sessionDeleterProvider =
+    AsyncNotifierProvider<SessionDeleterNotifier, void>(
+      SessionDeleterNotifier.new,
+    );
 
 class SessionDeleterNotifier extends AsyncNotifier<void> {
   @override
@@ -96,4 +98,16 @@ class SessionDeleterNotifier extends AsyncNotifier<void> {
       }
     });
   }
+
+  final deleteAllConversationsProvider = FutureProvider.autoDispose<void>((
+    ref,
+  ) async {
+    final chatRepo = ref.watch(chatRepositoryProvider);
+    await chatRepo.deleteAllConversations();
+
+    // 활성 세션 초기화
+    ref.read(activeSessionProvider.notifier).clear();
+
+    Logger.info('All conversations deleted and active session cleared');
+  });
 }

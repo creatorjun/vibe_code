@@ -106,4 +106,28 @@ class AttachmentRepository {
 
     Logger.info('Cleaned up ${unused.length} unused attachments');
   }
+
+  /// 모든 첨부파일 삭제
+  Future<void> deleteAllAttachments() async {
+    try {
+      // 모든 첨부파일 목록 가져오기
+      final allAttachments = await _attachmentDao.getAllAttachments();
+
+      // 파일 시스템에서 삭제
+      for (final attachment in allAttachments) {
+        final file = File(attachment.filePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+
+      // DB에서 삭제
+      await _attachmentDao.deleteAllAttachments();
+
+      Logger.info('All attachments deleted: ${allAttachments.length} files');
+    } catch (e) {
+      Logger.error('Failed to delete all attachments', e);
+      rethrow;
+    }
+  }
 }
