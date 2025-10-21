@@ -1,4 +1,4 @@
-// lib/domain/services/pipeline_service.dart
+// lib/data/services/pipeline_service.dart
 import '../../core/utils/logger.dart';
 import '../../data/models/settings_state.dart';
 import '../../data/models/api_request.dart';
@@ -21,29 +21,36 @@ class PipelineStepResult {
 
 /// AI 모델 파이프라인 실행 서비스
 class PipelineService {
-  /// 파이프라인 실행
+  final String apiKey;
+  final AIService Function(String apiKey) aiServiceFactory;
+
+  PipelineService({
+    required this.apiKey,
+    required this.aiServiceFactory,
+  });
+
+  /// 파이프라인 실행 (스트리밍 방식)
   ///
   /// [pipeline]: 실행할 모델 설정 리스트
   /// [initialInput]: 첫 번째 모델에 입력할 초기 메시지
   /// [messageHistory]: 이전 대화 히스토리
   /// [onStepStart]: 각 단계 시작 시 호출되는 콜백
-  /// [onStepComplete]: 각 단계 완료 시 호출되는 콜백
   /// [onChunk]: 스트리밍 청크 수신 시 호출되는 콜백
-  /// [aiServiceFactory]: AI 서비스 생성 팩토리 함수
-  Stream<PipelineStepResult> executePipeline({
+  Stream<String> executePipeline({
     required List<ModelConfig> pipeline,
     required String initialInput,
     required List<ChatMessage> messageHistory,
-    required Function(int step, ModelConfig config) onStepStart,
-    required Function(int step, String chunk) onChunk,
-    required AIService Function(String apiKey) aiServiceFactory,
-    required String apiKey,
+    void Function(int step, ModelConfig config)? onStepStart,
+    void Function(int step, String chunk)? onChunk,
   }) async* {
     if (pipeline.isEmpty) {
       throw Exception('파이프라인이 비어있습니다.');
     }
 
+    Logger.info('Starting pipeline execution with ${pipeline.length} models');
+
     String currentInput = initialInput;
+    final stepOutputs = <String>[];
 
     for (var i = 0; i < pipeline.length; i++) {
       final config = pipeline[i];
@@ -52,7 +59,7 @@ class PipelineService {
         'Pipeline step ${i + 1}/${pipeline.length}: ${config.modelId}',
       );
 
-      onStepStart(i, config);
+      onStepStart?.call(i, config);
 
       // 메시지 구성
       final messages = _buildMessages(
@@ -65,35 +72,34 @@ class PipelineService {
       final aiService = aiServiceFactory(apiKey);
 
       try {
-        final outputBuffer = StringBuffer();
+        final stepBuffer = StringBuffer();
 
         // 스트리밍 실행
         await for (final chunk in aiService.streamChat(
           messages: messages,
           model: config.modelId,
         )) {
-          outputBuffer.write(chunk);
-          onChunk(i, chunk);
+          stepBuffer.write(chunk);
+
+          // 청크 콜백 호출
+          onChunk?.call(i, chunk);
+
+          // 스트림으로 청크 전달
+          yield chunk;
         }
 
-        final output = outputBuffer.toString();
+        final stepOutput = stepBuffer.toString();
 
-        if (output.isEmpty) {
+        if (stepOutput.isEmpty) {
           throw Exception('모델 ${config.modelId}의 출력이 비어있습니다.');
         }
 
-        Logger.info('Pipeline step ${i + 1} completed: ${output.length} chars');
+        Logger.info('Pipeline step ${i + 1} completed: ${stepOutput.length} chars');
 
-        // 결과 반환
-        yield PipelineStepResult(
-          stepIndex: i,
-          config: config,
-          output: output,
-          timestamp: DateTime.now(),
-        );
+        stepOutputs.add(stepOutput);
 
         // 다음 단계를 위해 출력을 입력으로 사용
-        currentInput = output;
+        currentInput = stepOutput;
       } catch (e, stackTrace) {
         Logger.error('Pipeline step ${i + 1} failed', e, stackTrace);
         rethrow;

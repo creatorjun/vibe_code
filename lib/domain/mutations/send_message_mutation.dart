@@ -1,12 +1,13 @@
-// lib/domain/mutations/send_message_mutation.dart (기존 파일 교체)
+// lib/domain/mutations/send_message_mutation.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/models/settings_state.dart';
 import '../../core/errors/app_exception.dart';
-import '../../core/utils/logger.dart';
 import '../../core/errors/error_handler.dart';
+import '../../core/utils/logger.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/api_request.dart';
+import '../../data/models/settings_state.dart';
 import '../../data/services/openrouter_service.dart';
+import '../providers/ai_service_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/streaming_state_provider.dart';
@@ -23,12 +24,6 @@ class SendMessageState {
   final SendMessageStatus status;
   final String? error;
   final double? progress;
-
-  const SendMessageState({
-    required this.status,
-    this.error,
-    this.progress,
-  });
 
   const SendMessageState.idle()
       : status = SendMessageStatus.idle,
@@ -109,11 +104,13 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       ));
 
       // AI 응답 메시지 생성
+      final modelId = settingsAsync.modelPipeline.isNotEmpty
+          ? settingsAsync.modelPipeline.first.modelId
+          : 'anthropic/claude-3.5-sonnet';
+
       final aiMessageId = await chatRepo.addAssistantMessage(
         sessionId: sessionId,
-        model: settingsAsync.enabledModels.isNotEmpty
-            ? settingsAsync.enabledModels.first.modelId
-            : settingsAsync.selectedModel,
+        model: modelId,
         isStreaming: true,
       );
 
@@ -123,18 +120,30 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
 
       state = const SendMessageState.streaming();
 
-      // OpenRouter 서비스 생성
-      _activeService = OpenRouterService(settingsAsync.apiKey);
       final responseBuffer = StringBuffer();
 
-      // 파이프라인 실행
-      await _executePipeline(
-        settingsAsync: settingsAsync,
-        messages: apiMessages,
-        sessionId: sessionId,
-        aiMessageId: aiMessageId,
-        responseBuffer: responseBuffer,
-      );
+      // PipelineService를 통한 파이프라인 실행
+      final pipelineService = ref.read(pipelineServiceProvider);
+
+      await for (final _ in pipelineService.executePipeline(
+        pipeline: settingsAsync.modelPipeline,
+        initialInput: content,
+        messageHistory: apiMessages.sublist(0, apiMessages.length - 1), // 현재 메시지 제외
+        onStepStart: (step, config) {
+          Logger.info('Pipeline step ${step + 1}: ${config.modelId}');
+        },
+        onChunk: (step, chunk) async {
+          responseBuffer.write(chunk);
+
+          // DB 업데이트
+          await chatRepo.updateMessageContent(
+            aiMessageId,
+            responseBuffer.toString(),
+          );
+        },
+      )) {
+        // 스트림 청크는 이미 onChunk에서 처리됨
+      }
 
       // 스트리밍 완료
       await chatRepo.completeStreaming(aiMessageId);
@@ -158,153 +167,47 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
     }
   }
 
-  Future<void> _executePipeline({
-    required SettingsState settingsAsync,
-    required List<ChatMessage> messages,
-    required int sessionId,
-    required int aiMessageId,
-    required StringBuffer responseBuffer,
-  }) async {
-    final chatRepo = ref.read(chatRepositoryProvider);
-    final pipeline = settingsAsync.enabledModels;
-
-    if (pipeline.isEmpty) {
-      // 파이프라인이 없으면 기본 모델 사용
-      await _streamSingleModel(
-        model: settingsAsync.selectedModel,
-        messages: messages,
-        aiMessageId: aiMessageId,
-        responseBuffer: responseBuffer,
-      );
-      return;
-    }
-
-    // 파이프라인 실행
-    var currentMessages = List<ChatMessage>.from(messages);
-
-    for (var i = 0; i < pipeline.length; i++) {
-      final config = pipeline[i];
-      Logger.info('Pipeline step ${i + 1}/${pipeline.length}: ${config.modelId}');
-
-      // 시스템 프롬프트가 있으면 추가
-      if (config.systemPrompt.isNotEmpty) {
-        currentMessages = [
-          ChatMessage(role: 'system', content: config.systemPrompt),
-          ...currentMessages,
-        ];
-      }
-
-      final stepBuffer = StringBuffer();
-      await _streamSingleModel(
-        model: config.modelId,
-        messages: currentMessages,
-        aiMessageId: aiMessageId,
-        responseBuffer: stepBuffer,
-      );
-
-      final stepOutput = stepBuffer.toString();
-      responseBuffer.write(stepOutput);
-
-      // 다음 단계를 위해 현재 출력을 입력으로 사용
-      if (i < pipeline.length - 1) {
-        currentMessages = [
-          ChatMessage(role: 'assistant', content: stepOutput),
-        ];
-
-        // DB 업데이트
-        await chatRepo.updateMessageContent(aiMessageId, responseBuffer.toString());
-      }
-    }
-  }
-
-  Future<void> _streamSingleModel({
-    required String model,
-    required List<ChatMessage> messages,
-    required int aiMessageId,
-    required StringBuffer responseBuffer,
-  }) async {
-    final chatRepo = ref.read(chatRepositoryProvider);
-
-    await for (final chunk in _activeService!.streamChat(
-      messages: messages,
-      model: model,
-    )) {
-      responseBuffer.write(chunk);
-      await chatRepo.updateMessageContent(
-        aiMessageId,
-        responseBuffer.toString(),
-      );
-    }
-  }
-
+  /// 메시지 히스토리 구성
   Future<List<ChatMessage>> _buildMessageHistory(
       int sessionId,
-      SettingsState settingsAsync,
+      SettingsState settings,
       ) async {
     final chatRepo = ref.read(chatRepositoryProvider);
-    final attachmentRepo = ref.read(attachmentRepositoryProvider);
+    final dbMessages = await chatRepo.getMessages(sessionId);
 
-    final messages = await chatRepo.getMessages(sessionId);
-    final apiMessages = <ChatMessage>[];
-
-    for (final msg in messages) {
-      final attachments = await attachmentRepo.getMessageAttachments(msg.id);
-      final contentBuffer = StringBuffer();
-
-      if (attachments.isNotEmpty) {
-        contentBuffer.writeln('=== 첨부파일 ===');
-        for (final attachment in attachments) {
-          try {
-            final fileContent =
-            await attachmentRepo.readAttachment(attachment.id);
-            contentBuffer.writeln('--- ${attachment.fileName} ---');
-            contentBuffer.writeln(fileContent);
-          } catch (e) {
-            Logger.warning('Failed to read attachment: ${attachment.fileName}');
-          }
-        }
-        contentBuffer.writeln('=================\n');
-      }
-
-      contentBuffer.write(msg.content);
-
-      apiMessages.add(ChatMessage(
+    return dbMessages.map((msg) {
+      return ChatMessage(
         role: msg.role,
-        content: contentBuffer.toString(),
-      ));
-    }
-
-    return apiMessages;
+        content: msg.content,
+      );
+    }).toList();
   }
 
+  /// 세션 제목 업데이트 (첫 메시지인 경우)
   Future<void> _updateSessionTitleIfNeeded(
       int sessionId,
-      String firstMessage,
+      String content,
       ) async {
-    try {
-      final chatRepo = ref.read(chatRepositoryProvider);
-      final session = await chatRepo.getSession(sessionId);
+    final chatRepo = ref.read(chatRepositoryProvider);
+    final messages = await chatRepo.getMessages(sessionId);
 
-      if (session != null && session.title == '새 대화') {
-        final title = firstMessage.length > 50
-            ? '${firstMessage.substring(0, 50)}...'
-            : firstMessage;
-        await chatRepo.updateSessionTitle(sessionId, title);
-        Logger.info('Session title updated');
-      }
-    } catch (e) {
-      Logger.warning('Failed to update session title: $e');
+    // 메시지가 2개(user + assistant)인 경우 제목 업데이트
+    if (messages.length == 2) {
+      final title = content.length > 50
+          ? '${content.substring(0, 50)}...'
+          : content;
+      await chatRepo.updateSessionTitle(sessionId, title);
+      Logger.info('Session title updated: $title');
     }
   }
 
   void cancel() {
-    Logger.info('Streaming cancelled');
-    _activeService?.cancelStreaming();
+    Logger.info('Cancelling message send');
     _activeService?.dispose();
     _activeService = null;
-    state = const SendMessageState.idle();
     ref.read(streamingStateProvider.notifier).stop();
     ref.read(currentStreamingMessageProvider.notifier).clear();
+    state = const SendMessageState.idle();
   }
 }
 
