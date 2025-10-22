@@ -10,8 +10,6 @@ import '../../../../core/utils/logger.dart';
 import '../../../../domain/mutations/send_message_mutation.dart';
 import '../../../../domain/providers/chat_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
-import '../../../../domain/providers/settings_provider.dart';
-import '../../../../data/models/settings_state.dart';
 import '../../../../presentation/shared/widgets/error_dialog.dart';
 import 'attachment_item.dart';
 import 'github_analysis_dialog.dart';
@@ -231,7 +229,6 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     final activeSession = ref.watch(activeSessionProvider);
     final sendState = ref.watch(sendMessageMutationProvider);
     final inputState = ref.watch(chatInputStateProvider);
-    final settings = ref.watch(settingsProvider); // settingsProvider 구독
 
     final isSending =
         sendState.status == SendMessageStatus.sending ||

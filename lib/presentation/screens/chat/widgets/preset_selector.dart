@@ -74,7 +74,7 @@ class PresetSelector extends ConsumerWidget {
                           // --- ---
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),

@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../data/database/app_database.dart';
-import '../../../../domain/providers/chat_provider.dart';
-import '../../../../core/constants/ui_constants.dart';
-import '../../../../core/utils/date_formatter.dart';
+import '../../../../../../data/database/app_database.dart';
+import '../../../../../../domain/providers/chat_provider.dart';
+import '../../../../../../core/constants/ui_constants.dart';
+import '../../../../../../core/utils/date_formatter.dart';
 
 class SessionTile extends ConsumerWidget {
   final ChatSession session;
+  final bool isCollapsed;
 
   const SessionTile({
     super.key,
     required this.session,
+    this.isCollapsed = false,
   });
 
   @override
@@ -18,6 +20,41 @@ class SessionTile extends ConsumerWidget {
     final activeSession = ref.watch(activeSessionProvider);
     final isActive = activeSession == session.id;
 
+    // 축소 상태일 때는 아이콘만 표시
+    if (isCollapsed) {
+      return Container(
+        margin: const EdgeInsets.symmetric(
+          horizontal: UIConstants.spacingSm,
+          vertical: UIConstants.spacingXs,
+        ),
+        decoration: BoxDecoration(
+          color: isActive
+              ? Theme.of(context).colorScheme.primary.withAlpha(26)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+        ),
+        child: IconButton(
+          icon: Icon(
+            Icons.chat_bubble_outline,
+            size: 20,
+            color: isActive
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).iconTheme.color,
+          ),
+          tooltip: session.title,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(
+            minWidth: 40,
+            minHeight: 40,
+          ),
+          onPressed: () {
+            ref.read(activeSessionProvider.notifier).select(session.id);
+          },
+        ),
+      );
+    }
+
+    // 확대 상태일 때는 커스텀 레이아웃으로 전체 내용 표시
     return Container(
       margin: const EdgeInsets.symmetric(
         horizontal: UIConstants.spacingSm,
@@ -29,41 +66,70 @@ class SessionTile extends ConsumerWidget {
             : Colors.transparent,
         borderRadius: BorderRadius.circular(UIConstants.radiusMd),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: UIConstants.spacingMd,
-          vertical: UIConstants.spacingSm,
-        ),
-        leading: Icon(
-          Icons.chat_bubble_outline,
-          color: isActive
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).iconTheme.color,
-        ),
-        title: GestureDetector(
-          onDoubleTap: () => _showRenameDialog(context, ref),
-          child: Text(
-            session.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+          onTap: () {
+            ref.read(activeSessionProvider.notifier).select(session.id);
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(UIConstants.spacingSm),
+            child: Row(
+              children: [
+                // 아이콘
+                Icon(
+                  Icons.chat_bubble_outline,
+                  size: 18,
+                  color: isActive
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).iconTheme.color,
+                ),
+                const SizedBox(width: UIConstants.spacingSm),
+                // 텍스트 영역
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onDoubleTap: () => _showRenameDialog(context, ref),
+                        child: Text(
+                          session.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        DateFormatter.formatChatTime(session.updatedAt),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: UIConstants.spacingXs),
+                // 삭제 버튼
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  iconSize: 16,
+                  tooltip: '삭제',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
+                  onPressed: () => _showDeleteConfirmation(context, ref),
+                ),
+              ],
             ),
           ),
         ),
-        subtitle: Text(
-          DateFormatter.formatChatTime(session.updatedAt),
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline),
-          tooltip: '삭제',
-          iconSize: 20,
-          onPressed: () => _showDeleteConfirmation(context, ref),
-        ),
-        onTap: () {
-          ref.read(activeSessionProvider.notifier).select(session.id);
-        },
       ),
     );
   }
@@ -79,16 +145,15 @@ class SessionTile extends ConsumerWidget {
           controller: controller,
           autofocus: true,
           decoration: const InputDecoration(
-            labelText: '새 이름',
-            hintText: '세션 이름을 입력하세요',
+            labelText: '세션 이름',
+            hintText: '새 이름을 입력하세요',
           ),
           onSubmitted: (value) {
             if (value.trim().isNotEmpty) {
               Navigator.of(dialogContext).pop();
-              ref.read(chatRepositoryProvider).updateSessionTitle(
-                session.id,
-                value.trim(),
-              );
+              ref
+                  .read(chatRepositoryProvider)
+                  .updateSessionTitle(session.id, value.trim());
             }
           },
         ),
@@ -102,13 +167,12 @@ class SessionTile extends ConsumerWidget {
               final newTitle = controller.text.trim();
               if (newTitle.isNotEmpty) {
                 Navigator.of(dialogContext).pop();
-                ref.read(chatRepositoryProvider).updateSessionTitle(
-                  session.id,
-                  newTitle,
-                );
+                ref
+                    .read(chatRepositoryProvider)
+                    .updateSessionTitle(session.id, newTitle);
               }
             },
-            child: const Text('변경'),
+            child: const Text('저장'),
           ),
         ],
       ),
@@ -120,7 +184,7 @@ class SessionTile extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('세션 삭제'),
-        content: const Text('이 대화를 삭제하시겠습니까?\n삭제된 대화는 복구할 수 없습니다.'),
+        content: const Text('정말로 이 대화 세션을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
@@ -129,7 +193,7 @@ class SessionTile extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              ref.read(sessionDeleterProvider.notifier).deleteSession(session.id);
+              ref.read(chatRepositoryProvider).deleteSession(session.id);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
