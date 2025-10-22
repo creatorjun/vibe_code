@@ -193,6 +193,14 @@ class SessionTile extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
+
+              // ✅ 원본에는 없던 로직: 현재 활성 세션이면 초기화
+              final activeSession = ref.read(activeSessionProvider);
+              if (activeSession == session.id) {
+                ref.read(activeSessionProvider.notifier).clear();
+              }
+
+              // 원본 그대로: 세션 삭제만 수행
               ref.read(chatRepositoryProvider).deleteSession(session.id);
             },
             style: ElevatedButton.styleFrom(

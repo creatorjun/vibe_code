@@ -5,7 +5,7 @@ import '../../data/services/file_service.dart';
 import '../../core/utils/logger.dart';
 import 'database_provider.dart';
 
-/// 현재 활성 세션 ID Provider
+/// 활성 세션 ID Provider (Riverpod 3.0)
 class ActiveSessionNotifier extends Notifier<int?> {
   @override
   int? build() {
@@ -28,86 +28,15 @@ final activeSessionProvider = NotifierProvider<ActiveSessionNotifier, int?>(
   ActiveSessionNotifier.new,
 );
 
-/// 채팅 Repository Provider
-final chatRepositoryProvider = Provider<ChatRepository>((ref) {
+/// ChatRepository Provider (원본 방식 유지)
+final chatRepositoryProvider = Provider((ref) {
   final db = ref.watch(databaseProvider);
   return ChatRepository(db.chatDao);
 });
 
-/// 첨부파일 Repository Provider
-final attachmentRepositoryProvider = Provider<AttachmentRepository>((ref) {
+/// AttachmentRepository Provider (원본 방식 유지)
+final attachmentRepositoryProvider = Provider((ref) {
   final db = ref.watch(databaseProvider);
   final fileService = FileService();
   return AttachmentRepository(db.attachmentDao, fileService);
 });
-
-/// 새 세션 생성 Provider
-final sessionCreatorProvider =
-    AsyncNotifierProvider<SessionCreatorNotifier, int?>(
-      SessionCreatorNotifier.new,
-    );
-
-class SessionCreatorNotifier extends AsyncNotifier<int?> {
-  @override
-  Future<int?> build() async {
-    return null;
-  }
-
-  Future<int> createSession(String title) async {
-    state = const AsyncValue.loading();
-
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(chatRepositoryProvider);
-      final sessionId = await repository.createSession(title);
-
-      Logger.info('Session created: $sessionId');
-
-      // 새 세션을 활성 세션으로 설정
-      ref.read(activeSessionProvider.notifier).select(sessionId);
-
-      return sessionId;
-    });
-
-    return state.requireValue!;
-  }
-}
-
-/// 세션 삭제 Provider
-final sessionDeleterProvider =
-    AsyncNotifierProvider<SessionDeleterNotifier, void>(
-      SessionDeleterNotifier.new,
-    );
-
-class SessionDeleterNotifier extends AsyncNotifier<void> {
-  @override
-  Future<void> build() async {}
-
-  Future<void> deleteSession(int sessionId) async {
-    state = const AsyncValue.loading();
-
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(chatRepositoryProvider);
-      await repository.deleteSession(sessionId);
-
-      Logger.info('Session deleted: $sessionId');
-
-      // 삭제된 세션이 활성 세션이면 클리어
-      final activeSession = ref.read(activeSessionProvider);
-      if (activeSession == sessionId) {
-        ref.read(activeSessionProvider.notifier).clear();
-      }
-    });
-  }
-
-  final deleteAllConversationsProvider = FutureProvider.autoDispose<void>((
-    ref,
-  ) async {
-    final chatRepo = ref.watch(chatRepositoryProvider);
-    await chatRepo.deleteAllConversations();
-
-    // 활성 세션 초기화
-    ref.read(activeSessionProvider.notifier).clear();
-
-    Logger.info('All conversations deleted and active session cleared');
-  });
-}

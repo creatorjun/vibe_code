@@ -18,7 +18,6 @@ class ThemeSelector extends ConsumerWidget {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: UIConstants.spacingMd),
-
         SegmentedButton<ThemeMode>(
           segments: const [
             ButtonSegment(
@@ -38,8 +37,9 @@ class ThemeSelector extends ConsumerWidget {
             ),
           ],
           selected: {themeMode},
-          onSelectionChanged: (Set<ThemeMode> selected) async {
-            await setThemeMode(ref, selected.first);
+          onSelectionChanged: (Set<ThemeMode> selected) {
+            // ✅ 수정: appThemeModeProvider.notifier.setThemeMode 호출
+            ref.read(appThemeModeProvider.notifier).setThemeMode(selected.first);
           },
         ),
       ],

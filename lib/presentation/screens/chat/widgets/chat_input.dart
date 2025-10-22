@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../../../core/utils/logger.dart';
+import '../../../../domain/mutations/create_session_mutation.dart';
 import '../../../../domain/mutations/send_message_mutation.dart';
 import '../../../../domain/providers/chat_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
@@ -93,8 +94,7 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     int sessionId;
 
     if (activeSession == null) {
-      final sessionCreator = ref.read(sessionCreatorProvider.notifier);
-      sessionId = await sessionCreator.createSession('New Chat');
+      sessionId = await createNewSession(ref, '새 대화');
       Logger.info('New session created and selected: $sessionId');
     } else {
       sessionId = activeSession;
