@@ -30,7 +30,7 @@ class UIConstants {
 
   // Layout Sizes
   static const double sessionListWidth = 280.0;
-  static const double sessionListCollapsedWidth = 64.0; // 축소 상태 너비 추가
+  static const double sessionListCollapsedWidth = 64.0;
   static const double messageBubbleMaxWidth = 600.0;
   static const double messageBubblePadding = 12.0;
   static const double chatInputMinHeight = 48.0;
@@ -45,7 +45,7 @@ class UIConstants {
   static const Duration animationDuration = Duration(milliseconds: 300);
   static const Duration scrollDuration = Duration(milliseconds: 300);
   static const Duration shortDuration = Duration(milliseconds: 150);
-  static const Duration sidebarAnimationDuration = Duration(milliseconds: 250); // 사이드바 애니메이션 추가
+  static const Duration sidebarAnimationDuration = Duration(milliseconds: 250);
 
   // File Limits
   static const int maxFileSize = 10 * 1024 * 1024; // 10MB
