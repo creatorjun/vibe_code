@@ -30,20 +30,21 @@ class AppThemeModeNotifier extends Notifier<ThemeMode> {
   Future<void> toggle() async {
     final newMode = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     Logger.info('Toggling theme: $state -> $newMode');
-    await _updateThemeMode(newMode);
+    await setThemeMode(newMode);
   }
 
   /// 테마 모드 설정
   Future<void> setThemeMode(ThemeMode mode) async {
     Logger.info('Setting theme mode: $mode');
-    await _updateThemeMode(mode);
-  }
 
-  /// 내부: 테마 모드 업데이트
-  Future<void> _updateThemeMode(ThemeMode mode) async {
+    // ✅ 1. state를 먼저 업데이트 (즉시 UI 변경)
+    state = mode;
+
+    // ✅ 2. DB에 저장 (영속성)
     final modeString = _themeModeToString(mode);
     await ref.read(settingsProvider.notifier).updateThemeMode(modeString);
-    // settings가 업데이트되면 build()가 자동으로 재호출되어 state 갱신
+
+    Logger.info('Theme mode updated successfully: $mode');
   }
 
   /// 문자열 → ThemeMode 변환
