@@ -6,6 +6,22 @@ part of 'settings_state.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_PromptPreset _$PromptPresetFromJson(Map<String, dynamic> json) =>
+    _PromptPreset(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      prompts: (json['prompts'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList(),
+    );
+
+Map<String, dynamic> _$PromptPresetToJson(_PromptPreset instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'prompts': instance.prompts,
+    };
+
 _ModelConfig _$ModelConfigFromJson(Map<String, dynamic> json) => _ModelConfig(
   modelId: json['modelId'] as String,
   systemPrompt: json['systemPrompt'] as String? ?? '',
@@ -32,6 +48,12 @@ _SettingsState _$SettingsStateFromJson(Map<String, dynamic> json) =>
       selectedModel:
           json['selectedModel'] as String? ?? 'anthropic/claude-3.5-sonnet',
       themeMode: json['themeMode'] as String? ?? 'system',
+      promptPresets:
+          (json['promptPresets'] as List<dynamic>?)
+              ?.map((e) => PromptPreset.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      selectedPresetId: json['selectedPresetId'] as String?,
     );
 
 Map<String, dynamic> _$SettingsStateToJson(_SettingsState instance) =>
@@ -40,4 +62,6 @@ Map<String, dynamic> _$SettingsStateToJson(_SettingsState instance) =>
       'modelPipeline': instance.modelPipeline,
       'selectedModel': instance.selectedModel,
       'themeMode': instance.themeMode,
+      'promptPresets': instance.promptPresets,
+      'selectedPresetId': instance.selectedPresetId,
     };
