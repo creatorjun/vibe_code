@@ -1,3 +1,4 @@
+// lib/core/constants/ui_constants.dart
 import 'package:flutter/material.dart';
 
 class UIConstants {
@@ -9,11 +10,43 @@ class UIConstants {
   static const double spacingXl = 32.0;
 
   // Border Radius
+  static const double borderRadiusXs = 4.0;
+  static const double borderRadiusSm = 8.0;
+  static const double borderRadiusMd = 12.0;
+  static const double borderRadiusLg = 16.0;
+  static const double borderRadiusXl = 24.0;
+
+  // Deprecated: Use borderRadius* instead
   static const double radiusXs = 4.0;
   static const double radiusSm = 8.0;
   static const double radiusMd = 12.0;
   static const double radiusLg = 16.0;
   static const double radiusXl = 24.0;
+
+  // Opacity / Alpha Values (0-255 범위)
+  // 사용법: color.withAlpha(UIConstants.alpha90)
+
+  static const int alpha100 = 255; // 100% - 완전 불투명
+  static const int alpha95 = 242;  // 95%
+  static const int alpha90 = 230;  // 90%
+  static const int alpha85 = 217;  // 85%
+  static const int alpha80 = 204;  // 80%
+  static const int alpha75 = 191;  // 75%
+  static const int alpha70 = 179;  // 70%
+  static const int alpha65 = 166;  // 65%
+  static const int alpha60 = 153;  // 60%
+  static const int alpha55 = 140;  // 55%
+  static const int alpha50 = 128;  // 50%
+  static const int alpha45 = 115;  // 45%
+  static const int alpha40 = 102;  // 40%
+  static const int alpha35 = 89;   // 35%
+  static const int alpha30 = 77;   // 30%
+  static const int alpha25 = 64;   // 25%
+  static const int alpha20 = 51;   // 20%
+  static const int alpha15 = 38;   // 15%
+  static const int alpha10 = 26;   // 10%
+  static const int alpha5 = 13;    // 5%
+  static const int alpha0 = 0;     // 0% - 완전 투명
 
   // Icons
   static const double iconSm = 16.0;

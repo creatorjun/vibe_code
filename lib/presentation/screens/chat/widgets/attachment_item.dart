@@ -1,6 +1,8 @@
+// lib/presentation/screens/chat/widgets/attachment_item.dart
 import 'package:flutter/material.dart';
-import '../../../../data/database/app_database.dart';
-import '../../../../core/constants/ui_constants.dart';
+import 'package:vibe_code/core/constants/ui_constants.dart';
+
+import '../../../../../data/database/app_database.dart';
 
 class AttachmentItem extends StatelessWidget {
   final Attachment attachment;
@@ -15,63 +17,104 @@ class AttachmentItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(right: UIConstants.spacingSm),
-      padding: const EdgeInsets.all(UIConstants.spacingSm),
+      constraints: const BoxConstraints(maxWidth: 200),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).dividerColor,
+          color: Theme.of(context).colorScheme.outline.withAlpha(UIConstants.alpha30),
           width: 1,
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          Icon(
-            _getFileIcon(attachment.fileName),
-            size: UIConstants.iconMd,
-            color: Theme.of(context).colorScheme.primary,
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 파일 아이콘
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    getFileIcon(attachment.fileName),
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // 파일 정보
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        attachment.fileName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        formatFileSize(attachment.fileSize),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withAlpha(UIConstants.alpha60),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 삭제 버튼 공간 확보
+                const SizedBox(width: 28),
+              ],
+            ),
           ),
-          const SizedBox(width: UIConstants.spacingSm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 150,
-                child: Text(
-                  attachment.fileName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium,
+
+          // 삭제 버튼 (오른쪽 상단)
+          if (onRemove != null)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onRemove,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 ),
               ),
-              Text(
-                _formatFileSize(attachment.fileSize),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-          if (onRemove != null) ...[
-            const SizedBox(width: UIConstants.spacingSm),
-            InkWell(
-              onTap: onRemove,
-              borderRadius: BorderRadius.circular(UIConstants.radiusXs),
-              child: const Padding(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.close, size: 16),
-              ),
             ),
-          ],
         ],
       ),
     );
   }
 
-  IconData _getFileIcon(String fileName) {
+  IconData getFileIcon(String fileName) {
     final extension = fileName.split('.').last.toLowerCase();
-
     switch (extension) {
       case 'dart':
       case 'py':
@@ -93,12 +136,24 @@ class AttachmentItem extends StatelessWidget {
       case 'md':
       case 'txt':
         return Icons.description;
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'svg':
+        return Icons.image;
+      case 'zip':
+      case 'rar':
+      case '7z':
+        return Icons.folder_zip;
       default:
         return Icons.insert_drive_file;
     }
   }
 
-  String _formatFileSize(int bytes) {
+  String formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
