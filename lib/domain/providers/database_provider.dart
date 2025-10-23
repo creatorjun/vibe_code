@@ -1,8 +1,10 @@
+// lib/domain/providers/database_provider.dart
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/database/app_database.dart';
 import '../../core/utils/logger.dart';
 
-/// 데이터베이스 싱글톤 Provider (수동 작성)
+/// Database Provider
 final databaseProvider = Provider<AppDatabase>((ref) {
   Logger.info('Initializing database');
   final db = AppDatabase();
@@ -15,16 +17,24 @@ final databaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
-/// 세션 목록 스트림 Provider (수동 작성)
+/// 활성 세션 목록을 스트림으로 제공하는 Provider
 final chatSessionsProvider = StreamProvider.autoDispose<List<ChatSession>>((ref) {
   final db = ref.watch(databaseProvider);
   return db.chatDao.watchActiveSessions();
 });
 
-/// 특정 세션의 메시지 스트림 Provider (수동 작성)
+/// 특정 세션의 메시지 목록을 스트림으로 제공하는 Provider
 final sessionMessagesProvider = StreamProvider.autoDispose.family<List<Message>, int>(
       (ref, sessionId) {
     final db = ref.watch(databaseProvider);
     return db.chatDao.watchMessagesForSession(sessionId);
+  },
+);
+
+/// 특정 세션 정보를 스트림으로 제공하는 Provider (새로 추가)
+final sessionProvider = StreamProvider.autoDispose.family<ChatSession?, int>(
+      (ref, sessionId) {
+    final db = ref.watch(databaseProvider);
+    return db.chatDao.watchSession(sessionId);
   },
 );

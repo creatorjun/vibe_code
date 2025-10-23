@@ -8,7 +8,6 @@ import '../../core/utils/logger.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/api_request.dart';
 import '../../data/models/settings_state.dart'; // SettingsState 추가
-// import '../../data/services/openrouter_service.dart'; // 직접 사용하지 않으므로 주석 처리 또는 제거 가능
 import '../providers/ai_service_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/settings_provider.dart';
@@ -299,8 +298,10 @@ ${attachmentContents.join('\n')}
       String content,
       ) async {
     final chatRepo = ref.read(chatRepositoryProvider);
-    final messages = await chatRepo.getMessages(sessionId);
-    if (messages.length == 2) {
+    final session = await chatRepo.getSession(sessionId);
+
+    // ✅ 최선의 해결: 제목이 기본값일 때만 업데이트
+    if (session != null && (session.title == '새로운 대화' || session.title.isEmpty)) {
       final title = content.length > 50 ? '${content.substring(0, 50)}...' : content;
       await chatRepo.updateSessionTitle(sessionId, title);
       Logger.info('Session title updated: $title');

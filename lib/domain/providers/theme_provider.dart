@@ -1,18 +1,20 @@
+// lib/domain/providers/theme_provider.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/logger.dart';
 import 'settings_provider.dart';
 
-/// 테마 모드 Provider (Riverpod 3.0 - NotifierProvider)
+/// Provider (Riverpod 3.0 - NotifierProvider)
 final appThemeModeProvider = NotifierProvider<AppThemeModeNotifier, ThemeMode>(
   AppThemeModeNotifier.new,
 );
 
-/// 테마 모드 Notifier
+/// Notifier
 class AppThemeModeNotifier extends Notifier<ThemeMode> {
   @override
   ThemeMode build() {
-    // settings 변경 감지
+    // settings
     final settingsAsync = ref.watch(settingsProvider);
 
     return settingsAsync.when(
@@ -26,28 +28,32 @@ class AppThemeModeNotifier extends Notifier<ThemeMode> {
     );
   }
 
-  /// 테마 토글 (라이트 ↔ 다크)
   Future<void> toggle() async {
     final newMode = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     Logger.info('Toggling theme: $state -> $newMode');
     await setThemeMode(newMode);
   }
 
-  /// 테마 모드 설정
   Future<void> setThemeMode(ThemeMode mode) async {
     Logger.info('Setting theme mode: $mode');
 
-    // ✅ 1. state를 먼저 업데이트 (즉시 UI 변경)
-    state = mode;
+    try {
+      // 1. DB에 먼저 저장
+      final modeString = _themeModeToString(mode);
+      await ref.read(settingsProvider.notifier).updateThemeMode(modeString);
 
-    // ✅ 2. DB에 저장 (영속성)
-    final modeString = _themeModeToString(mode);
-    await ref.read(settingsProvider.notifier).updateThemeMode(modeString);
+      // 2. DB 저장 완료 후 UI 업데이트
+      state = mode;
 
-    Logger.info('Theme mode updated successfully: $mode');
+      Logger.info('Theme mode updated successfully: $mode');
+    } catch (e) {
+      Logger.error('Failed to update theme mode', e);
+      // 에러 발생 시 state를 원래대로 복구
+      rethrow;
+    }
   }
 
-  /// 문자열 → ThemeMode 변환
+  // ThemeMode 파싱
   ThemeMode _parseThemeMode(String mode) {
     switch (mode) {
       case 'light':
@@ -59,7 +65,7 @@ class AppThemeModeNotifier extends Notifier<ThemeMode> {
     }
   }
 
-  /// ThemeMode → 문자열 변환
+  // ThemeMode -> String
   String _themeModeToString(ThemeMode mode) {
     switch (mode) {
       case ThemeMode.light:

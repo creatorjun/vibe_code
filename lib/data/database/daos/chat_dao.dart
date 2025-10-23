@@ -1,3 +1,5 @@
+// lib/data/database/daos/chat_dao.dart
+
 import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../tables/chat_sessions_table.dart';
@@ -9,7 +11,9 @@ part 'chat_dao.g.dart';
 class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
   ChatDao(super.db);
 
-  // 세션 생성
+  // ===== Session Methods =====
+
+  /// 새 세션 생성
   Future<int> createSession(String title) async {
     return into(chatSessions).insert(
       ChatSessionsCompanion.insert(
@@ -18,7 +22,7 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
     );
   }
 
-  // 활성 세션 목록 스트림
+  /// 활성 세션 목록을 스트림으로 반환
   Stream<List<ChatSession>> watchActiveSessions() {
     return (select(chatSessions)
       ..where((t) => t.isArchived.equals(false))
@@ -26,13 +30,19 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
         .watch();
   }
 
-  // 특정 세션 조회
+  /// 특정 세션 정보를 스트림으로 반환 (새로 추가)
+  Stream<ChatSession?> watchSession(int sessionId) {
+    return (select(chatSessions)..where((t) => t.id.equals(sessionId)))
+        .watchSingleOrNull();
+  }
+
+  /// 특정 세션 정보 조회
   Future<ChatSession?> getSession(int sessionId) async {
     return (select(chatSessions)..where((t) => t.id.equals(sessionId)))
         .getSingleOrNull();
   }
 
-  // 세션 제목 업데이트
+  /// 세션 제목 업데이트
   Future<void> updateSessionTitle(int sessionId, String title) async {
     await (update(chatSessions)..where((t) => t.id.equals(sessionId))).write(
       ChatSessionsCompanion(
@@ -42,7 +52,7 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
     );
   }
 
-  // 세션 updatedAt 갱신
+  /// 세션의 updatedAt 갱신 (메시지 추가 시 호출)
   Future<void> touchSession(int sessionId) async {
     await (update(chatSessions)..where((t) => t.id.equals(sessionId))).write(
       ChatSessionsCompanion(
@@ -51,21 +61,23 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
     );
   }
 
-  // 세션 삭제
+  /// 세션 삭제
   Future<void> deleteSession(int sessionId) async {
     await (delete(chatSessions)..where((t) => t.id.equals(sessionId))).go();
   }
 
-  // 세션 아카이브
+  /// 세션 보관
   Future<void> archiveSession(int sessionId) async {
     await (update(chatSessions)..where((t) => t.id.equals(sessionId))).write(
-      ChatSessionsCompanion(
-        isArchived: const Value(true),
+      const ChatSessionsCompanion(
+        isArchived: Value(true),
       ),
     );
   }
 
-  // 특정 세션의 메시지 스트림
+  // ===== Message Methods =====
+
+  /// 특정 세션의 메시지 목록을 스트림으로 반환
   Stream<List<Message>> watchMessagesForSession(int sessionId) {
     return (select(messages)
       ..where((t) => t.sessionId.equals(sessionId))
@@ -73,15 +85,16 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
         .watch();
   }
 
-  // ✅ 특정 세션의 완료된 메시지 스트림 (스트리밍 중 제외)
+  /// 완료된 메시지만 스트림으로 반환
   Stream<List<Message>> watchCompletedMessagesForSession(int sessionId) {
     return (select(messages)
-      ..where((t) => t.sessionId.equals(sessionId) & t.isStreaming.equals(false))
+      ..where((t) =>
+      t.sessionId.equals(sessionId) & t.isStreaming.equals(false))
       ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
         .watch();
   }
 
-  // 특정 세션의 메시지 목록 조회
+  /// 특정 세션의 메시지 목록 조회
   Future<List<Message>> getMessagesForSession(int sessionId) async {
     return (select(messages)
       ..where((t) => t.sessionId.equals(sessionId))
@@ -89,7 +102,7 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
         .get();
   }
 
-  // 메시지 추가
+  /// 메시지 추가
   Future<int> addMessage({
     required int sessionId,
     required String content,
@@ -108,7 +121,7 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
     );
   }
 
-  // 메시지 내용 업데이트 (스트리밍 중)
+  /// 메시지 내용 업데이트
   Future<void> updateMessageContent(int messageId, String content) async {
     await (update(messages)..where((t) => t.id.equals(messageId))).write(
       MessagesCompanion(
@@ -117,7 +130,7 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
     );
   }
 
-  // 스트리밍 완료 처리
+  /// 스트리밍 완료 처리
   Future<void> completeStreaming(int messageId) async {
     await (update(messages)..where((t) => t.id.equals(messageId))).write(
       const MessagesCompanion(
@@ -126,17 +139,17 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
     );
   }
 
-  // 메시지 삭제
+  /// 메시지 삭제
   Future<void> deleteMessage(int messageId) async {
     await (delete(messages)..where((t) => t.id.equals(messageId))).go();
   }
 
-  // 세션의 모든 메시지 삭제
+  /// 세션의 모든 메시지 삭제
   Future<void> deleteAllMessagesInSession(int sessionId) async {
     await (delete(messages)..where((t) => t.sessionId.equals(sessionId))).go();
   }
 
-  // 마지막 메시지 조회
+  /// 마지막 메시지 조회
   Future<Message?> getLastMessage(int sessionId) async {
     return (select(messages)
       ..where((t) => t.sessionId.equals(sessionId))
@@ -145,12 +158,14 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
         .getSingleOrNull();
   }
 
-  // 모든 세션 삭제
+  // ===== Cleanup Methods =====
+
+  /// 모든 세션 삭제
   Future<void> deleteAllSessions() async {
     await delete(chatSessions).go();
   }
 
-// 모든 메시지 삭제
+  /// 모든 메시지 삭제
   Future<void> deleteAllMessages() async {
     await delete(messages).go();
   }

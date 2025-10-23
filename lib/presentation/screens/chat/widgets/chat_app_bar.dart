@@ -1,10 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../../../domain/providers/chat_provider.dart';
-import '../../../../../../domain/providers/database_provider.dart';
-import '../../../../../../domain/providers/session_stats_provider.dart';
-import '../../../../../../core/constants/ui_constants.dart';
+import 'package:vibe_code/core/theme/app_colors.dart';
+import '../../../../domain/providers/chat_provider.dart';
+import '../../../../domain/providers/database_provider.dart';
+import '../../../../domain/providers/session_stats_provider.dart';
+import '../../../../core/constants/ui_constants.dart';
 import '../../settings/settings_screen.dart';
 
 class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
@@ -36,7 +37,7 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
           child: Container(
             height: kToolbarHeight,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withAlpha(230),
+              gradient: AppColors.gradient,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: Theme.of(context).colorScheme.outline.withAlpha(51),
@@ -56,22 +57,7 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     )
-                        : FutureBuilder(
-                      future: ref.read(chatRepositoryProvider).getSession(activeSessionId),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData && snapshot.data != null) {
-                          return Text(
-                            snapshot.data!.title,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          );
-                        }
-                        return const Text('...');
-                      },
-                    ),
+                        : _buildSessionTitle(context, ref, activeSessionId),
                   ),
 
                   // 통계 정보 (메시지 수 & 토큰)
@@ -123,6 +109,29 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
     );
   }
 
+  /// 세션 제목 위젯 (실시간 업데이트)
+  Widget _buildSessionTitle(BuildContext context, WidgetRef ref, int sessionId) {
+    final sessionAsync = ref.watch(sessionProvider(sessionId));
+
+    return sessionAsync.when(
+      data: (session) {
+        if (session != null) {
+          return Text(
+            session.title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          );
+        }
+        return const Text('...');
+      },
+      loading: () => const Text('...'),
+      error: (_, __) => const Text('...'),
+    );
+  }
+
   /// 통계 정보 컨테이너 (글래스 효과)
   Widget _buildStatsContainer(BuildContext context, SessionStats stats) {
     return Container(
@@ -132,7 +141,7 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
         vertical: UIConstants.spacingSm,
       ),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withAlpha(77),
+        color: Theme.of(context).colorScheme.primaryContainer.withAlpha(UIConstants.alpha30),
         borderRadius: BorderRadius.circular(UIConstants.radiusSm),
         border: Border.all(
           color: Theme.of(context).colorScheme.primary.withAlpha(51),

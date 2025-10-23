@@ -32,22 +32,35 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
 
   // --- 기존 메서드들 (API 키, 테마 등) ---
   Future<void> updateApiKey(String apiKey) async {
-    // ... (기존 코드 유지)
+    state = await AsyncValue.guard(() async {
+      final current = state.requireValue;
+      Logger.info('Updating API key');
+      await _repository.saveApiKey(apiKey);
+      return current.copyWith(apiKey: apiKey);
+    });
   }
 
   Future<void> updateThemeMode(String themeMode) async {
-    // ... (기존 코드 유지)
+    state = await AsyncValue.guard(() async {
+      final current = state.requireValue;
+      Logger.info('Updating theme mode: $themeMode');
+      await _repository.saveThemeMode(themeMode);
+      return current.copyWith(themeMode: themeMode);
+    });
   }
 
   Future<void> resetSettings() async {
-    // ... (기존 코드 유지)
+    state = await AsyncValue.guard(() async {
+      Logger.info('Resetting all settings');
+      await _repository.resetSettings();
+      return await _repository.loadSettings();
+    });
   }
 
 
   // --- 모델 파이프라인 관련 메서드 ---
 
   Future<void> updateModelPipeline(List<ModelConfig> pipeline) async {
-    // ... (기존 코드 유지 - 프리셋 적용 로직 포함)
     if (pipeline.length > 5) {
       throw Exception('최대 5개의 모델만 추가할 수 있습니다.');
     }
@@ -72,7 +85,6 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
   }
 
   Future<void> addModel(String modelId, {String systemPrompt = ''}) async {
-    // ... (기존 코드 유지)
     final current = state.requireValue;
 
     if (current.modelPipeline.length >= 5) {
@@ -90,7 +102,6 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
   }
 
   Future<void> removeModel(int index) async {
-    // ... (기존 코드 유지)
     final current = state.requireValue;
 
     if (current.modelPipeline.length <= 1) {
@@ -242,7 +253,7 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
       if (configChanged) {
         currentPipeline[index] = newConfig;
         Logger.info('Updating model config (modelId/isEnabled) at index $index');
-        await _repository.saveModelPipeline(currentPipeline); // 파이프라인 변경 사항 저장
+        await _repository.saveModelPipeline(currentPipeline);
         return current.copyWith(modelPipeline: currentPipeline);
       }
 
@@ -382,7 +393,6 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
 
   /// 프리셋 삭제 (SettingsScreen에서 사용)
   Future<void> removePreset(String id) async {
-    // ... (이전과 동일, 수정 없음) ...
     state = await AsyncValue.guard(() async {
       final current = state.requireValue;
       final updatedPresets = current.promptPresets.where((p) => p.id != id).toList();
