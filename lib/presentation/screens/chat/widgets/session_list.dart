@@ -1,6 +1,5 @@
-// lib/presentation/screens/chat/widgets/session_list.dart
-
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -72,73 +71,100 @@ class _SessionListState extends ConsumerState<SessionList> {
     return MouseRegion(
       onEnter: (_) => ref.read(sidebarStateProvider.notifier).startHover(),
       onExit: (_) => ref.read(sidebarStateProvider.notifier).endHover(),
-      child: AnimatedContainer(
-        duration: UIConstants.sidebarAnimationDuration,
-        curve: Curves.easeInOut,
-        width: displayWidth,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          border: Border(
-            right: BorderSide(
-              color: Theme.of(context).colorScheme.outlineVariant,
-              width: 1,
-            ),
-          ),
-        ),
-        child: Column(
-          children: [
-            _buildHeader(context, ref),
-            Expanded(
-              child: sessionsAsync.when(
-                data: (sessions) {
-                  if (sessions.isEmpty) {
-                    return _buildEmptyState(context);
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: UIConstants.spacingSm,
+      child: Padding(
+        padding: const EdgeInsets.all(UIConstants.spacingMd),
+        child: AnimatedContainer(
+          duration: UIConstants.sidebarAnimationDuration,
+          curve: Curves.easeInOut,
+          width: displayWidth,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(UIConstants.radiusLg),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: UIConstants.glassBlur,
+                sigmaY: UIConstants.glassBlur,
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surface
+                      .withAlpha(UIConstants.alpha95),
+                  borderRadius: BorderRadius.circular(UIConstants.radiusLg),
+                  border: Border.all(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outline
+                        .withAlpha(UIConstants.alpha20),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(UIConstants.alpha10),
+                      blurRadius: UIConstants.radiusLg,
+                      offset: const Offset(0, UIConstants.spacingXs),
                     ),
-                    itemCount: sessions.length,
-                    itemBuilder: (context, index) {
-                      return SessionTile(
-                        key: ValueKey('session-${sessions[index].id}'),
-                        session: sessions[index],
-                        isCollapsed: !showExpandedContent,
-                      );
-                    },
-                  );
-                },
-                loading: () => const AdaptiveLoading(
-                  message: '...',
-                  size: 40,
+                  ],
                 ),
-                error: (error, stack) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 48,
-                          color: Theme.of(context).colorScheme.error,
+                child: Column(
+                  children: [
+                    _buildHeader(context, ref),
+                    Expanded(
+                      child: sessionsAsync.when(
+                        data: (sessions) {
+                          if (sessions.isEmpty) {
+                            return _buildEmptyState(context);
+                          }
+
+                          return ListView.builder(
+                            padding: const EdgeInsets.all(UIConstants.spacingSm),
+                            itemCount: sessions.length,
+                            itemBuilder: (context, index) {
+                              return SessionTile(
+                                key: ValueKey('session-${sessions[index].id}'),
+                                session: sessions[index],
+                                isCollapsed: !showExpandedContent,
+                              );
+                            },
+                          );
+                        },
+                        loading: () => AdaptiveLoading(
+                          message: '...',
+                          size: UIConstants.iconLg + UIConstants.spacingSm,
                         ),
-                        const SizedBox(height: UIConstants.spacingMd),
-                        const Text('오류 발생'),
-                        const SizedBox(height: UIConstants.spacingSm),
-                        Text(
-                          error.toString(),
-                          style: Theme.of(context).textTheme.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                        error: (error, stack) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(UIConstants.spacingMd),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    size: UIConstants.iconLg * 1.5,
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                  const SizedBox(height: UIConstants.spacingMd),
+                                  const Text('오류 발생'),
+                                  const SizedBox(height: UIConstants.spacingSm),
+                                  Text(
+                                    error.toString(),
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  );
-                },
+                    _buildFooter(context),
+                  ],
+                ),
               ),
             ),
-            _buildFooter(context),
-          ],
+          ),
         ),
       ),
     );
@@ -150,7 +176,10 @@ class _SessionListState extends ConsumerState<SessionList> {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
+            color: Theme.of(context)
+                .colorScheme
+                .outlineVariant
+                .withAlpha(UIConstants.alpha30),
             width: 1,
           ),
         ),
@@ -166,33 +195,37 @@ class _SessionListState extends ConsumerState<SessionList> {
       children: [
         IconButton(
           icon: const Icon(Icons.menu_open),
-          iconSize: 20,
+          iconSize: UIConstants.iconSm,
           tooltip: '사이드바 접기',
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: 40,
-            minHeight: 40,
+          constraints: BoxConstraints(
+            minWidth: UIConstants.iconLg + UIConstants.spacingSm,
+            minHeight: UIConstants.iconLg + UIConstants.spacingSm,
           ),
           onPressed: () {
             ref.read(sidebarStateProvider.notifier).toggle();
           },
         ),
+        const SizedBox(width: UIConstants.spacingSm),
         Expanded(
           child: Text(
             '대화 목록',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.add),
-          iconSize: 20,
+          icon: const Icon(Icons.add_circle_outline),
+          iconSize: UIConstants.iconMd,
           tooltip: '새 대화',
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: 40,
-            minHeight: 40,
+          constraints: BoxConstraints(
+            minWidth: UIConstants.iconLg + UIConstants.spacingSm,
+            minHeight: UIConstants.iconLg + UIConstants.spacingSm,
           ),
+          color: Theme.of(context).colorScheme.primary,
           onPressed: () => createNewSession(ref, '새로운 대화'),
         ),
       ],
@@ -203,12 +236,12 @@ class _SessionListState extends ConsumerState<SessionList> {
     return Center(
       child: IconButton(
         icon: const Icon(Icons.menu),
-        iconSize: 20,
+        iconSize: UIConstants.iconSm,
         tooltip: '사이드바 펼치기',
         padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(
-          minWidth: 40,
-          minHeight: 40,
+        constraints: BoxConstraints(
+          minWidth: UIConstants.iconLg + UIConstants.spacingSm,
+          minHeight: UIConstants.iconLg + UIConstants.spacingSm,
         ),
         onPressed: () {
           ref.read(sidebarStateProvider.notifier).toggle();
@@ -223,7 +256,10 @@ class _SessionListState extends ConsumerState<SessionList> {
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
+            color: Theme.of(context)
+                .colorScheme
+                .outlineVariant
+                .withAlpha(UIConstants.alpha30),
             width: 1,
           ),
         ),
@@ -235,40 +271,51 @@ class _SessionListState extends ConsumerState<SessionList> {
   }
 
   Widget _buildExpandedFooter(BuildContext context) {
-    return InkWell(
-      onTap: () => _navigateToSettings(context),
-      borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: UIConstants.spacingMd,
-          vertical: UIConstants.spacingSm,
-        ),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.settings_outlined,
-              size: 20,
-              color: Theme.of(context).colorScheme.primary,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _navigateToSettings(context),
+        borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.all(UIConstants.spacingMd),
+          decoration: BoxDecoration(
+            color: Theme.of(context)
+                .colorScheme
+                .primaryContainer
+                .withAlpha(UIConstants.alpha30),
+            borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+            border: Border.all(
+              color: Theme.of(context)
+                  .colorScheme
+                  .primary
+                  .withAlpha(UIConstants.alpha20),
+              width: 1,
             ),
-            const SizedBox(width: UIConstants.spacingSm),
-            Expanded(
-              child: Text(
-                '설정',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.settings_outlined,
+                size: UIConstants.iconSm,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: UIConstants.spacingMd),
+              Expanded(
+                child: Text(
+                  '설정',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ],
+              Icon(
+                Icons.arrow_forward_ios,
+                size: UIConstants.iconLg,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -278,13 +325,14 @@ class _SessionListState extends ConsumerState<SessionList> {
     return Center(
       child: IconButton(
         icon: const Icon(Icons.settings_outlined),
-        iconSize: 20,
+        iconSize: UIConstants.iconSm,
         tooltip: '설정',
         padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(
-          minWidth: 40,
-          minHeight: 40,
+        constraints: BoxConstraints(
+          minWidth: UIConstants.iconLg + UIConstants.spacingSm,
+          minHeight: UIConstants.iconLg + UIConstants.spacingSm,
         ),
+        color: Theme.of(context).colorScheme.primary,
         onPressed: () => _navigateToSettings(context),
       ),
     );
@@ -293,10 +341,30 @@ class _SessionListState extends ConsumerState<SessionList> {
   Widget _buildEmptyState(BuildContext context) {
     if (showExpandedContent) {
       return Center(
-        child: Text(
-          '대화가 없습니다',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).textTheme.bodySmall?.color,
+        child: Padding(
+          padding: const EdgeInsets.all(UIConstants.spacingLg),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.chat_bubble_outline,
+                size: UIConstants.iconLg * 1.5,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withAlpha(UIConstants.alpha30),
+              ),
+              const SizedBox(height: UIConstants.spacingMd),
+              Text(
+                '대화가 없습니다',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withAlpha(UIConstants.alpha60),
+                ),
+              ),
+            ],
           ),
         ),
       );

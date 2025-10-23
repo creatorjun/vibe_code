@@ -13,6 +13,7 @@ import '../../../../domain/mutations/create_session_mutation.dart';
 import '../../../../domain/mutations/send_message_mutation.dart';
 import '../../../../domain/providers/chat_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
+import '../../../../domain/providers/sidebar_state_provider.dart';
 import '../../../shared/widgets/error_dialog.dart';
 import 'attachment_preview_section.dart';
 import 'chat_action_buttons.dart';
@@ -28,70 +29,88 @@ class ChatInput extends ConsumerStatefulWidget {
 }
 
 class _ChatInputState extends ConsumerState<ChatInput> {
+  // ✅ 컨트롤러 및 키
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final GlobalKey _containerKey = GlobalKey();
 
+  // ✅ 캐싱된 상수
+  static const _borderRadius = BorderRadius.all(Radius.circular(UIConstants.radiusLg));
+  static const _shadowOffset = Offset(0, -4);
+
+  // ✅ 높이 업데이트 제한을 위한 플래그
+  bool _isHeightUpdateScheduled = false;
+
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() {
-      ref.read(chatInputStateProvider.notifier).updateContent(_controller.text);
-    });
+    _controller.addListener(_onTextChanged);
+    // ✅ initState에서만 초기 높이 업데이트
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateHeight());
-    _focusNode.addListener(_ensureFocus);
+    _focusNode.addListener(_onFocusChanged);
   }
 
   @override
   void dispose() {
-    _focusNode.removeListener(_ensureFocus);
+    _focusNode.removeListener(_onFocusChanged);
+    _controller.removeListener(_onTextChanged);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  void _ensureFocus() {
+  // ✅ 텍스트 변경 핸들러 분리
+  void _onTextChanged() {
+    ref.read(chatInputStateProvider.notifier).updateContent(_controller.text);
+  }
+
+  // ✅ 포커스 변경 핸들러 최적화
+  void _onFocusChanged() {
     if (!_focusNode.hasFocus && mounted) {
       Future.delayed(UIConstants.shortDuration, () {
-        if (mounted) {
-          if (ModalRoute.of(context)?.isCurrent ?? false) {
-            Logger.debug('ChatInput Listener: No dialog detected, requesting focus.');
-            _focusNode.requestFocus();
-          } else if (mounted) {
-            Logger.debug('ChatInput Listener: Dialog detected, skipping focus request.');
-          }
+        if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+          Logger.debug('ChatInput Listener: Requesting focus.');
+          _focusNode.requestFocus();
         }
       });
     }
   }
 
+  // ✅ 높이 업데이트 최적화 (중복 호출 방지)
   void _updateHeight() {
+    if (_isHeightUpdateScheduled) return;
+
+    _isHeightUpdateScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final RenderBox? renderBox =
-      _containerKey.currentContext?.findRenderObject() as RenderBox?;
+      if (!mounted) return;
+
+      final renderBox = _containerKey.currentContext?.findRenderObject() as RenderBox?;
       if (renderBox != null) {
-        ref
-            .read(chatInputStateProvider.notifier)
-            .updateHeight(renderBox.size.height);
+        ref.read(chatInputStateProvider.notifier).updateHeight(renderBox.size.height);
       }
+      _isHeightUpdateScheduled = false;
     });
   }
 
-  void _requestChatInputFocus() {
-    Future.microtask(() {
-      if (mounted) {
-        Logger.debug('ChatInput: Explicitly requesting focus.');
-        _focusNode.requestFocus();
-      }
-    });
+  // ✅ 포커스 요청 메서드 통합 및 최적화
+  void _requestFocus() {
+    if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+      Future.microtask(() {
+        if (mounted) {
+          Logger.debug('ChatInput: Explicitly requesting focus.');
+          _focusNode.requestFocus();
+        }
+      });
+    }
   }
 
+  // ✅ 메시지 전송 최적화
   Future<void> _sendMessage() async {
     final inputState = ref.read(chatInputStateProvider);
     if (!inputState.canSend) return;
 
     final activeSession = ref.read(activeSessionProvider);
-    int sessionId;
+    final int sessionId;
 
     if (activeSession == null) {
       sessionId = await createNewSession(ref, '새로운 대화');
@@ -106,48 +125,43 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     _controller.clear();
     ref.read(chatInputStateProvider.notifier).clear();
 
-    ref
-        .read(sendMessageMutationProvider.notifier)
-        .sendMessage(
-      sessionId: sessionId,
-      content: content.isEmpty ? '첨부파일' : content,
-      attachmentIds: attachmentIds,
-    )
-        .catchError((e, stackTrace) {
+    try {
+      await ref.read(sendMessageMutationProvider.notifier).sendMessage(
+        sessionId: sessionId,
+        content: content.isEmpty ? '첨부파일' : content,
+        attachmentIds: attachmentIds,
+      );
+    } catch (e, stackTrace) {
       Logger.error('Send message mutation failed', e, stackTrace);
       if (mounted) {
-        ErrorDialog.show(
+        await ErrorDialog.show(
           context: context,
           title: '메시지 전송 실패',
           message: ErrorHandler.getErrorMessage(e),
-        ).then((_) => ErrorDialog);
+        );
       }
-    });
-
-    _requestChatInputFocus();
+    } finally {
+      _requestFocus();
+    }
   }
 
+  // ✅ 파일 선택 최적화 (try-catch-finally 패턴)
   Future<void> _pickFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(allowMultiple: false);
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
-        if (file.path != null) {
-          Logger.info('Uploading file: ${file.path}');
-          final repository = ref.read(attachmentRepositoryProvider);
-          final attachmentId = await repository.uploadFile(file.path!);
-          Logger.info('File uploaded successfully: $attachmentId');
-          if (mounted) {
-            ref
-                .read(chatInputStateProvider.notifier)
-                .addAttachment(attachmentId);
-          }
-          _requestChatInputFocus();
-        } else {
-          _requestChatInputFocus();
-        }
-      } else {
-        _requestChatInputFocus();
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      if (file.path == null) return;
+
+      Logger.info('Uploading file: ${file.path}');
+      final repository = ref.read(attachmentRepositoryProvider);
+      final attachmentId = await repository.uploadFile(file.path!);
+      Logger.info('File uploaded successfully: $attachmentId');
+
+      if (mounted) {
+        ref.read(chatInputStateProvider.notifier).addAttachment(attachmentId);
       }
     } catch (e) {
       if (mounted) {
@@ -155,165 +169,203 @@ class _ChatInputState extends ConsumerState<ChatInput> {
           context: context,
           title: '파일 첨부 실패',
           message: ErrorHandler.getErrorMessage(e),
-        ).then((_) => ErrorDialog);
+        );
       }
-      _requestChatInputFocus();
+    } finally {
+      _requestFocus();
     }
   }
 
+  // ✅ 프로젝트 분석 최적화
   Future<void> _analyzeProject() async {
-    await showDialog(
+    final result = await showDialog<String>(
       context: context,
       builder: (context) => const GitHubAnalysisDialog(),
-    ).then((result) async {
-      if (result != null && mounted) {
-        final tempDir = Directory.systemTemp.createTempSync('github_analysis_');
-        final file = File('${tempDir.path}/github_analysis.md');
-        await file.writeAsString(result);
+    );
 
-        try {
-          final repository = ref.read(attachmentRepositoryProvider);
-          final attachmentId = await repository.uploadFile(file.path);
-          ref.read(chatInputStateProvider.notifier).addAttachment(attachmentId);
-          _controller.text = '프로젝트 분석 결과를 요약해주세요.';
-          await tempDir.delete(recursive: true);
-        } catch (e) {
-          await tempDir.delete(recursive: true);
-          if (mounted) {
-            await ErrorDialog.show(
-              context: context,
-              title: '분석 결과 첨부 실패',
-              message: ErrorHandler.getErrorMessage(e),
-            ).then((_) => ErrorDialog);
-          }
-        }
+    if (result == null || !mounted) {
+      _requestFocus();
+      return;
+    }
+
+    Directory? tempDir;
+    try {
+      tempDir = Directory.systemTemp.createTempSync('github_analysis_');
+      final file = File('${tempDir.path}/github_analysis.md');
+      await file.writeAsString(result);
+
+      final repository = ref.read(attachmentRepositoryProvider);
+      final attachmentId = await repository.uploadFile(file.path);
+
+      if (mounted) {
+        ref.read(chatInputStateProvider.notifier).addAttachment(attachmentId);
+        _controller.text = '프로젝트 분석 결과를 요약해주세요.';
       }
-    }).then((_) => _requestChatInputFocus());
+    } catch (e) {
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          title: '분석 결과 첨부 실패',
+          message: ErrorHandler.getErrorMessage(e),
+        );
+      }
+    } finally {
+      await tempDir?.delete(recursive: true);
+      _requestFocus();
+    }
   }
 
+  // ✅ 첨부파일 제거 최적화
   void _removeAttachment(String attachmentId) {
     ref.read(chatInputStateProvider.notifier).removeAttachment(attachmentId);
-    _requestChatInputFocus();
+    _updateHeight(); // ✅ 높이 변경이 필요한 시점에만 호출
+    _requestFocus();
   }
 
+  // ✅ 스트리밍 취소 최적화
   void _cancelStreaming() {
     ref.read(sendMessageMutationProvider.notifier).cancel();
-    _requestChatInputFocus();
+    _requestFocus();
   }
 
   @override
   Widget build(BuildContext context) {
-    final sendState = ref.watch(sendMessageMutationProvider);
+    // ✅ Provider 감시 최적화 (.select() 사용)
+    final sendStatus = ref.watch(
+        sendMessageMutationProvider.select((state) => state.status)
+    );
     final inputState = ref.watch(chatInputStateProvider);
-    final isSending = sendState.status == SendMessageStatus.sending ||
-        sendState.status == SendMessageStatus.streaming;
+    final sidebarWidth = ref.watch(
+        sidebarStateProvider.select((state) =>
+        state.shouldShowExpanded
+            ? UIConstants.sessionListWidth + (UIConstants.spacingMd * 2)
+            : UIConstants.sessionListCollapsedWidth + (UIConstants.spacingMd * 2)
+        )
+    );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateHeight());
+    final isSending = sendStatus == SendMessageStatus.sending ||
+        sendStatus == SendMessageStatus.streaming;
 
-    return Container(
-      key: _containerKey,
-      margin: const EdgeInsets.all(UIConstants.spacingMd),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(UIConstants.radiusLg),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(UIConstants.alpha10),
-            blurRadius: UIConstants.glassBlur,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(UIConstants.radiusLg),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: UIConstants.glassBlur,
-            sigmaY: UIConstants.glassBlur,
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context)
-                  .colorScheme
-                  .surface
-                  .withAlpha(UIConstants.alpha90),
-              borderRadius: BorderRadius.circular(UIConstants.radiusLg),
-              border: Border.all(
-                color: Theme.of(context)
-                    .colorScheme
-                    .outline
-                    .withAlpha(UIConstants.alpha20),
-                width: 1,
-              ),
+    return RepaintBoundary(
+      child: AnimatedContainer(
+        key: _containerKey,
+        duration: UIConstants.sidebarAnimationDuration,
+        curve: Curves.easeInOut,
+        margin: EdgeInsets.fromLTRB(
+          sidebarWidth,
+          UIConstants.spacingMd,
+          UIConstants.spacingMd,
+          UIConstants.spacingMd,
+        ),
+        decoration: _buildContainerDecoration(context),
+        child: ClipRRect(
+          borderRadius: _borderRadius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(
+              sigmaX: UIConstants.glassBlur,
+              sigmaY: UIConstants.glassBlur,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 첨부파일 미리보기
-                if (inputState.attachmentIds.isNotEmpty)
-                  AttachmentPreviewSection(
-                    attachmentIds: inputState.attachmentIds,
-                    onRemove: _removeAttachment,
-                  ),
+            child: Container(
+              decoration: _buildInnerDecoration(context),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 첨부파일 미리보기
+                  if (inputState.attachmentIds.isNotEmpty)
+                    AttachmentPreviewSection(
+                      attachmentIds: inputState.attachmentIds,
+                      onRemove: _removeAttachment,
+                    ),
 
-                // 파이프라인 깊이 선택기 + 프리셋 선택기
-                const PipelinePresetSection(),
+                  // 파이프라인 프리셋 섹션
+                  const PipelinePresetSection(),
 
-                // 입력 영역
-                Container(
-                  padding: const EdgeInsets.all(UIConstants.spacingMd),
-                  child: SafeArea(
-                    top: false,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        // 액션 버튼들
-                        ChatActionButtons(
-                          isSending: isSending,
-                          onPickFile: _pickFile,
-                          onAnalyzeProject: _analyzeProject,
-                        ),
-                        const SizedBox(width: UIConstants.spacingSm),
-
-                        // 텍스트 입력 필드
-                        Expanded(
-                          child: ChatTextField(
-                            controller: _controller,
-                            focusNode: _focusNode,
+                  // 입력 영역
+                  Container(
+                    padding: const EdgeInsets.all(UIConstants.spacingMd),
+                    child: SafeArea(
+                      top: false,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // 액션 버튼들
+                          ChatActionButtons(
                             isSending: isSending,
-                            canSend: inputState.canSend,
-                            onSend: _sendMessage,
-                            onChanged: (_) => _updateHeight(),
+                            onPickFile: _pickFile,
+                            onAnalyzeProject: _analyzeProject,
                           ),
-                        ),
-                        const SizedBox(width: UIConstants.spacingSm),
+                          const SizedBox(width: UIConstants.spacingSm),
 
-                        // 전송/취소 버튼
-                        if (isSending)
-                          IconButton(
-                            icon: const Icon(Icons.stop_circle),
-                            onPressed: _cancelStreaming,
-                            tooltip: '전송 취소',
-                            color: Theme.of(context).colorScheme.error,
-                          )
-                        else
-                          IconButton(
-                            icon: const Icon(Icons.send),
-                            onPressed:
-                            inputState.canSend && !isSending ? _sendMessage : null,
-                            tooltip: '전송',
-                            color: inputState.canSend
-                                ? Theme.of(context).colorScheme.primary
-                                : null,
+                          // 텍스트 입력 필드
+                          Expanded(
+                            child: ChatTextField(
+                              controller: _controller,
+                              focusNode: _focusNode,
+                              isSending: isSending,
+                              canSend: inputState.canSend,
+                              onSend: _sendMessage,
+                              onChanged: (_) => _updateHeight(),
+                            ),
                           ),
-                      ],
+                          const SizedBox(width: UIConstants.spacingSm),
+
+                          // 전송/취소 버튼
+                          _buildSendButton(context, isSending, inputState.canSend),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // ✅ BoxDecoration 빌더 메서드 (재사용성 향상)
+  BoxDecoration _buildContainerDecoration(BuildContext context) {
+    return BoxDecoration(
+      borderRadius: _borderRadius,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withAlpha(UIConstants.alpha10),
+          blurRadius: UIConstants.glassBlur,
+          offset: _shadowOffset,
+        ),
+      ],
+    );
+  }
+
+  BoxDecoration _buildInnerDecoration(BuildContext context) {
+    final theme = Theme.of(context);
+    return BoxDecoration(
+      color: theme.colorScheme.surface.withAlpha(UIConstants.alpha90),
+      borderRadius: _borderRadius,
+      border: Border.all(
+        color: theme.colorScheme.outline.withAlpha(UIConstants.alpha20),
+        width: 1,
+      ),
+    );
+  }
+
+  // ✅ 전송 버튼 빌더 메서드
+  Widget _buildSendButton(BuildContext context, bool isSending, bool canSend) {
+    if (isSending) {
+      return IconButton(
+        icon: const Icon(Icons.stop_circle),
+        onPressed: _cancelStreaming,
+        tooltip: '전송 취소',
+        color: Theme.of(context).colorScheme.error,
+      );
+    }
+
+    return IconButton(
+      icon: const Icon(Icons.send),
+      onPressed: canSend && !isSending ? _sendMessage : null,
+      tooltip: '전송',
+      color: canSend ? Theme.of(context).colorScheme.primary : null,
     );
   }
 }

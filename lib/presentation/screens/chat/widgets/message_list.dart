@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../domain/providers/database_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
+import '../../../../domain/providers/sidebar_state_provider.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import 'message_bubble.dart';
@@ -63,6 +64,12 @@ class _MessageListState extends ConsumerState<MessageList> {
       chatInputStateProvider.select((state) => state.height),
     );
 
+    // ✅ 사이드바 상태 감지
+    final sidebarState = ref.watch(sidebarStateProvider);
+    final sidebarWidth = sidebarState.shouldShowExpanded
+        ? UIConstants.sessionListWidth + (UIConstants.spacingMd * 2) // 패딩 포함
+        : UIConstants.sessionListCollapsedWidth + (UIConstants.spacingMd * 2);
+
     // 메시지 변화 감지 - 스크롤
     ref.listen(sessionMessagesProvider(widget.sessionId), (previous, next) {
       if (next.hasValue && previous?.hasValue == true) {
@@ -76,7 +83,7 @@ class _MessageListState extends ConsumerState<MessageList> {
       }
     });
 
-    // ✅ 입력창 높이 변화 감지 - 스크롤
+    // 입력창 높이 변화 감지 - 스크롤
     ref.listen(
       chatInputStateProvider.select((state) => state.height),
           (previous, next) {
@@ -91,15 +98,20 @@ class _MessageListState extends ConsumerState<MessageList> {
     return messagesAsync.when(
       data: (messages) {
         if (messages.isEmpty) {
-          return const Center(
-            child: Text('메시지가 없습니다'),
+          return Center(
+            child: Padding(
+              padding: EdgeInsets.only(left: sidebarWidth),
+              child: const Text('메시지가 없습니다'),
+            ),
           );
         }
 
         return ListView.builder(
           controller: _scrollController,
           padding: EdgeInsets.only(
+            left: sidebarWidth, // ✅ 사이드바 너비만큼 좌측 여백
             top: UIConstants.spacingMd,
+            right: UIConstants.spacingMd,
             bottom: UIConstants.spacingMd + inputHeight,
           ),
           itemCount: messages.length,
@@ -120,25 +132,33 @@ class _MessageListState extends ConsumerState<MessageList> {
           },
         );
       },
-      loading: () => const LoadingIndicator(message: '메시지 로딩 중...'),
+      loading: () => Center(
+        child: Padding(
+          padding: EdgeInsets.only(left: sidebarWidth),
+          child: const LoadingIndicator(message: '메시지 로딩 중...'),
+        ),
+      ),
       error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: UIConstants.iconLg * 1.5,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(height: UIConstants.spacingMd),
-            const Text('메시지를 불러올 수 없습니다'),
-            const SizedBox(height: UIConstants.spacingSm),
-            Text(
-              error.toString(),
-              style: Theme.of(context).textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
+        child: Padding(
+          padding: EdgeInsets.only(left: sidebarWidth),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: UIConstants.iconLg * 1.5,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(height: UIConstants.spacingMd),
+              const Text('메시지를 불러올 수 없습니다'),
+              const SizedBox(height: UIConstants.spacingSm),
+              Text(
+                error.toString(),
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
