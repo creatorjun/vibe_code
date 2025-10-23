@@ -1,4 +1,5 @@
 // lib/presentation/screens/chat/widgets/chat_text_field.dart
+
 import 'package:flutter/material.dart';
 
 import '../../../../../core/constants/ui_constants.dart';
@@ -28,13 +29,6 @@ class ChatTextField extends StatelessWidget {
         minHeight: 40,
         maxHeight: 200,
       ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withAlpha(UIConstants.alpha30),
-        ),
-      ),
       child: TextField(
         controller: controller,
         focusNode: focusNode,
@@ -42,10 +36,15 @@ class ChatTextField extends StatelessWidget {
         maxLines: null,
         enabled: !isSending,
         textInputAction: TextInputAction.newline,
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           hintText: '메시지를 입력하세요...',
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
+          focusedBorder: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          hoverColor: Colors.transparent,
+          filled: false,
+          contentPadding: EdgeInsets.symmetric(
             horizontal: UIConstants.spacingMd,
             vertical: UIConstants.spacingSm,
           ),

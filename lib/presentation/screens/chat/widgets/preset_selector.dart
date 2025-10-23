@@ -42,18 +42,6 @@ class PresetSelector extends ConsumerWidget {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    // --- 수정: "끄기" 버튼 제거 ---
-                    // _PresetButton(
-                    //   preset: null,
-                    //   isSelected: selectedPresetId == null,
-                    //   onTap: () {
-                    //     ref.read(settingsProvider.notifier).selectPreset(null);
-                    //   },
-                    // ),
-                    // const SizedBox(width: UIConstants.spacingSm), // 간격 제거
-                    // --- ---
-
-                    // 각 프리셋 버튼 (토글 로직 추가)
                     ...presets.map((preset) {
                       final isSelected = preset.id == selectedPresetId;
                       return Padding(
@@ -61,17 +49,13 @@ class PresetSelector extends ConsumerWidget {
                         child: _PresetButton(
                           preset: preset,
                           isSelected: isSelected,
-                          // --- 수정: 토글 로직 구현 ---
                           onTap: () {
                             if (isSelected) {
-                              // 이미 선택된 버튼을 다시 누르면 선택 해제 ("끄기" 상태)
                               ref.read(settingsProvider.notifier).selectPreset(null);
                             } else {
-                              // 다른 버튼을 누르면 해당 프리셋 선택
                               ref.read(settingsProvider.notifier).selectPreset(preset.id);
                             }
                           },
-                          // --- ---
                         ),
                       );
                     }),
@@ -91,26 +75,21 @@ class PresetSelector extends ConsumerWidget {
   }
 }
 
-// _PresetButton 위젯 (수정: preset이 null인 경우 제거)
 class _PresetButton extends StatelessWidget {
-  // --- 수정: preset을 non-nullable로 변경 ---
   final PromptPreset preset;
-  // --- ---
   final bool isSelected;
   final VoidCallback onTap;
 
   const _PresetButton({
-    required this.preset, // required로 변경
+    required this.preset,
     required this.isSelected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    // --- 수정: null 체크 제거 ---
     final String label = preset.name;
-    const IconData icon = Icons.auto_awesome; // 아이콘 고정
-    // --- ---
+    const IconData icon = Icons.auto_awesome;
 
     return FilterChip(
       label: Text(label),
@@ -122,7 +101,7 @@ class _PresetButton extends StatelessWidget {
             : Theme.of(context).colorScheme.secondary,
       ),
       selected: isSelected,
-      onSelected: (_) => onTap(), // onTap 콜백 사용
+      onSelected: (_) => onTap(),
       showCheckmark: false,
       selectedColor: Theme.of(context).colorScheme.primary,
       checkmarkColor: Theme.of(context).colorScheme.onPrimary,

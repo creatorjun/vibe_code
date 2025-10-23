@@ -285,32 +285,28 @@ class _ChatInputState extends ConsumerState<ChatInput> {
                     padding: const EdgeInsets.all(UIConstants.spacingMd),
                     child: SafeArea(
                       top: false,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      child: Column(
                         children: [
-                          // 액션 버튼들
-                          ChatActionButtons(
-                            isSending: isSending,
-                            onPickFile: _pickFile,
-                            onAnalyzeProject: _analyzeProject,
-                          ),
-                          const SizedBox(width: UIConstants.spacingSm),
-
                           // 텍스트 입력 필드
-                          Expanded(
-                            child: ChatTextField(
-                              controller: _controller,
-                              focusNode: _focusNode,
-                              isSending: isSending,
-                              canSend: inputState.canSend,
-                              onSend: _sendMessage,
-                              onChanged: (_) => _updateHeight(),
-                            ),
+                          ChatTextField(
+                            controller: _controller,
+                            focusNode: _focusNode,
+                            isSending: isSending,
+                            canSend: inputState.canSend,
+                            onSend: _sendMessage,
+                            onChanged: (_) => _updateHeight(),
                           ),
-                          const SizedBox(width: UIConstants.spacingSm),
-
-                          // 전송/취소 버튼
-                          _buildSendButton(context, isSending, inputState.canSend),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              ChatActionButtons(
+                                isSending: isSending,
+                                onPickFile: _pickFile,
+                                onAnalyzeProject: _analyzeProject,
+                              ),
+                              _buildSendButton(context, isSending, inputState.canSend),
+                            ],
+                          )
                         ],
                       ),
                     ),
