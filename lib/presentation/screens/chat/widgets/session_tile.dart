@@ -29,7 +29,7 @@ class SessionTile extends ConsumerWidget {
         ),
         decoration: BoxDecoration(
           color: isActive
-              ? Theme.of(context).colorScheme.primary.withAlpha(26)
+              ? Theme.of(context).colorScheme.primary.withAlpha(UIConstants.alpha30)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(UIConstants.radiusMd),
         ),
@@ -61,7 +61,7 @@ class SessionTile extends ConsumerWidget {
       ),
       decoration: BoxDecoration(
         color: isActive
-            ? Theme.of(context).colorScheme.primary.withAlpha(26)
+            ? Theme.of(context).colorScheme.primary.withAlpha(UIConstants.alpha30)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(UIConstants.radiusMd),
       ),

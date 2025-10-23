@@ -66,7 +66,7 @@ class PipelineDepthSelector extends ConsumerWidget {
                 ),
                 side: isSelected
                     ? BorderSide.none
-                    : BorderSide(color: Theme.of(context).colorScheme.outline.withAlpha(96)),
+                    : BorderSide(color: Theme.of(context).colorScheme.outline.withAlpha(UIConstants.alpha90)),
                 // dense하게 만들기 위해 패딩 조절 (선택 사항)
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 labelPadding: EdgeInsets.zero,

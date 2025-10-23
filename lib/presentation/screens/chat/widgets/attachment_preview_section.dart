@@ -1,8 +1,9 @@
 // lib/presentation/screens/chat/widgets/attachment_preview_section.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../../core/constants/ui_constants.dart';
+import '../../../../core/constants/ui_constants.dart';
 import '../../../../domain/providers/chat_provider.dart';
 import 'attachment_item.dart';
 
@@ -28,7 +29,10 @@ class AttachmentPreviewSection extends ConsumerWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant.withAlpha(UIConstants.alpha30),
+            color: Theme.of(context)
+                .colorScheme
+                .outlineVariant
+                .withAlpha(UIConstants.alpha30),
             width: 1,
           ),
         ),
@@ -40,10 +44,10 @@ class AttachmentPreviewSection extends ConsumerWidget {
             children: [
               Icon(
                 Icons.attach_file,
-                size: 16,
+                size: UIConstants.iconSm,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: UIConstants.spacingXs),
               Text(
                 '첨부파일 ${attachmentIds.length}개',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -60,7 +64,9 @@ class AttachmentPreviewSection extends ConsumerWidget {
               children: attachmentIds
                   .map(
                     (id) => Padding(
-                  padding: const EdgeInsets.only(right: UIConstants.spacingSm),
+                  padding: const EdgeInsets.only(
+                    right: UIConstants.spacingSm,
+                  ),
                   child: FutureBuilder(
                     future: ref
                         .read(attachmentRepositoryProvider)

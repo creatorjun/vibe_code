@@ -30,7 +30,7 @@ class ChatTextField extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(UIConstants.borderRadiusMd),
+        borderRadius: BorderRadius.circular(UIConstants.radiusMd),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withAlpha(UIConstants.alpha30),
         ),

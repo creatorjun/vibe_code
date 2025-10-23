@@ -133,7 +133,7 @@ class _PresetButton extends StatelessWidget {
       ),
       side: isSelected
           ? BorderSide.none
-          : BorderSide(color: Theme.of(context).colorScheme.outline.withAlpha(96)),
+          : BorderSide(color: Theme.of(context).colorScheme.outline.withAlpha(UIConstants.alpha90)),
     );
   }
 }

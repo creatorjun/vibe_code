@@ -141,7 +141,7 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
         vertical: UIConstants.spacingSm,
       ),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withAlpha(UIConstants.alpha30),
+        color: Theme.of(context).colorScheme.primaryContainer.withAlpha(77),
         borderRadius: BorderRadius.circular(UIConstants.radiusSm),
         border: Border.all(
           color: Theme.of(context).colorScheme.primary.withAlpha(51),

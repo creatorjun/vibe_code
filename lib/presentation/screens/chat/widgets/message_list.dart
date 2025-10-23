@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../domain/providers/database_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
 import '../../../../core/constants/ui_constants.dart';
@@ -26,7 +27,6 @@ class _MessageListState extends ConsumerState<MessageList> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
     });
@@ -41,17 +41,14 @@ class _MessageListState extends ConsumerState<MessageList> {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.offset;
-
     _autoScroll = (maxScroll - currentScroll) < 100;
   }
 
   void _scrollToBottom() {
     if (!_scrollController.hasClients) return;
     if (!_autoScroll) return;
-
     _scrollController.animateTo(
       _scrollController.position.maxScrollExtent,
       duration: UIConstants.scrollDuration,
@@ -66,11 +63,11 @@ class _MessageListState extends ConsumerState<MessageList> {
       chatInputStateProvider.select((state) => state.height),
     );
 
+    // 메시지 변화 감지 - 스크롤
     ref.listen(sessionMessagesProvider(widget.sessionId), (previous, next) {
       if (next.hasValue && previous?.hasValue == true) {
         final prevLength = previous?.value?.length ?? 0;
         final nextLength = next.value?.length ?? 0;
-
         if (prevLength != nextLength) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _scrollToBottom();
@@ -78,6 +75,18 @@ class _MessageListState extends ConsumerState<MessageList> {
         }
       }
     });
+
+    // ✅ 입력창 높이 변화 감지 - 스크롤
+    ref.listen(
+      chatInputStateProvider.select((state) => state.height),
+          (previous, next) {
+        if (previous != next && _autoScroll) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollToBottom();
+          });
+        }
+      },
+    );
 
     return messagesAsync.when(
       data: (messages) {
@@ -95,9 +104,18 @@ class _MessageListState extends ConsumerState<MessageList> {
           ),
           itemCount: messages.length,
           itemBuilder: (context, index) {
-            return MessageBubble(
-              key: ValueKey('msg_${messages[index].id}'),
-              message: messages[index],
+            final isFirstMessage = index == 0;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                top: isFirstMessage
+                    ? kToolbarHeight + (UIConstants.spacingMd * 2)
+                    : 0,
+              ),
+              child: MessageBubble(
+                key: ValueKey('msg_${messages[index].id}'),
+                message: messages[index],
+              ),
             );
           },
         );
@@ -109,7 +127,7 @@ class _MessageListState extends ConsumerState<MessageList> {
           children: [
             Icon(
               Icons.error_outline,
-              size: 48,
+              size: UIConstants.iconLg * 1.5,
               color: Theme.of(context).colorScheme.error,
             ),
             const SizedBox(height: UIConstants.spacingMd),

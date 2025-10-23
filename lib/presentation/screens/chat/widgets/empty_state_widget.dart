@@ -12,7 +12,7 @@ class EmptyStateWidget extends StatelessWidget {
         children: [
           Icon(
             Icons.chat_bubble_outline,
-            size: 80,
+            size: UIConstants.iconLg * 2.5, // 80px
             color: Theme.of(context).textTheme.bodySmall?.color,
           ),
           const SizedBox(height: UIConstants.spacingLg),

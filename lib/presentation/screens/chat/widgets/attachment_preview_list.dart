@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../../data/database/app_database.dart';
 import '../../../../core/constants/ui_constants.dart';
 import 'attachment_item.dart';
@@ -48,14 +49,21 @@ class AttachmentPreviewList extends StatelessWidget {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: attachments.map((attachment) {
-                return AttachmentItem(
-                  attachment: attachment,
-                  onRemove: onRemove != null
-                      ? () => onRemove!(attachment.id)
-                      : null,
-                );
-              }).toList(),
+              children: attachments
+                  .map(
+                    (attachment) => Padding(
+                  padding: const EdgeInsets.only(
+                    right: UIConstants.spacingSm,
+                  ),
+                  child: AttachmentItem(
+                    attachment: attachment,
+                    onRemove: onRemove != null
+                        ? () => onRemove!(attachment.id)
+                        : null,
+                  ),
+                ),
+              )
+                  .toList(),
             ),
           ),
         ],
