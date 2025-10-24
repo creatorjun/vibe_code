@@ -154,7 +154,7 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
   Future<void> updateModelConfig(
       int index, {
         String? modelId,
-        String? systemPrompt, // 새로 입력된 시스템 프롬프트 값
+        String? systemPrompt,
         bool? isEnabled,
       }) async {
     state = await AsyncValue.guard(() async {
@@ -222,7 +222,7 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
             await _repository.saveModelPipeline(currentPipeline);
             return current.copyWith(
               modelPipeline: currentPipeline,
-              selectedPresetId: null, // 프리셋 선택 해제
+              selectedPresetId: null,
             );
           }
 

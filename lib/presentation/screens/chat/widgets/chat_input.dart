@@ -5,7 +5,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
-
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../../../core/utils/logger.dart';
@@ -19,16 +18,16 @@ import 'attachment_preview_section.dart';
 import 'chat_action_buttons.dart';
 import 'chat_text_field.dart';
 import 'github_analysis_dialog.dart';
-import 'pipeline_preset_section.dart';
+import 'right_buttons.dart';
 
 class ChatInput extends ConsumerStatefulWidget {
   const ChatInput({super.key});
 
   @override
-  ConsumerState<ChatInput> createState() => _ChatInputState();
+  ConsumerState createState() => _ChatInputState();
 }
 
-class _ChatInputState extends ConsumerState<ChatInput> {
+class _ChatInputState extends ConsumerState {
   // ✅ 컨트롤러 및 키
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
@@ -79,11 +78,9 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   // ✅ 높이 업데이트 최적화 (중복 호출 방지)
   void _updateHeight() {
     if (_isHeightUpdateScheduled) return;
-
     _isHeightUpdateScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-
       final renderBox = _containerKey.currentContext?.findRenderObject() as RenderBox?;
       if (renderBox != null) {
         ref.read(chatInputStateProvider.notifier).updateHeight(renderBox.size.height);
@@ -149,7 +146,6 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   Future<void> _pickFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(allowMultiple: false);
-
       if (result == null || result.files.isEmpty) return;
 
       final file = result.files.first;
@@ -277,9 +273,6 @@ class _ChatInputState extends ConsumerState<ChatInput> {
                       onRemove: _removeAttachment,
                     ),
 
-                  // 파이프라인 프리셋 섹션
-                  const PipelinePresetSection(),
-
                   // 입력 영역
                   Container(
                     padding: const EdgeInsets.all(UIConstants.spacingMd),
@@ -296,6 +289,7 @@ class _ChatInputState extends ConsumerState<ChatInput> {
                             onSend: _sendMessage,
                             onChanged: (_) => _updateHeight(),
                           ),
+                          // 왼쪽 액션 버튼들만 표시
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -304,9 +298,15 @@ class _ChatInputState extends ConsumerState<ChatInput> {
                                 onPickFile: _pickFile,
                                 onAnalyzeProject: _analyzeProject,
                               ),
-                              _buildSendButton(context, isSending, inputState.canSend),
+                              // 오른쪽 버튼 섹션 (파이프라인 + 프리셋 + 전송 버튼)
+                              RightButtons(
+                                isSending: isSending,
+                                canSend: inputState.canSend,
+                                onSend: _sendMessage,
+                                onCancel: _cancelStreaming,
+                              ),
                             ],
-                          )
+                          ),
                         ],
                       ),
                     ),
@@ -343,25 +343,6 @@ class _ChatInputState extends ConsumerState<ChatInput> {
         color: theme.colorScheme.outline.withAlpha(UIConstants.alpha20),
         width: 1,
       ),
-    );
-  }
-
-  // ✅ 전송 버튼 빌더 메서드
-  Widget _buildSendButton(BuildContext context, bool isSending, bool canSend) {
-    if (isSending) {
-      return IconButton(
-        icon: const Icon(Icons.stop_circle),
-        onPressed: _cancelStreaming,
-        tooltip: '전송 취소',
-        color: Theme.of(context).colorScheme.error,
-      );
-    }
-
-    return IconButton(
-      icon: const Icon(Icons.send),
-      onPressed: canSend && !isSending ? _sendMessage : null,
-      tooltip: '전송',
-      color: canSend ? Theme.of(context).colorScheme.primary : null,
     );
   }
 }

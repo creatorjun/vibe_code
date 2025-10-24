@@ -79,36 +79,16 @@ class PipelineDepthSelector extends ConsumerWidget {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 4.0), // 상하 약간의 패딩
           child: Row(
-            // --- 수정: mainAxisSize.min 추가 ---
-            // Row가 자식 요소들의 너비만큼만 차지하도록 변경
             mainAxisSize: MainAxisSize.min,
             // --- ---
             children: [
               Icon(
-                Icons.route_outlined, // 파이프라인 아이콘
+                Icons.route_outlined,
                 size: 20,
                 color: Theme.of(context).colorScheme.secondary,
               ),
-              const SizedBox(width: UIConstants.spacingSm),
-              Text(
-                '파이프라인 깊이:',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
               const SizedBox(width: UIConstants.spacingMd),
-              // --- 수정: Expanded 제거, Row로 직접 감싸기 ---
-              // Expanded를 제거하여 무한 너비 요구 방지
               Row(children: buttons),
-              // --- ---
-              const SizedBox(width: UIConstants.spacingSm), // 오른쪽에 약간의 여백 추가
-              Text(
-                '$currentValidDepth/$maxDepth 모델',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
             ],
           ),
         );

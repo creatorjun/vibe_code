@@ -17,25 +17,12 @@ class PresetSelector extends ConsumerWidget {
         final presets = settings.promptPresets;
         final selectedPresetId = settings.selectedPresetId;
 
-        // 프리셋이 없으면 아예 아무것도 표시하지 않음
         if (presets.isEmpty) {
           return const SizedBox.shrink();
         }
 
         return Row(
           children: [
-            Icon(
-              Icons.auto_awesome,
-              size: 20,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-            const SizedBox(width: UIConstants.spacingSm),
-            Text(
-              '프리셋:',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
             const SizedBox(width: UIConstants.spacingMd),
             Flexible(
               child: SingleChildScrollView(
