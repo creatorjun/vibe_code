@@ -106,7 +106,7 @@ class _MessageListState extends ConsumerState<MessageList> {
         return ListView.builder(
           controller: _scrollController,
           padding: EdgeInsets.only(
-            left: sidebarWidth,
+            left: sidebarWidth, // ✅ 사이드바 너비만큼 좌측 여백
             top: UIConstants.spacingMd,
             right: UIConstants.spacingMd,
             bottom: UIConstants.spacingMd + inputHeight,
