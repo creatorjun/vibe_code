@@ -14,17 +14,18 @@ class SettingsRepository {
   final List<PromptPreset> _defaultPresets = [
     const PromptPreset(
       id: 'preset_improve_code',
-      name: '코드 점진 개선',
+      name: 'Preset 1',
       prompts: [
         '다음 코드를 분석하고 개선할 점을 찾아주세요.',
         '첫 번째 모델의 분석 결과를 바탕으로 실제 개선된 코드를 작성해주세요.',
         '두 번째 모델이 작성한 개선 코드의 효율성, 가독성, 잠재적 오류 가능성을 검토하고 추가 개선 제안이나 최종 의견을 제시해주세요.',
-        // 필요에 따라 4, 5번째 프롬프트 추가
+        '세 번째 모델의 결과를 반영하여, 코드를 기능별 모듈로 분리하는 리팩토링을 제안해주세요.',
+        '네 번째 모델의 리팩토링 제안을 포함하여, 최종 코드의 유지보수성 측면을 평가하고 종합적인 코드 리뷰 의견을 제시해주세요.',
       ],
     ),
     const PromptPreset(
       id: 'preset_code_review',
-      name: '코드 역할 분담 리뷰',
+      name: 'Preset 2',
       prompts: [
         '다음 코드의 초안을 작성해주세요. 요구사항: [여기에 요구사항 입력]',
         '첫 번째 모델이 작성한 코드 초안의 로직을 검토하고 개선해주세요.',
@@ -34,13 +35,20 @@ class SettingsRepository {
       ],
     ),
   ];
-  // --- ---
 
   // 전체 설정 로드
   Future<SettingsState> loadSettings() async {
     try {
       Logger.info('Loading settings...');
+
       final allSettings = await _settingsDao.getAllSettings();
+
+      // // ✅ 개발 중에만 사용: 프리셋 강제 업데이트
+      // if (allSettings.containsKey(AppConstants.settingsKeyPromptPresets)) {
+      //   Logger.info('Force updating presets with new defaults');
+      //   await savePromptPresets(_defaultPresets);
+      //   await saveSelectedPresetId(null);
+      // }
 
       if (allSettings.isEmpty) {
         Logger.info('No settings found, initializing with defaults');

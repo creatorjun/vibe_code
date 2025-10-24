@@ -55,9 +55,8 @@ class PipelineDepthSelector extends ConsumerWidget {
                 onSelected: (_) {
                   ref.read(selectedPipelineDepthProvider.notifier).setDepth(depth);
                 },
-                showCheckmark: false, // 체크마크 대신 배경색/테두리로 구분
+                showCheckmark: false,
                 selectedColor: Theme.of(context).colorScheme.primary,
-                checkmarkColor: Theme.of(context).colorScheme.onPrimary, // 사용되진 않지만 설정
                 labelStyle: TextStyle(
                   color: isSelected
                       ? Theme.of(context).colorScheme.onPrimary
@@ -78,19 +77,7 @@ class PipelineDepthSelector extends ConsumerWidget {
 
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 4.0), // 상하 약간의 패딩
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            // --- ---
-            children: [
-              Icon(
-                Icons.route_outlined,
-                size: 20,
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-              const SizedBox(width: UIConstants.spacingMd),
-              Row(children: buttons),
-            ],
-          ),
+          child: Row(children: buttons),
         );
       },
       loading: () => const SizedBox(height: 40), // 로딩 중 높이 유지

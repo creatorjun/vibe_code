@@ -15,9 +15,9 @@ import '../../../../domain/providers/chat_input_state_provider.dart';
 import '../../../../domain/providers/sidebar_state_provider.dart';
 import '../../../shared/widgets/error_dialog.dart';
 import 'attachment_preview_section.dart';
-import 'chat_action_buttons.dart';
 import 'chat_text_field.dart';
 import 'github_analysis_dialog.dart';
+import 'left_buttons.dart';
 import 'right_buttons.dart';
 
 class ChatInput extends ConsumerStatefulWidget {
@@ -293,7 +293,7 @@ class _ChatInputState extends ConsumerState {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              ChatActionButtons(
+                              LeftButtons(
                                 isSending: isSending,
                                 onPickFile: _pickFile,
                                 onAnalyzeProject: _analyzeProject,
