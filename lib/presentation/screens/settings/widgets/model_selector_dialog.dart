@@ -1,4 +1,5 @@
 // lib/presentation/screens/settings/widgets/model_selector_dialog.dart
+
 import 'package:flutter/material.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../data/models/model_info.dart';
@@ -21,7 +22,6 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
   String? _selectedCategory;
   String _searchQuery = '';
 
-  // ✅ AvailableModels 사용
   static final Map<String, List<ModelInfo>> modelCategories = {
     '🆓 무료 모델': AvailableModels.free,
     'Anthropic': AvailableModels.byProvider('Anthropic'),
@@ -34,7 +34,6 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
 
   List<ModelInfo> get filteredModels {
     List<ModelInfo> allModels = [];
-
     if (_selectedCategory != null) {
       allModels = modelCategories[_selectedCategory] ?? [];
     } else {
@@ -56,8 +55,12 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
   @override
   Widget build(BuildContext context) {
     final models = filteredModels;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(UIConstants.radiusLg),
+      ),
       child: Container(
         width: 650,
         height: 700,
@@ -65,16 +68,41 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 헤더
+            // ✅ 헤더 개선
             Row(
               children: [
-                const Icon(Icons.model_training, size: 28),
-                const SizedBox(width: UIConstants.spacingSm),
-                Text(
-                  '모델 선택',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                Container(
+                  padding: const EdgeInsets.all(UIConstants.spacingSm),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                  ),
+                  child: Icon(
+                    Icons.model_training,
+                    size: UIConstants.iconLg,
+                    color: colorScheme.primary,
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: UIConstants.spacingMd),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '모델 선택',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${models.length}개의 모델',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface.withAlpha(153),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.of(context).pop(),
@@ -83,12 +111,16 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
             ),
             const SizedBox(height: UIConstants.spacingLg),
 
-            // 검색창
+            // ✅ 검색창 개선
             TextField(
-              decoration: const InputDecoration(
-                hintText: '모델 검색...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: '모델 이름, ID, 설명으로 검색...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                ),
+                filled: true,
+                fillColor: colorScheme.surfaceContainerHighest.withAlpha(UIConstants.alpha30),
               ),
               onChanged: (value) {
                 setState(() {
@@ -98,9 +130,9 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
             ),
             const SizedBox(height: UIConstants.spacingMd),
 
-            // 카테고리 필터
+            // ✅ 카테고리 필터 개선
             SizedBox(
-              height: 40,
+              height: 42,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
@@ -112,21 +144,22 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
                         _selectedCategory = null;
                       });
                     },
+                    showCheckmark: false,
                   ),
                   const SizedBox(width: UIConstants.spacingSm),
                   ...modelCategories.keys.map((category) {
+                    final count = modelCategories[category]!.length;
                     return Padding(
-                      padding: const EdgeInsets.only(
-                        right: UIConstants.spacingSm,
-                      ),
+                      padding: const EdgeInsets.only(right: UIConstants.spacingSm),
                       child: FilterChip(
-                        label: Text(category),
+                        label: Text('$category ($count)'),
                         selected: _selectedCategory == category,
                         onSelected: (selected) {
                           setState(() {
                             _selectedCategory = selected ? category : null;
                           });
                         },
+                        showCheckmark: false,
                       ),
                     );
                   }),
@@ -135,19 +168,7 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
             ),
             const SizedBox(height: UIConstants.spacingMd),
 
-            // 모델 개수 표시
-            Text(
-              '${models.length}개의 모델',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withAlpha(153),
-              ),
-            ),
-            const SizedBox(height: UIConstants.spacingSm),
-
-            // 모델 리스트
+            // ✅ 모델 리스트
             Expanded(
               child: models.isEmpty
                   ? Center(
@@ -156,16 +177,20 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
                   children: [
                     Icon(
                       Icons.search_off,
-                      size: 48,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withAlpha(153),
+                      size: 64,
+                      color: colorScheme.onSurface.withAlpha(102),
                     ),
                     const SizedBox(height: UIConstants.spacingMd),
                     Text(
                       '검색 결과가 없습니다',
-                      style: Theme.of(context).textTheme.bodyLarge,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: UIConstants.spacingSm),
+                    Text(
+                      '다른 검색어를 입력하거나 필터를 변경해보세요',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withAlpha(153),
+                      ),
                     ),
                   ],
                 ),
@@ -175,19 +200,22 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
                 itemBuilder: (context, index) {
                   final model = models[index];
                   final isSelected = model.id == widget.currentModel;
-
                   return Card(
-                    margin: const EdgeInsets.only(
-                      bottom: UIConstants.spacingSm,
+                    margin: const EdgeInsets.only(bottom: UIConstants.spacingSm),
+                    elevation: isSelected ? 2 : 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                      side: BorderSide(
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.outlineVariant,
+                        width: isSelected ? 2 : 1,
+                      ),
                     ),
                     child: ListTile(
                       leading: Icon(
-                        isSelected
-                            ? Icons.check_circle
-                            : Icons.circle_outlined,
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primary
-                            : null,
+                        isSelected ? Icons.check_circle : Icons.circle_outlined,
+                        color: isSelected ? colorScheme.primary : null,
                       ),
                       title: Row(
                         children: [
@@ -197,7 +225,7 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
                               style: TextStyle(
                                 fontWeight: isSelected
                                     ? FontWeight.bold
-                                    : FontWeight.normal,
+                                    : FontWeight.w600,
                               ),
                             ),
                           ),
@@ -225,24 +253,26 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (model.description != null)
+                          if (model.description != null) ...[
+                            const SizedBox(height: 4),
                             Text(model.description!),
-                          const SizedBox(height: 4),
-                          Row(
+                          ],
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
                             children: [
-                              // 가격 표시
+                              // 가격 칩
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
                                   color: model.isFree
                                       ? Colors.green.withAlpha(51)
-                                      : Theme.of(context)
-                                      .colorScheme
-                                      .primaryContainer,
-                                  borderRadius: BorderRadius.circular(4),
+                                      : colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   model.priceDisplay,
@@ -251,41 +281,38 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
                                     fontWeight: FontWeight.w600,
                                     color: model.isFree
                                         ? Colors.green.shade700
-                                        : Theme.of(context)
-                                        .colorScheme
-                                        .primary,
+                                        : colorScheme.primary,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              // 컨텍스트 길이
-                              Text(
-                                '📄 ${model.contextDisplay}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withAlpha(153),
+                              // 컨텍스트 칩
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.secondaryContainer,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '📄 ${model.contextDisplay}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.secondary,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 4),
                           Text(
                             model.id,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               fontFamily: 'monospace',
                               fontSize: 10,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withAlpha(128),
+                              color: colorScheme.onSurface.withAlpha(128),
                             ),
                           ),
                         ],
@@ -301,30 +328,27 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
               ),
             ),
 
-            // 하단 설명
+            // ✅ 하단 정보 개선
             Container(
-              padding: const EdgeInsets.all(UIConstants.spacingSm),
+              margin: const EdgeInsets.only(top: UIConstants.spacingMd),
+              padding: const EdgeInsets.all(UIConstants.spacingMd),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(UIConstants.radiusMd),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.info_outline,
-                    size: 16,
-                    color:
-                    Theme.of(context).colorScheme.onSurface.withAlpha(153),
+                    size: 18,
+                    color: colorScheme.secondary,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: UIConstants.spacingSm),
                   Expanded(
                     child: Text(
                       '가격: 입력 / 출력 (per 1M tokens)',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withAlpha(153),
+                        color: colorScheme.onSurface.withAlpha(153),
                       ),
                     ),
                   ),
