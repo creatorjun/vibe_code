@@ -3,92 +3,48 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../domain/providers/database_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
 import '../../../../domain/providers/sidebar_state_provider.dart';
+import '../../../../domain/providers/scroll_controller_provider.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import 'message_bubble.dart';
 
-class MessageList extends ConsumerStatefulWidget {
+class MessageList extends ConsumerWidget {
   final int sessionId;
 
   const MessageList({super.key, required this.sessionId});
 
   @override
-  ConsumerState<MessageList> createState() => _MessageListState();
-}
-
-class _MessageListState extends ConsumerState<MessageList> {
-  final ScrollController _scrollController = ScrollController();
-  bool _autoScroll = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToBottom();
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final currentScroll = _scrollController.offset;
-    _autoScroll = (maxScroll - currentScroll) < 100;
-  }
-
-  void _scrollToBottom() {
-    if (!_scrollController.hasClients) return;
-    if (!_autoScroll) return;
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: UIConstants.scrollDuration,
-      curve: Curves.easeOut,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final messagesAsync = ref.watch(sessionMessagesProvider(widget.sessionId));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final messagesAsync = ref.watch(sessionMessagesProvider(sessionId));
     final inputHeight = ref.watch(
       chatInputStateProvider.select((state) => state.height),
     );
+    final scrollController = ref.watch(messageScrollProvider);
+    final scrollNotifier = ref.read(messageScrollProvider.notifier);
 
-    // ✅ 사이드바 상태 감지
     final sidebarState = ref.watch(sidebarStateProvider);
     final sidebarWidth = sidebarState.shouldShowExpanded
-        ? UIConstants.sessionListWidth +
-              (UIConstants.spacingMd * 2) // 패딩 포함
+        ? UIConstants.sessionListWidth + (UIConstants.spacingMd * 2)
         : UIConstants.sessionListCollapsedWidth + (UIConstants.spacingMd * 2);
 
     // 메시지 변화 감지 - 스크롤
-    ref.listen(sessionMessagesProvider(widget.sessionId), (previous, next) {
+    ref.listen(sessionMessagesProvider(sessionId), (previous, next) {
       if (next.hasValue && previous?.hasValue == true) {
         final prevLength = previous?.value?.length ?? 0;
         final nextLength = next.value?.length ?? 0;
-        if (prevLength != nextLength) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollToBottom();
-          });
+        if (prevLength != nextLength && scrollNotifier.shouldAutoScroll()) {
+          scrollNotifier.scrollToBottom();
         }
       }
     });
 
     // 입력창 높이 변화 감지 - 스크롤
     ref.listen(chatInputStateProvider.select((state) => state.height), (
-      previous,
-      next,
-    ) {
-      if (previous != next && _autoScroll) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scrollToBottom();
-        });
+        previous,
+        next,
+        ) {
+      if (previous != next && scrollNotifier.shouldAutoScroll()) {
+        scrollNotifier.scrollToBottom();
       }
     });
 
@@ -103,29 +59,36 @@ class _MessageListState extends ConsumerState<MessageList> {
           );
         }
 
-        return ListView.builder(
-          controller: _scrollController,
-          padding: EdgeInsets.only(
-            left: sidebarWidth, // ✅ 사이드바 너비만큼 좌측 여백
-            top: UIConstants.spacingMd,
-            right: UIConstants.spacingMd,
-            bottom: UIConstants.spacingMd + inputHeight,
+        // 데이터 로드 시 자동 스크롤
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          scrollNotifier.scrollToBottom();
+        });
+
+        return AnimatedContainer(
+          duration: UIConstants.animationDuration,
+          curve: Curves.easeOut,
+          margin: EdgeInsets.only(left: sidebarWidth),
+          child: CustomScrollView(
+            controller: scrollController,
+            slivers: [
+              // 상단 패딩
+              SliverPadding(
+                padding: EdgeInsets.only(
+                  top: kToolbarHeight + (UIConstants.spacingMd * 2),
+                ),
+              ),
+              // 메시지 렌더링
+              ...messages.expand((message) {
+                return MessageBubble(message: message).buildAsSliver(context);
+              }),
+              // 하단 패딩
+              SliverPadding(
+                padding: EdgeInsets.only(
+                  bottom: inputHeight + (UIConstants.spacingMd * 2),
+                ),
+              ),
+            ],
           ),
-          itemCount: messages.length,
-          itemBuilder: (context, index) {
-            final isFirstMessage = index == 0;
-            return Padding(
-              padding: EdgeInsets.only(
-                top: isFirstMessage
-                    ? kToolbarHeight + (UIConstants.spacingMd * 2)
-                    : 0,
-              ),
-              child: MessageBubble(
-                key: ValueKey('msg_${messages[index].id}'),
-                message: messages[index],
-              ),
-            );
-          },
         );
       },
       loading: () => Center(
