@@ -21,17 +21,19 @@ class ChatInput extends ConsumerStatefulWidget {
   const ChatInput({super.key});
 
   @override
-  ConsumerState createState() => _ChatInputState();
+  ConsumerState<ChatInput> createState() => _ChatInputState();
 }
 
-class _ChatInputState extends ConsumerState {
+class _ChatInputState extends ConsumerState<ChatInput> {
   // ✅ 컨트롤러 및 키
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final GlobalKey _containerKey = GlobalKey();
 
   // ✅ 캐싱된 상수
-  static const _borderRadius = BorderRadius.all(Radius.circular(UIConstants.radiusLg));
+  static const _borderRadius = BorderRadius.all(
+    Radius.circular(UIConstants.radiusLg),
+  );
   static const _shadowOffset = Offset(0, -4);
 
   // ✅ 높이 업데이트 제한을 위한 플래그
@@ -78,9 +80,12 @@ class _ChatInputState extends ConsumerState {
     _isHeightUpdateScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final renderBox = _containerKey.currentContext?.findRenderObject() as RenderBox?;
+      final renderBox =
+          _containerKey.currentContext?.findRenderObject() as RenderBox?;
       if (renderBox != null) {
-        ref.read(chatInputStateProvider.notifier).updateHeight(renderBox.size.height);
+        ref
+            .read(chatInputStateProvider.notifier)
+            .updateHeight(renderBox.size.height);
       }
       _isHeightUpdateScheduled = false;
     });
@@ -102,10 +107,8 @@ class _ChatInputState extends ConsumerState {
   Future<void> _sendMessage() async {
     final inputState = ref.read(chatInputStateProvider);
     if (!inputState.canSend) return;
-
     final activeSession = ref.read(activeSessionProvider);
     final int sessionId;
-
     if (activeSession == null) {
       sessionId = await createNewSession(ref, '새로운 대화');
       Logger.info('New session created and selected: $sessionId');
@@ -115,16 +118,16 @@ class _ChatInputState extends ConsumerState {
 
     final content = inputState.content.trim();
     final attachmentIds = List<String>.from(inputState.attachmentIds);
-
     _controller.clear();
     ref.read(chatInputStateProvider.notifier).clear();
-
     try {
-      await ref.read(sendMessageMutationProvider.notifier).sendMessage(
-        sessionId: sessionId,
-        content: content.isEmpty ? '첨부파일' : content,
-        attachmentIds: attachmentIds,
-      );
+      await ref
+          .read(sendMessageMutationProvider.notifier)
+          .sendMessage(
+            sessionId: sessionId,
+            content: content.isEmpty ? '첨부파일' : content,
+            attachmentIds: attachmentIds,
+          );
     } catch (e, stackTrace) {
       Logger.error('Send message mutation failed', e, stackTrace);
       if (mounted) {
@@ -156,18 +159,20 @@ class _ChatInputState extends ConsumerState {
   Widget build(BuildContext context) {
     // ✅ Provider 감시 최적화 (.select() 사용)
     final sendStatus = ref.watch(
-        sendMessageMutationProvider.select((state) => state.status)
+      sendMessageMutationProvider.select((state) => state.status),
     );
     final inputState = ref.watch(chatInputStateProvider);
     final sidebarWidth = ref.watch(
-        sidebarStateProvider.select((state) =>
-        state.shouldShowExpanded
+      sidebarStateProvider.select(
+        (state) => state.shouldShowExpanded
             ? UIConstants.sessionListWidth + (UIConstants.spacingMd * 2)
-            : UIConstants.sessionListCollapsedWidth + (UIConstants.spacingMd * 2)
-        )
+            : UIConstants.sessionListCollapsedWidth +
+                  (UIConstants.spacingMd * 2),
+      ),
     );
 
-    final isSending = sendStatus == SendMessageStatus.sending ||
+    final isSending =
+        sendStatus == SendMessageStatus.sending ||
         sendStatus == SendMessageStatus.streaming;
 
     return RepaintBoundary(
@@ -200,7 +205,6 @@ class _ChatInputState extends ConsumerState {
                       attachmentIds: inputState.attachmentIds,
                       onRemove: _removeAttachment,
                     ),
-
                   // 입력 영역
                   Container(
                     padding: const EdgeInsets.all(UIConstants.spacingMd),
@@ -226,7 +230,6 @@ class _ChatInputState extends ConsumerState {
                                 onRequestFocus: _requestFocus,
                                 textController: _controller,
                               ),
-
                               // 오른쪽 버튼 섹션 (파이프라인 + 프리셋 + 전송 버튼)
                               RightButtons(
                                 isSending: isSending,

@@ -1,7 +1,6 @@
 // lib/presentation/screens/chat/widgets/chat_text_field.dart
 
 import 'package:flutter/material.dart';
-
 import '../../../../../core/constants/ui_constants.dart';
 
 class ChatTextField extends StatelessWidget {
@@ -25,10 +24,7 @@ class ChatTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(
-        minHeight: 40,
-        maxHeight: 200,
-      ),
+      constraints: const BoxConstraints(minHeight: 40, maxHeight: 200),
       child: TextField(
         controller: controller,
         focusNode: focusNode,

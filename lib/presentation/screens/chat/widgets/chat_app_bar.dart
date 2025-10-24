@@ -4,7 +4,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vibe_code/core/theme/app_colors.dart';
-
 import '../../../../domain/providers/chat_provider.dart';
 import '../../../../domain/providers/database_provider.dart';
 import '../../../../domain/providers/session_stats_provider.dart';
@@ -16,12 +15,16 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
   const ChatAppBar({super.key});
 
   // ✅ 캐싱된 상수 (UIConstants 적용)
-  static const _borderRadius = BorderRadius.all(Radius.circular(UIConstants.radiusLg));
+  static const _borderRadius = BorderRadius.all(
+    Radius.circular(UIConstants.radiusLg),
+  );
   static final _blurFilter = ImageFilter.blur(
     sigmaX: UIConstants.glassBlur,
     sigmaY: UIConstants.glassBlur,
   );
-  static const _padding = EdgeInsets.symmetric(horizontal: UIConstants.spacingMd);
+  static const _padding = EdgeInsets.symmetric(
+    horizontal: UIConstants.spacingMd,
+  );
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -32,11 +35,12 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
 
     // ✅ Provider 감시 최적화 (.select() 사용)
     final sidebarWidth = ref.watch(
-        sidebarStateProvider.select((state) =>
-        state.shouldShowExpanded
+      sidebarStateProvider.select(
+        (state) => state.shouldShowExpanded
             ? UIConstants.sessionListWidth + (UIConstants.spacingMd * 2)
-            : UIConstants.sessionListCollapsedWidth + (UIConstants.spacingMd * 2)
-        )
+            : UIConstants.sessionListCollapsedWidth +
+                  (UIConstants.spacingMd * 2),
+      ),
     );
 
     // ✅ AnimatedPositioned를 유지 (애니메이션 보존)
@@ -59,20 +63,15 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
                 child: Row(
                   children: [
                     // 타이틀 영역
-                    Expanded(
-                      child: _buildTitle(context, ref, activeSessionId),
-                    ),
-
+                    Expanded(child: _buildTitle(context, ref, activeSessionId)),
                     // 통계 정보 (메시지 수 & 토큰)
                     if (activeSessionId != null)
                       _SessionStatsWidget(sessionId: activeSessionId),
-
                     // 액션 버튼들
                     if (activeSessionId != null) ...[
                       const SizedBox(width: UIConstants.spacingSm),
                       _RefreshButton(sessionId: activeSessionId),
                     ],
-
                     const _SettingsButton(),
                   ],
                 ),
@@ -90,20 +89,26 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
       gradient: AppColors.gradient,
       borderRadius: _borderRadius,
       border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withAlpha(UIConstants.alpha20),
+        color: Theme.of(
+          context,
+        ).colorScheme.outline.withAlpha(UIConstants.alpha20),
         width: 1,
       ),
     );
   }
 
   // ✅ 타이틀 빌더 메서드
-  Widget _buildTitle(BuildContext context, WidgetRef ref, int? activeSessionId) {
+  Widget _buildTitle(
+    BuildContext context,
+    WidgetRef ref,
+    int? activeSessionId,
+  ) {
     if (activeSessionId == null) {
       return Text(
         'Vibe Code',
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.bold,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
       );
     }
 
@@ -120,19 +125,19 @@ class _SessionTitleWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sessionAsync = ref.watch(sessionProvider(sessionId));
-
     return sessionAsync.when(
       data: (session) {
         if (session != null) {
           return Text(
             session.title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           );
         }
+
         return const Text('...');
       },
       loading: () => const Text('...'),
@@ -150,12 +155,12 @@ class _SessionStatsWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(activeSessionStatsProvider);
-
     return statsAsync.when(
       data: (stats) {
         if (stats.messageCount == 0) {
           return const SizedBox.shrink();
         }
+
         return _buildStatsContainer(context, stats);
       },
       loading: () => const SizedBox.shrink(),
@@ -166,7 +171,6 @@ class _SessionStatsWidget extends ConsumerWidget {
   Widget _buildStatsContainer(BuildContext context, SessionStats stats) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
-
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: UIConstants.spacingSm),
       padding: const EdgeInsets.symmetric(
@@ -174,8 +178,12 @@ class _SessionStatsWidget extends ConsumerWidget {
         vertical: UIConstants.spacingSm,
       ),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withAlpha(UIConstants.alpha30),
-        borderRadius: const BorderRadius.all(Radius.circular(UIConstants.radiusSm)),
+        color: theme.colorScheme.primaryContainer.withAlpha(
+          UIConstants.alpha30,
+        ),
+        borderRadius: const BorderRadius.all(
+          Radius.circular(UIConstants.radiusSm),
+        ),
         border: Border.all(
           color: primaryColor.withAlpha(UIConstants.alpha20),
           width: 1,
@@ -190,10 +198,10 @@ class _SessionStatsWidget extends ConsumerWidget {
             value: '${stats.messageCount}',
             color: primaryColor,
           ),
-
           // 구분선
-          _VerticalDivider(color: theme.colorScheme.outline.withAlpha(UIConstants.alpha30)),
-
+          _VerticalDivider(
+            color: theme.colorScheme.outline.withAlpha(UIConstants.alpha30),
+          ),
           // 토큰 수
           _StatItem(
             icon: Icons.token_outlined,
@@ -288,9 +296,9 @@ class _SettingsButton extends StatelessWidget {
       tooltip: '설정',
       iconSize: UIConstants.iconMd,
       onPressed: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const SettingsScreen()),
-        );
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
       },
     );
   }

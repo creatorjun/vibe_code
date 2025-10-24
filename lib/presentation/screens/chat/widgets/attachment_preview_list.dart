@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../../../data/database/app_database.dart';
 import '../../../../core/constants/ui_constants.dart';
 import 'attachment_item.dart';
@@ -22,10 +21,7 @@ class AttachmentPreviewList extends StatelessWidget {
       padding: const EdgeInsets.all(UIConstants.spacingSm),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor,
-            width: 1,
-          ),
+          bottom: BorderSide(color: Theme.of(context).dividerColor, width: 1),
         ),
       ),
       child: Column(
@@ -52,17 +48,17 @@ class AttachmentPreviewList extends StatelessWidget {
               children: attachments
                   .map(
                     (attachment) => Padding(
-                  padding: const EdgeInsets.only(
-                    right: UIConstants.spacingSm,
-                  ),
-                  child: AttachmentItem(
-                    attachment: attachment,
-                    onRemove: onRemove != null
-                        ? () => onRemove!(attachment.id)
-                        : null,
-                  ),
-                ),
-              )
+                      padding: const EdgeInsets.only(
+                        right: UIConstants.spacingSm,
+                      ),
+                      child: AttachmentItem(
+                        attachment: attachment,
+                        onRemove: onRemove != null
+                            ? () => onRemove!(attachment.id)
+                            : null,
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ),

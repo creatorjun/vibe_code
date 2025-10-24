@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../domain/providers/chat_provider.dart';
 import 'attachment_item.dart';
@@ -29,10 +28,9 @@ class AttachmentPreviewSection extends ConsumerWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context)
-                .colorScheme
-                .outlineVariant
-                .withAlpha(UIConstants.alpha30),
+            color: Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withAlpha(UIConstants.alpha30),
             width: 1,
           ),
         ),
@@ -64,25 +62,26 @@ class AttachmentPreviewSection extends ConsumerWidget {
               children: attachmentIds
                   .map(
                     (id) => Padding(
-                  padding: const EdgeInsets.only(
-                    right: UIConstants.spacingSm,
-                  ),
-                  child: FutureBuilder(
-                    future: ref
-                        .read(attachmentRepositoryProvider)
-                        .getAttachment(id),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData && snapshot.data != null) {
-                        return AttachmentItem(
-                          attachment: snapshot.data!,
-                          onRemove: () => onRemove(id),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ),
-              )
+                      padding: const EdgeInsets.only(
+                        right: UIConstants.spacingSm,
+                      ),
+                      child: FutureBuilder(
+                        future: ref
+                            .read(attachmentRepositoryProvider)
+                            .getAttachment(id),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData && snapshot.data != null) {
+                            return AttachmentItem(
+                              attachment: snapshot.data!,
+                              onRemove: () => onRemove(id),
+                            );
+                          }
+
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ),

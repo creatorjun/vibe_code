@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../../data/database/app_database.dart';
 import '../../../../domain/providers/chat_provider.dart';
 import '../../../../core/constants/ui_constants.dart';
@@ -29,7 +28,9 @@ class SessionTile extends ConsumerWidget {
         ),
         decoration: BoxDecoration(
           color: isActive
-              ? Theme.of(context).colorScheme.primary.withAlpha(UIConstants.alpha30)
+              ? Theme.of(
+                  context,
+                ).colorScheme.primary.withAlpha(UIConstants.alpha30)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(UIConstants.radiusMd),
         ),
@@ -43,10 +44,7 @@ class SessionTile extends ConsumerWidget {
           ),
           tooltip: session.title,
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: 40,
-            minHeight: 40,
-          ),
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           onPressed: () {
             ref.read(activeSessionProvider.notifier).select(session.id);
           },
@@ -61,7 +59,9 @@ class SessionTile extends ConsumerWidget {
       ),
       decoration: BoxDecoration(
         color: isActive
-            ? Theme.of(context).colorScheme.primary.withAlpha(UIConstants.alpha30)
+            ? Theme.of(
+                context,
+              ).colorScheme.primary.withAlpha(UIConstants.alpha30)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(UIConstants.radiusMd),
       ),
@@ -95,19 +95,20 @@ class SessionTile extends ConsumerWidget {
                           session.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: isActive
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                fontWeight: isActive
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         DateFormatter.formatChatTime(session.updatedAt),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontSize: 11,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(fontSize: 11),
                       ),
                     ],
                   ),
@@ -128,6 +129,7 @@ class SessionTile extends ConsumerWidget {
                     if (activeSession == session.id) {
                       ref.read(activeSessionProvider.notifier).clear();
                     }
+
                     ref.read(chatRepositoryProvider).deleteSession(session.id);
                   },
                 ),
@@ -141,7 +143,6 @@ class SessionTile extends ConsumerWidget {
 
   void showRenameDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController(text: session.title);
-
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(

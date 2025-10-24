@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../../domain/mutations/create_session_mutation.dart';
 import '../../../../domain/providers/database_provider.dart';
 import '../../../../domain/providers/sidebar_state_provider.dart';
@@ -30,7 +29,6 @@ class _SessionListState extends ConsumerState<SessionList> {
 
   void _handleSidebarStateChange(bool shouldShowExpanded) {
     _expansionTimer?.cancel();
-
     if (shouldShowExpanded) {
       _expansionTimer = Timer(UIConstants.sidebarAnimationDuration, () {
         if (mounted) {
@@ -52,11 +50,9 @@ class _SessionListState extends ConsumerState<SessionList> {
   Widget build(BuildContext context) {
     final sessionsAsync = ref.watch(chatSessionsProvider);
     final sidebarState = ref.watch(sidebarStateProvider);
-
     final displayWidth = sidebarState.shouldShowExpanded
         ? UIConstants.sessionListWidth
         : UIConstants.sessionListCollapsedWidth;
-
     final shouldShowExpanded = sidebarState.shouldShowExpanded;
 
     if (shouldShowExpanded !=
@@ -86,16 +82,14 @@ class _SessionListState extends ConsumerState<SessionList> {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surface
-                      .withAlpha(UIConstants.alpha95),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surface.withAlpha(UIConstants.alpha95),
                   borderRadius: BorderRadius.circular(UIConstants.radiusLg),
                   border: Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .outline
-                        .withAlpha(UIConstants.alpha20),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withAlpha(UIConstants.alpha20),
                     width: 1,
                   ),
                   boxShadow: [
@@ -117,7 +111,9 @@ class _SessionListState extends ConsumerState<SessionList> {
                           }
 
                           return ListView.builder(
-                            padding: const EdgeInsets.all(UIConstants.spacingSm),
+                            padding: const EdgeInsets.all(
+                              UIConstants.spacingSm,
+                            ),
                             itemCount: sessions.length,
                             itemBuilder: (context, index) {
                               return SessionTile(
@@ -128,14 +124,16 @@ class _SessionListState extends ConsumerState<SessionList> {
                             },
                           );
                         },
-                        loading: () => AdaptiveLoading(
+                        loading: () => const AdaptiveLoading(
                           message: '...',
                           size: UIConstants.iconLg + UIConstants.spacingSm,
                         ),
                         error: (error, stack) {
                           return Center(
                             child: Padding(
-                              padding: const EdgeInsets.all(UIConstants.spacingMd),
+                              padding: const EdgeInsets.all(
+                                UIConstants.spacingMd,
+                              ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -149,7 +147,9 @@ class _SessionListState extends ConsumerState<SessionList> {
                                   const SizedBox(height: UIConstants.spacingSm),
                                   Text(
                                     error.toString(),
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
@@ -176,10 +176,9 @@ class _SessionListState extends ConsumerState<SessionList> {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context)
-                .colorScheme
-                .outlineVariant
-                .withAlpha(UIConstants.alpha30),
+            color: Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withAlpha(UIConstants.alpha30),
             width: 1,
           ),
         ),
@@ -198,7 +197,7 @@ class _SessionListState extends ConsumerState<SessionList> {
           iconSize: UIConstants.iconSm,
           tooltip: '사이드바 접기',
           padding: EdgeInsets.zero,
-          constraints: BoxConstraints(
+          constraints: const BoxConstraints(
             minWidth: UIConstants.iconLg + UIConstants.spacingSm,
             minHeight: UIConstants.iconLg + UIConstants.spacingSm,
           ),
@@ -210,9 +209,9 @@ class _SessionListState extends ConsumerState<SessionList> {
         Expanded(
           child: Text(
             '대화 목록',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -221,7 +220,7 @@ class _SessionListState extends ConsumerState<SessionList> {
           iconSize: UIConstants.iconMd,
           tooltip: '새 대화',
           padding: EdgeInsets.zero,
-          constraints: BoxConstraints(
+          constraints: const BoxConstraints(
             minWidth: UIConstants.iconLg + UIConstants.spacingSm,
             minHeight: UIConstants.iconLg + UIConstants.spacingSm,
           ),
@@ -239,7 +238,7 @@ class _SessionListState extends ConsumerState<SessionList> {
         iconSize: UIConstants.iconSm,
         tooltip: '사이드바 펼치기',
         padding: EdgeInsets.zero,
-        constraints: BoxConstraints(
+        constraints: const BoxConstraints(
           minWidth: UIConstants.iconLg + UIConstants.spacingSm,
           minHeight: UIConstants.iconLg + UIConstants.spacingSm,
         ),
@@ -256,10 +255,9 @@ class _SessionListState extends ConsumerState<SessionList> {
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: Theme.of(context)
-                .colorScheme
-                .outlineVariant
-                .withAlpha(UIConstants.alpha30),
+            color: Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withAlpha(UIConstants.alpha30),
             width: 1,
           ),
         ),
@@ -279,16 +277,14 @@ class _SessionListState extends ConsumerState<SessionList> {
         child: Container(
           padding: const EdgeInsets.all(UIConstants.spacingMd),
           decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .primaryContainer
-                .withAlpha(UIConstants.alpha30),
+            color: Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withAlpha(UIConstants.alpha30),
             borderRadius: BorderRadius.circular(UIConstants.radiusMd),
             border: Border.all(
-              color: Theme.of(context)
-                  .colorScheme
-                  .primary
-                  .withAlpha(UIConstants.alpha20),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withAlpha(UIConstants.alpha20),
               width: 1,
             ),
           ),
@@ -328,7 +324,7 @@ class _SessionListState extends ConsumerState<SessionList> {
         iconSize: UIConstants.iconSm,
         tooltip: '설정',
         padding: EdgeInsets.zero,
-        constraints: BoxConstraints(
+        constraints: const BoxConstraints(
           minWidth: UIConstants.iconLg + UIConstants.spacingSm,
           minHeight: UIConstants.iconLg + UIConstants.spacingSm,
         ),
@@ -349,19 +345,17 @@ class _SessionListState extends ConsumerState<SessionList> {
               Icon(
                 Icons.chat_bubble_outline,
                 size: UIConstants.iconLg * 1.5,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withAlpha(UIConstants.alpha30),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withAlpha(UIConstants.alpha30),
               ),
               const SizedBox(height: UIConstants.spacingMd),
               Text(
                 '대화가 없습니다',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withAlpha(UIConstants.alpha60),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withAlpha(UIConstants.alpha60),
                 ),
               ),
             ],
@@ -369,14 +363,13 @@ class _SessionListState extends ConsumerState<SessionList> {
         ),
       );
     }
+
     return const SizedBox.shrink();
   }
 
   void _navigateToSettings(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const SettingsScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
   }
 }

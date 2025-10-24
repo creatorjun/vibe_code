@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../domain/providers/chat_provider.dart';
 import '../../../core/constants/ui_constants.dart';
 import '../../../core/theme/app_colors.dart';
@@ -29,15 +28,15 @@ class ChatScreen extends ConsumerWidget {
                 end: Alignment.bottomRight,
                 colors: isDarkMode
                     ? [
-                  AppColors.gradientStart.withAlpha(UIConstants.alpha30),
-                  AppColors.gradientEnd.withAlpha(UIConstants.alpha20),
-                  AppColors.darkPrimary.withAlpha(UIConstants.alpha15),
-                ]
+                        AppColors.gradientStart.withAlpha(UIConstants.alpha30),
+                        AppColors.gradientEnd.withAlpha(UIConstants.alpha20),
+                        AppColors.darkPrimary.withAlpha(UIConstants.alpha15),
+                      ]
                     : [
-                  AppColors.gradientStart.withAlpha(UIConstants.alpha15),
-                  AppColors.gradientEnd.withAlpha(UIConstants.alpha20),
-                  AppColors.lightPrimary.withAlpha(UIConstants.alpha25),
-                ],
+                        AppColors.gradientStart.withAlpha(UIConstants.alpha15),
+                        AppColors.gradientEnd.withAlpha(UIConstants.alpha20),
+                        AppColors.lightPrimary.withAlpha(UIConstants.alpha25),
+                      ],
               ),
             ),
             child: Stack(
@@ -46,7 +45,6 @@ class ChatScreen extends ConsumerWidget {
                 activeSession == null
                     ? const EmptyStateWidget()
                     : MessageList(sessionId: activeSession),
-
                 // 플로팅 입력창 (하단)
                 const Positioned(
                   bottom: 0,
@@ -54,20 +52,13 @@ class ChatScreen extends ConsumerWidget {
                   right: 0,
                   child: ChatInput(),
                 ),
-
                 // 플로팅 앱바 (상단)
                 const ChatAppBar(),
               ],
             ),
           ),
-
           // 플로팅 사이드바 (좌측 최상단)
-          const Positioned(
-            top: 0,
-            left: 0,
-            bottom: 0,
-            child: SessionList(),
-          ),
+          const Positioned(top: 0, left: 0, bottom: 0, child: SessionList()),
         ],
       ),
     );

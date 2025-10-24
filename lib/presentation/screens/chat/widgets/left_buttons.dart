@@ -55,7 +55,11 @@ class LeftButtons extends ConsumerWidget {
   }
 
   // GitHub 프로젝트 분석 기능
-  Future<void> _analyzeProject(BuildContext context, WidgetRef ref, TextEditingController controller) async {
+  Future<void> _analyzeProject(
+    BuildContext context,
+    WidgetRef ref,
+    TextEditingController controller,
+  ) async {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => const GitHubAnalysisDialog(),
@@ -112,12 +116,9 @@ class LeftButtons extends ConsumerWidget {
         IconButton(
           icon: const Icon(Icons.code),
           iconSize: UIConstants.iconMd,
-          onPressed: isSending ? null : () {
-            // TextEditingController를 전달하기 위해 chat_input.dart에서 제공받아야 합니다
-            // 임시로 빈 컨트롤러 사용
-            final tempController = TextEditingController();
-            _analyzeProject(context, ref, tempController);
-          },
+          onPressed: isSending
+              ? null
+              : () => _analyzeProject(context, ref, textController),
           tooltip: 'GitHub 프로젝트 분석',
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(

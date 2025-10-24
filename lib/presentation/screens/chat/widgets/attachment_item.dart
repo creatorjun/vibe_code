@@ -8,11 +8,7 @@ class AttachmentItem extends StatelessWidget {
   final Attachment attachment;
   final VoidCallback? onRemove;
 
-  const AttachmentItem({
-    super.key,
-    required this.attachment,
-    this.onRemove,
-  });
+  const AttachmentItem({super.key, required this.attachment, this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -22,10 +18,9 @@ class AttachmentItem extends StatelessWidget {
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(UIConstants.radiusMd),
         border: Border.all(
-          color: Theme.of(context)
-              .colorScheme
-              .outline
-              .withAlpha(UIConstants.alpha30),
+          color: Theme.of(
+            context,
+          ).colorScheme.outline.withAlpha(UIConstants.alpha30),
           width: 1,
         ),
       ),
@@ -51,7 +46,6 @@ class AttachmentItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: UIConstants.spacingMd),
-
                 // 파일 정보
                 Expanded(
                   child: Column(
@@ -62,8 +56,7 @@ class AttachmentItem extends StatelessWidget {
                         attachment.fileName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                        Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -71,22 +64,18 @@ class AttachmentItem extends StatelessWidget {
                       Text(
                         _formatFileSize(attachment.fileSize),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
+                          color: Theme.of(context).colorScheme.onSurface
                               .withAlpha(UIConstants.alpha60),
                         ),
                       ),
                     ],
                   ),
                 ),
-
                 // 삭제 버튼 공간 확보
                 const SizedBox(width: UIConstants.spacingLg),
               ],
             ),
           ),
-
           // 삭제 버튼 (오른쪽 상단)
           if (onRemove != null)
             Positioned(
@@ -101,13 +90,9 @@ class AttachmentItem extends StatelessWidget {
                     padding: const EdgeInsets.all(UIConstants.spacingXs),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.errorContainer,
-                      borderRadius:
-                      BorderRadius.circular(UIConstants.radiusMd),
+                      borderRadius: BorderRadius.circular(UIConstants.radiusMd),
                     ),
-                    child: Icon(
-                      Icons.close,
-                      size: UIConstants.iconSm,
-                    ),
+                    child: const Icon(Icons.close, size: UIConstants.iconSm),
                   ),
                 ),
               ),

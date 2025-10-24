@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../../domain/providers/database_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
 import '../../../../domain/providers/sidebar_state_provider.dart';
@@ -11,10 +10,7 @@ import 'message_bubble.dart';
 class MessageList extends ConsumerStatefulWidget {
   final int sessionId;
 
-  const MessageList({
-    super.key,
-    required this.sessionId,
-  });
+  const MessageList({super.key, required this.sessionId});
 
   @override
   ConsumerState<MessageList> createState() => _MessageListState();
@@ -67,7 +63,8 @@ class _MessageListState extends ConsumerState<MessageList> {
     // ✅ 사이드바 상태 감지
     final sidebarState = ref.watch(sidebarStateProvider);
     final sidebarWidth = sidebarState.shouldShowExpanded
-        ? UIConstants.sessionListWidth + (UIConstants.spacingMd * 2) // 패딩 포함
+        ? UIConstants.sessionListWidth +
+              (UIConstants.spacingMd * 2) // 패딩 포함
         : UIConstants.sessionListCollapsedWidth + (UIConstants.spacingMd * 2);
 
     // 메시지 변화 감지 - 스크롤
@@ -84,16 +81,16 @@ class _MessageListState extends ConsumerState<MessageList> {
     });
 
     // 입력창 높이 변화 감지 - 스크롤
-    ref.listen(
-      chatInputStateProvider.select((state) => state.height),
-          (previous, next) {
-        if (previous != next && _autoScroll) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollToBottom();
-          });
-        }
-      },
-    );
+    ref.listen(chatInputStateProvider.select((state) => state.height), (
+      previous,
+      next,
+    ) {
+      if (previous != next && _autoScroll) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToBottom();
+        });
+      }
+    });
 
     return messagesAsync.when(
       data: (messages) {
@@ -109,7 +106,7 @@ class _MessageListState extends ConsumerState<MessageList> {
         return ListView.builder(
           controller: _scrollController,
           padding: EdgeInsets.only(
-            left: sidebarWidth, // ✅ 사이드바 너비만큼 좌측 여백
+            left: sidebarWidth,
             top: UIConstants.spacingMd,
             right: UIConstants.spacingMd,
             bottom: UIConstants.spacingMd + inputHeight,
@@ -117,7 +114,6 @@ class _MessageListState extends ConsumerState<MessageList> {
           itemCount: messages.length,
           itemBuilder: (context, index) {
             final isFirstMessage = index == 0;
-
             return Padding(
               padding: EdgeInsets.only(
                 top: isFirstMessage
