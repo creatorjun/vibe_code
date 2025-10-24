@@ -4,77 +4,66 @@ import 'package:flutter/services.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 
-/// Sliver 기반 코드 스니펫 위젯 (버블과 시각적 통합)
 class CodeSnippetSliver extends StatelessWidget {
   final String code;
   final String language;
   final Color backgroundColor;
+  final bool isIntegrated;
 
   const CodeSnippetSliver({
     super.key,
     required this.code,
-    this.language = 'text',
+    required this.language,
     required this.backgroundColor,
+    this.isIntegrated = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final codeBackgroundColor = isDark
+        ? AppColors.codeBackgroundDark
+        : AppColors.codeBackgroundLight;
+
     return SliverMainAxisGroup(
       slivers: [
-        // 상단 패딩 (버블 배경색)
-        SliverToBoxAdapter(
-          child: Container(
-            height: UIConstants.spacingSm,
-            color: backgroundColor,
-          ),
-        ),
+        // Sticky 헤더
         SliverPersistentHeader(
           pinned: true,
           delegate: _CodeHeaderDelegate(
             language: language,
             code: code,
+            isIntegrated: isIntegrated,
           ),
         ),
-        SliverToBoxAdapter(
-          child: _buildCodeContent(),
-        ),
-        // 하단 패딩 (버블 배경색)
+        // 코드 본문
         SliverToBoxAdapter(
           child: Container(
-            height: UIConstants.spacingSm,
-            color: backgroundColor,
+            width: double.infinity,
+            padding: const EdgeInsets.all(UIConstants.spacingMd),
+            decoration: BoxDecoration(
+              color: codeBackgroundColor,
+              borderRadius: isIntegrated
+                  ? BorderRadius.zero
+                  : const BorderRadius.only(
+                bottomLeft: Radius.circular(UIConstants.radiusLg),
+                bottomRight: Radius.circular(UIConstants.radiusLg),
+              ),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SelectableText(
+                code,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+            ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildCodeContent() {
-    return Container(
-      constraints: const BoxConstraints(
-        minHeight: 100,
-        maxHeight: 400,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.black.withAlpha(50),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(UIConstants.radiusLg),
-          bottomRight: Radius.circular(UIConstants.radiusLg),
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SelectableText(
-          code,
-          style: const TextStyle(
-            fontFamily: 'monospace',
-            fontSize: 14,
-            color: Colors.white,
-            height: 1.6,
-          ),
-        ),
-      ),
     );
   }
 }
@@ -82,17 +71,27 @@ class CodeSnippetSliver extends StatelessWidget {
 class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String language;
   final String code;
+  final bool isIntegrated;
+
+  // ✅ AppBar 전체 높이
+  static const double _appBarTotalHeight =
+      UIConstants.spacingMd + // 16
+          UIConstants.appBarHeight + // 56
+          UIConstants.spacingMd; // 16 = 88
+
+  static const double _headerHeight = 44.0;
 
   _CodeHeaderDelegate({
     required this.language,
     required this.code,
+    this.isIntegrated = false,
   });
 
   @override
-  double get minExtent => 44;
+  double get minExtent => _headerHeight;
 
   @override
-  double get maxExtent => 44;
+  double get maxExtent => _headerHeight;
 
   @override
   Widget build(
@@ -102,19 +101,29 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
       ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // ✅ shrinkOffset이 20 이상이면 (스크롤 중) AppBar 아래로 이동
+    // 20은 임계값 (사용자가 스크롤을 시작했다고 판단)
+    final shouldAvoidAppBar = shrinkOffset > 20.0;
+    final topMargin = shouldAvoidAppBar ? _appBarTotalHeight : 0.0;
+
     return Container(
-      height: 44,
+      margin: EdgeInsets.only(top: topMargin),
+      height: _headerHeight,
       decoration: BoxDecoration(
         color: isDark
             ? Colors.black.withAlpha(230)
             : Colors.black.withAlpha(200),
-        borderRadius: const BorderRadius.only(
+        borderRadius: isIntegrated
+            ? BorderRadius.zero
+            : const BorderRadius.only(
           topLeft: Radius.circular(UIConstants.radiusLg),
           topRight: Radius.circular(UIConstants.radiusLg),
         ),
       ),
       child: ClipRRect(
-        borderRadius: const BorderRadius.only(
+        borderRadius: isIntegrated
+            ? BorderRadius.zero
+            : const BorderRadius.only(
           topLeft: Radius.circular(UIConstants.radiusLg),
           topRight: Radius.circular(UIConstants.radiusLg),
         ),
@@ -140,7 +149,7 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [AppColors.gradientStart, AppColors.gradientEnd],
         ),
         borderRadius: BorderRadius.circular(6),
@@ -177,19 +186,40 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   String _getLanguageDisplayName(String lang) {
     const languageMap = {
-      'dart': 'Dart', 'javascript': 'JavaScript', 'js': 'JavaScript',
-      'typescript': 'TypeScript', 'ts': 'TypeScript', 'python': 'Python',
-      'py': 'Python', 'java': 'Java', 'kotlin': 'Kotlin', 'swift': 'Swift',
-      'go': 'Go', 'rust': 'Rust', 'cpp': 'C++', 'c': 'C', 'csharp': 'C#',
-      'php': 'PHP', 'ruby': 'Ruby', 'html': 'HTML', 'css': 'CSS',
-      'json': 'JSON', 'yaml': 'YAML', 'xml': 'XML', 'sql': 'SQL',
-      'bash': 'Bash', 'shell': 'Shell', 'text': 'Text',
+      'dart': 'Dart',
+      'javascript': 'JavaScript',
+      'js': 'JavaScript',
+      'typescript': 'TypeScript',
+      'ts': 'TypeScript',
+      'python': 'Python',
+      'py': 'Python',
+      'java': 'Java',
+      'kotlin': 'Kotlin',
+      'swift': 'Swift',
+      'go': 'Go',
+      'rust': 'Rust',
+      'cpp': 'C++',
+      'c': 'C',
+      'csharp': 'C#',
+      'php': 'PHP',
+      'ruby': 'Ruby',
+      'html': 'HTML',
+      'css': 'CSS',
+      'json': 'JSON',
+      'yaml': 'YAML',
+      'xml': 'XML',
+      'sql': 'SQL',
+      'bash': 'Bash',
+      'shell': 'Shell',
+      'text': 'Text',
     };
     return languageMap[lang.toLowerCase()] ?? lang;
   }
 
   @override
   bool shouldRebuild(_CodeHeaderDelegate oldDelegate) {
-    return language != oldDelegate.language || code != oldDelegate.code;
+    return language != oldDelegate.language ||
+        code != oldDelegate.code ||
+        isIntegrated != oldDelegate.isIntegrated;
   }
 }
