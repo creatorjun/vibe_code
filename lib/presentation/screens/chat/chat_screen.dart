@@ -51,30 +51,16 @@ class ChatScreen extends ConsumerWidget {
             Expanded(
               child: Column(
                 children: [
-                  // 2-1. 앱바 영역 (수정된 ChatAppBar 필요)
-                  // ChatAppBar는 이제 Scaffold의 appBar가 아니므로,
-                  // 내부에서 높이를 직접 관리하고 Positioned 대신 일반 위젯으로 반환해야 합니다.
-                  const ChatAppBar(), // 내부 구현 수정 필요
-
+                  const ChatAppBar(),
                   // 2-2. 메시지 목록 영역
                   Expanded(
                     child: activeSession == null
                         ? const EmptyStateWidget()
-                    // MessageList 내부에서 sidebarWidth 관련 로직 제거 필요
-                    // 상단/하단 패딩 계산 방식 변경 필요 (AppBar, Input 높이 고려)
                         : MessageList(
                       sessionId: activeSession,
-                      // MessageList에 상단(앱바), 하단(입력창) 여백을 전달하거나
-                      // MessageList 내부에서 직접 계산하도록 수정 필요
-                      // 예: topPadding: kToolbarHeight + UIConstants.spacingMd * 2,
-                      //    bottomPadding: inputHeight + UIConstants.spacingMd * 2,
                     ),
                   ),
-
-                  // 2-3. 입력창 영역 (수정된 ChatInput 필요)
-                  // ChatInput도 Positioned 대신 일반 위젯으로 반환하고,
-                  // 내부에서 sidebarWidth 관련 margin 로직 제거 필요
-                  const ChatInput(), // 내부 구현 수정 필요
+                  const ChatInput(),
                 ],
               ),
             ),

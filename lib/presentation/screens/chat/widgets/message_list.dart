@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../domain/providers/database_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
-// import '../../../../domain/providers/sidebar_state_provider.dart'; // ✅ 제거됨
 import '../../../../domain/providers/scroll_controller_provider.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../shared/widgets/loading_indicator.dart';
@@ -23,10 +22,6 @@ class MessageList extends ConsumerWidget {
     );
     final scrollController = ref.watch(messageScrollProvider);
     final scrollNotifier = ref.read(messageScrollProvider.notifier);
-
-    // ✅ sidebarState, sidebarWidth Provider 감시 로직 제거
-    // final sidebarState = ref.watch(sidebarStateProvider);
-    // final sidebarWidth = ...
 
     // 메시지 변화 감지 - 스크롤
     ref.listen(sessionMessagesProvider(sessionId), (previous, next) {
@@ -68,21 +63,9 @@ class MessageList extends ConsumerWidget {
           controller: scrollController,
           slivers: [
             // 상단 패딩
-            SliverPadding(
-              padding: EdgeInsets.only(
-                top: kToolbarHeight + (UIConstants.spacingMd * 2),
-              ),
-            ),
-            // 메시지 렌더링
             ...messages.expand((message) {
               return MessageBubble(message: message).buildAsSliver(context);
             }),
-            // 하단 패딩
-            SliverPadding(
-              padding: EdgeInsets.only(
-                bottom: inputHeight + (UIConstants.spacingMd * 2),
-              ),
-            ),
           ],
         );
       },

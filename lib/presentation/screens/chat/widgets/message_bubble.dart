@@ -41,8 +41,11 @@ class MessageBubble extends StatelessWidget {
       SliverMainAxisGroup(
         slivers: [
           // 상단 헤더 (복사 버튼 포함)
-          SliverToBoxAdapter(
-            child: _buildAiHeader(context, bubbleColor, isDark),
+          SliverPadding(
+            padding: EdgeInsets.only(right: UIConstants.spacingMd),
+            sliver: SliverToBoxAdapter(
+              child: _buildAiHeader(context, bubbleColor, isDark),
+            ),
           ),
 
           // 본문 파트들
@@ -61,11 +64,6 @@ class MessageBubble extends StatelessWidget {
   Widget _buildAiHeader(BuildContext context, Color bubbleColor, bool isDark) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(
-        left: UIConstants.spacingMd,
-        right: UIConstants.spacingMd,
-        top: UIConstants.spacingSm,
-      ),
       padding: const EdgeInsets.symmetric(
         horizontal: UIConstants.spacingMd,
         vertical: UIConstants.spacingSm,
@@ -134,26 +132,23 @@ class MessageBubble extends StatelessWidget {
 
     for (int i = 0; i < parts.length; i++) {
       final part = parts[i];
-      final isLastPart = i == parts.length - 1;
 
       if (part is TextPart) {
-        // 텍스트 파트 - 다음이 코드면 하단 패딩 0
-        final hasCodeNext = i < parts.length - 1 && parts[i + 1] is CodePart;
 
         slivers.add(
-          SliverToBoxAdapter(
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(
-                horizontal: UIConstants.spacingMd,
-              ),
-              padding: EdgeInsets.all(UIConstants.spacingMd),
-              decoration: BoxDecoration(color: bubbleColor),
-              child: SelectableText(
-                part.content,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: isDark ? Colors.white : Colors.black87,
-                  height: 1.6,
+          SliverPadding(
+            padding: EdgeInsets.only(right: UIConstants.spacingMd),
+            sliver: SliverToBoxAdapter(
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(UIConstants.spacingMd),
+                decoration: BoxDecoration(color: bubbleColor),
+                child: SelectableText(
+                  part.content,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: isDark ? Colors.white : Colors.black87,
+                    height: 1.6,
+                  ),
                 ),
               ),
             ),
@@ -164,18 +159,11 @@ class MessageBubble extends StatelessWidget {
         final hasTextBefore = i > 0 && parts[i - 1] is TextPart;
 
         slivers.add(
-          SliverPadding(
-            padding: EdgeInsets.only(
-              left: UIConstants.spacingMd,
-              right: UIConstants.spacingMd,
-              top: hasTextBefore ? 0 : UIConstants.spacingSm, // 조건부 마진
-            ),
-            sliver: CodeSnippetSliver(
-              code: part.code,
-              language: part.language,
-              backgroundColor: bubbleColor,
-              isIntegrated: true,
-            ),
+          CodeSnippetSliver(
+            code: part.code,
+            language: part.language,
+            backgroundColor: bubbleColor,
+            isIntegrated: true,
           ),
         );
       }
@@ -186,8 +174,8 @@ class MessageBubble extends StatelessWidget {
 
   Widget _buildAiFooter(BuildContext context, Color bubbleColor) {
     return Container(
+      margin: EdgeInsets.only(right: UIConstants.spacingMd),
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: UIConstants.spacingMd),
       height: UIConstants.spacingSm,
       decoration: BoxDecoration(
         color: bubbleColor,
