@@ -20,7 +20,9 @@ class ChatScreen extends ConsumerWidget {
     return Scaffold(
       body: Stack(
         children: [
-          // 메인 영역 - 전체 화면 (그래디언트 배경)
+          // 1. 메인 영역 - (그래디언트 배경)
+          // (기존 Container(child: Stack(...)) 구조에서
+          // 배경 Container를 Stack의 맨 아래 레이어로 변경)
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -28,36 +30,40 @@ class ChatScreen extends ConsumerWidget {
                 end: Alignment.bottomRight,
                 colors: isDarkMode
                     ? [
-                        AppColors.gradientStart.withAlpha(UIConstants.alpha30),
-                        AppColors.gradientEnd.withAlpha(UIConstants.alpha20),
-                        AppColors.darkPrimary.withAlpha(UIConstants.alpha15),
-                      ]
+                  AppColors.gradientStart.withAlpha(UIConstants.alpha30),
+                  AppColors.gradientEnd.withAlpha(UIConstants.alpha20),
+                  AppColors.darkPrimary.withAlpha(UIConstants.alpha15),
+                ]
                     : [
-                        AppColors.gradientStart.withAlpha(UIConstants.alpha15),
-                        AppColors.gradientEnd.withAlpha(UIConstants.alpha20),
-                        AppColors.lightPrimary.withAlpha(UIConstants.alpha25),
-                      ],
+                  AppColors.gradientStart.withAlpha(UIConstants.alpha15),
+                  AppColors.gradientEnd.withAlpha(UIConstants.alpha20),
+                  AppColors.lightPrimary.withAlpha(UIConstants.alpha25),
+                ],
               ),
             ),
-            child: Stack(
-              children: [
-                // 메인 콘텐츠 (전체 화면)
-                activeSession == null
-                    ? const EmptyStateWidget()
-                    : MessageList(sessionId: activeSession),
-                // 플로팅 입력창 (하단)
-                const Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: ChatInput(),
-                ),
-                // 플로팅 앱바 (상단)
-                const ChatAppBar(),
-              ],
-            ),
           ),
-          // 플로팅 사이드바 (좌측 최상단)
+
+          // 2. 메인 콘텐츠 (배경 위)
+          // (기존 nested Stack에서 메인 Stack으로 이동)
+          activeSession == null
+              ? const EmptyStateWidget()
+              : MessageList(sessionId: activeSession),
+
+          // 3. 플로팅 입력창 (하단)
+          // (기존 nested Stack에서 메인 Stack으로 이동)
+          const Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: ChatInput(),
+          ),
+
+          // 4. 플로팅 앱바 (상단)
+          // (기존 nested Stack에서 메인 Stack으로 이동)
+          const ChatAppBar(),
+
+          // 5. 플로팅 사이드바 (좌측 최상단)
+          // (기존과 동일)
           const Positioned(top: 0, left: 0, bottom: 0, child: SessionList()),
         ],
       ),

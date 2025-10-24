@@ -1,3 +1,4 @@
+// lib/presentation/screens/chat/widgets/message_bubble.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../data/database/app_database.dart';
@@ -10,10 +11,7 @@ import 'code_snippet_widget.dart';
 class MessageBubble extends StatelessWidget {
   final Message message;
 
-  const MessageBubble({
-    super.key,
-    required this.message,
-  });
+  const MessageBubble({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -27,80 +25,121 @@ class MessageBubble extends StatelessWidget {
     if (!isUser) {
       return _buildAiMessageSlivers(context);
     } else {
-      return [
-        SliverToBoxAdapter(
-          child: _buildUserMessage(context),
-        ),
-      ];
+      return [SliverToBoxAdapter(child: _buildUserMessage(context))];
     }
   }
 
   List<Widget> _buildAiMessageSlivers(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final parts = MarkdownParser.parseMessage(message.content);
-    final slivers = <Widget>[];
-    final bubbleColor =
-    isDark ? AppColors.aiBubbleDark : AppColors.aiBubbleLight;
+    final bubbleColor = isDark
+        ? AppColors.aiBubbleDark
+        : AppColors.aiBubbleLight;
 
-    // 복사 버튼이 있는 상단
-    slivers.add(
-      SliverToBoxAdapter(
-        child: Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(
-            left: UIConstants.spacingMd,
-            right: UIConstants.spacingMd,
-            top: UIConstants.spacingSm,
+    // AI 메시지를 하나의 그룹으로 묶기
+    return [
+      SliverMainAxisGroup(
+        slivers: [
+          // 상단 헤더 (복사 버튼 포함)
+          SliverToBoxAdapter(
+            child: _buildAiHeader(context, bubbleColor, isDark),
           ),
-          padding: const EdgeInsets.only(
-            left: UIConstants.spacingMd,
-            right: UIConstants.spacingMd,
-            top: UIConstants.spacingSm,
-          ),
-          decoration: BoxDecoration(
-            color: bubbleColor,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(UIConstants.radiusLg),
-              topRight: Radius.circular(UIConstants.radiusLg),
-            ),
-          ),
-          child: Row(
-            children: [
-              const Spacer(),
-              InkWell(
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: message.content));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('복사되었습니다'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(UIConstants.radiusSm),
-                child: Padding(
-                  padding: const EdgeInsets.all(UIConstants.spacingXs),
-                  child: Icon(
-                    Icons.copy,
-                    size: UIConstants.iconSm,
-                    color: isDark
-                        ? Colors.white.withAlpha(UIConstants.alpha70)
-                        : Colors.black54,
-                  ),
-                ),
-              ),
-            ],
-          ),
+
+          // 본문 파트들
+          ..._buildContentSlivers(context, parts, bubbleColor, isDark),
+
+          // 하단 푸터 (라운딩)
+          SliverToBoxAdapter(child: _buildAiFooter(context, bubbleColor)),
+
+          // 타임스탬프
+          SliverToBoxAdapter(child: _buildTimestamp(context)),
+        ],
+      ),
+    ];
+  }
+
+  Widget _buildAiHeader(BuildContext context, Color bubbleColor, bool isDark) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(
+        left: UIConstants.spacingMd,
+        right: UIConstants.spacingMd,
+        top: UIConstants.spacingSm,
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: UIConstants.spacingMd,
+        vertical: UIConstants.spacingSm,
+      ),
+      decoration: BoxDecoration(
+        color: bubbleColor,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(UIConstants.radiusLg),
+          topRight: Radius.circular(UIConstants.radiusLg),
         ),
       ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              gradient: AppColors.gradient,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.smart_toy, size: 16, color: Colors.white),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'AI Assistant',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+          const Spacer(),
+          InkWell(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: message.content));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('전체 내용이 복사되었습니다'),
+                  duration: Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+            child: Padding(
+              padding: const EdgeInsets.all(UIConstants.spacingXs),
+              child: Icon(
+                Icons.copy_all,
+                size: UIConstants.iconSm,
+                color: isDark
+                    ? Colors.white.withAlpha(UIConstants.alpha70)
+                    : Colors.black54,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
 
-    // 본문 파트들 - 여백 0으로 완전 통합
+  List<Widget> _buildContentSlivers(
+    BuildContext context,
+    List<dynamic> parts,
+    Color bubbleColor,
+    bool isDark,
+  ) {
+    final slivers = <Widget>[];
+
     for (int i = 0; i < parts.length; i++) {
       final part = parts[i];
+      final isLastPart = i == parts.length - 1;
 
       if (part is TextPart) {
-        // 텍스트 파트 - 버블 배경 유지, 여백 0
+        // 텍스트 파트 - 다음이 코드면 하단 패딩 0
+        final hasCodeNext = i < parts.length - 1 && parts[i + 1] is CodePart;
+
         slivers.add(
           SliverToBoxAdapter(
             child: Container(
@@ -108,88 +147,77 @@ class MessageBubble extends StatelessWidget {
               margin: const EdgeInsets.symmetric(
                 horizontal: UIConstants.spacingMd,
               ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: UIConstants.spacingMd,
-                vertical: UIConstants.spacingSm,
-              ),
-              decoration: BoxDecoration(
-                color: bubbleColor,
-              ),
+              padding: EdgeInsets.all(UIConstants.spacingMd),
+              decoration: BoxDecoration(color: bubbleColor),
               child: SelectableText(
                 part.content,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: isDark ? Colors.white : Colors.black87,
+                  height: 1.6,
                 ),
               ),
             ),
           ),
         );
       } else if (part is CodePart) {
-        // 코드 블록 - 여백 0, 라운딩 없음 (완전 통합)
+        // 코드 블록 직전에 텍스트가 있으면 마진 제거
+        final hasTextBefore = i > 0 && parts[i - 1] is TextPart;
+
         slivers.add(
           SliverPadding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: UIConstants.spacingMd,
+            padding: EdgeInsets.only(
+              left: UIConstants.spacingMd,
+              right: UIConstants.spacingMd,
+              top: hasTextBefore ? 0 : UIConstants.spacingSm, // 조건부 마진
             ),
             sliver: CodeSnippetSliver(
               code: part.code,
               language: part.language,
               backgroundColor: bubbleColor,
-              isIntegrated: true, // ✅ 통합 모드 활성화
+              isIntegrated: true,
             ),
           ),
         );
       }
     }
 
-    // 하단 라운딩
-    slivers.add(
-      SliverToBoxAdapter(
-        child: Container(
-          width: double.infinity,
-          margin: const EdgeInsets.symmetric(
-            horizontal: UIConstants.spacingMd,
-          ),
-          padding: const EdgeInsets.only(
-            bottom: UIConstants.spacingSm,
-          ),
-          decoration: BoxDecoration(
-            color: bubbleColor,
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(UIConstants.radiusLg),
-              bottomRight: Radius.circular(UIConstants.radiusLg),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    // 타임스탬프
-    slivers.add(
-      SliverToBoxAdapter(
-        child: Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(
-            left: UIConstants.spacingMd,
-            right: UIConstants.spacingMd,
-            bottom: UIConstants.spacingSm,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            DateFormatter.formatMessageTime(message.createdAt),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.color
-                  ?.withAlpha(UIConstants.alpha70),
-            ),
-          ),
-        ),
-      ),
-    );
-
     return slivers;
+  }
+
+  Widget _buildAiFooter(BuildContext context, Color bubbleColor) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: UIConstants.spacingMd),
+      height: UIConstants.spacingSm,
+      decoration: BoxDecoration(
+        color: bubbleColor,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(UIConstants.radiusLg),
+          bottomRight: Radius.circular(UIConstants.radiusLg),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimestamp(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(
+        left: UIConstants.spacingMd,
+        right: UIConstants.spacingMd,
+        bottom: UIConstants.spacingSm,
+      ),
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.only(left: UIConstants.spacingXs),
+      child: Text(
+        DateFormatter.formatMessageTime(message.createdAt),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(
+            context,
+          ).textTheme.bodySmall?.color?.withAlpha(UIConstants.alpha70),
+        ),
+      ),
+    );
   }
 
   Widget _buildUserMessage(BuildContext context) {
@@ -197,13 +225,11 @@ class MessageBubble extends StatelessWidget {
   }
 }
 
-// 새로운 사용자 메시지 버블 위젯
+// 사용자 메시지 버블 위젯 (기존 유지)
 class _UserMessageBubble extends StatefulWidget {
   final Message message;
 
-  const _UserMessageBubble({
-    required this.message,
-  });
+  const _UserMessageBubble({required this.message});
 
   @override
   State<_UserMessageBubble> createState() => _UserMessageBubbleState();
@@ -254,7 +280,9 @@ class _UserMessageBubbleState extends State<_UserMessageBubble> {
                 borderRadius: BorderRadius.circular(UIConstants.radiusLg),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.gradientStart.withAlpha(UIConstants.alpha30),
+                    color: AppColors.gradientStart.withAlpha(
+                      UIConstants.alpha30,
+                    ),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -272,7 +300,6 @@ class _UserMessageBubbleState extends State<_UserMessageBubble> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-
                   // 확장/축소 버튼
                   if (_needsExpansion) ...[
                     const SizedBox(height: UIConstants.spacingXs),
@@ -293,10 +320,13 @@ class _UserMessageBubbleState extends State<_UserMessageBubble> {
                           children: [
                             Text(
                               _isExpanded ? '접기' : '더보기',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.white.withAlpha(UIConstants.alpha90),
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Colors.white.withAlpha(
+                                      UIConstants.alpha90,
+                                    ),
+                                    fontWeight: FontWeight.w600,
+                                  ),
                             ),
                             const SizedBox(width: 2),
                             Icon(
@@ -304,7 +334,9 @@ class _UserMessageBubbleState extends State<_UserMessageBubble> {
                                   ? Icons.keyboard_arrow_up
                                   : Icons.keyboard_arrow_down,
                               size: UIConstants.iconSm,
-                              color: Colors.white.withAlpha(UIConstants.alpha90),
+                              color: Colors.white.withAlpha(
+                                UIConstants.alpha90,
+                              ),
                             ),
                           ],
                         ),
@@ -314,7 +346,6 @@ class _UserMessageBubbleState extends State<_UserMessageBubble> {
                 ],
               ),
             ),
-
             // 타임스탬프
             const SizedBox(height: UIConstants.spacingXs),
             Padding(
@@ -324,11 +355,9 @@ class _UserMessageBubbleState extends State<_UserMessageBubble> {
               child: Text(
                 DateFormatter.formatMessageTime(widget.message.createdAt),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.color
-                      ?.withAlpha(UIConstants.alpha70),
+                  color: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.color?.withAlpha(UIConstants.alpha70),
                 ),
               ),
             ),

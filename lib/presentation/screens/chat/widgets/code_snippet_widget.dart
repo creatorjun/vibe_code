@@ -1,4 +1,4 @@
-import 'dart:ui';
+// lib/presentation/screens/chat/widgets/code_snippet_widget.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/constants/ui_constants.dart';
@@ -27,7 +27,7 @@ class CodeSnippetSliver extends StatelessWidget {
 
     return SliverMainAxisGroup(
       slivers: [
-        // Sticky 헤더
+        // 스티키 헤더
         SliverPersistentHeader(
           pinned: true,
           delegate: _CodeHeaderDelegate(
@@ -36,6 +36,7 @@ class CodeSnippetSliver extends StatelessWidget {
             isIntegrated: isIntegrated,
           ),
         ),
+
         // 코드 본문
         SliverToBoxAdapter(
           child: Container(
@@ -43,21 +44,16 @@ class CodeSnippetSliver extends StatelessWidget {
             padding: const EdgeInsets.all(UIConstants.spacingMd),
             decoration: BoxDecoration(
               color: codeBackgroundColor,
-              borderRadius: isIntegrated
-                  ? BorderRadius.zero
-                  : const BorderRadius.only(
-                bottomLeft: Radius.circular(UIConstants.radiusLg),
-                bottomRight: Radius.circular(UIConstants.radiusLg),
-              ),
             ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SelectableText(
                 code,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'monospace',
                   fontSize: 13,
                   height: 1.5,
+                  color: isDark ? Colors.white.withAlpha(230) : Colors.black87,
                 ),
               ),
             ),
@@ -73,18 +69,12 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String code;
   final bool isIntegrated;
 
-  // ✅ AppBar 전체 높이
-  static const double _appBarTotalHeight =
-      UIConstants.spacingMd + // 16
-          UIConstants.appBarHeight + // 56
-          UIConstants.spacingMd; // 16 = 88
-
   static const double _headerHeight = 44.0;
 
   _CodeHeaderDelegate({
     required this.language,
     required this.code,
-    this.isIntegrated = false,
+    required this.isIntegrated,
   });
 
   @override
@@ -101,51 +91,79 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
       ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // ✅ shrinkOffset이 20 이상이면 (스크롤 중) AppBar 아래로 이동
-    // 20은 임계값 (사용자가 스크롤을 시작했다고 판단)
-    final shouldAvoidAppBar = shrinkOffset > 20.0;
-    final topMargin = shouldAvoidAppBar ? _appBarTotalHeight : 0.0;
-
     return Container(
-      margin: EdgeInsets.only(top: topMargin),
       height: _headerHeight,
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.black.withAlpha(230)
-            : Colors.black.withAlpha(200),
-        borderRadius: isIntegrated
-            ? BorderRadius.zero
-            : const BorderRadius.only(
-          topLeft: Radius.circular(UIConstants.radiusLg),
-          topRight: Radius.circular(UIConstants.radiusLg),
-        ),
+        color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFF2D2D2D),
       ),
-      child: ClipRRect(
-        borderRadius: isIntegrated
-            ? BorderRadius.zero
-            : const BorderRadius.only(
-          topLeft: Radius.circular(UIConstants.radiusLg),
-          topRight: Radius.circular(UIConstants.radiusLg),
-        ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Row(
-            children: [
-              const SizedBox(width: 16),
-              _buildLanguageTag(),
-              const Spacer(),
-              _buildCopyButton(context),
-              const SizedBox(width: 12),
-            ],
-          ),
-        ),
+      child: _CodeHeader(
+        language: language,
+        code: code,
       ),
     );
   }
 
-  Widget _buildLanguageTag() {
-    final displayLanguage = _getLanguageDisplayName(language);
+  @override
+  bool shouldRebuild(_CodeHeaderDelegate oldDelegate) {
+    return language != oldDelegate.language ||
+        code != oldDelegate.code ||
+        isIntegrated != oldDelegate.isIntegrated;
+  }
+}
 
+class _CodeHeader extends StatefulWidget {
+  final String language;
+  final String code;
+
+  const _CodeHeader({
+    required this.language,
+    required this.code,
+  });
+
+  @override
+  State<_CodeHeader> createState() => _CodeHeaderState();
+}
+
+class _CodeHeaderState extends State<_CodeHeader> {
+  bool _isCopied = false;
+
+  void _copyToClipboard() async {
+    await Clipboard.setData(ClipboardData(text: widget.code));
+    setState(() => _isCopied = true);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('코드 복사 완료'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+
+    // 2초 후 아이콘 원래대로
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _isCopied = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const SizedBox(width: 16),
+        _buildLanguageTag(),
+        const Spacer(),
+        _buildCopyButton(),
+        const SizedBox(width: 12),
+      ],
+    );
+  }
+
+  Widget _buildLanguageTag() {
+    final displayLanguage = _getLanguageDisplayName(widget.language);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -154,33 +172,58 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
         ),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(
-        displayLanguage.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.code,
+            size: 14,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            displayLanguage.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildCopyButton(BuildContext context) {
-    return IconButton(
-      icon: const Icon(Icons.copy_outlined, size: 18, color: Colors.white70),
-      onPressed: () {
-        Clipboard.setData(ClipboardData(text: code));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('코드 복사 완료'),
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
+  Widget _buildCopyButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _copyToClipboard,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _isCopied ? Icons.check_circle : Icons.content_copy,
+                size: 16,
+                color: _isCopied ? Colors.greenAccent : Colors.white70,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _isCopied ? '복사됨!' : '복사',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _isCopied ? Colors.greenAccent : Colors.white70,
+                ),
+              ),
+            ],
           ),
-        );
-      },
-      tooltip: '복사',
-      padding: const EdgeInsets.all(8),
-      constraints: const BoxConstraints(),
+        ),
+      ),
     );
   }
 
@@ -214,12 +257,5 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
       'text': 'Text',
     };
     return languageMap[lang.toLowerCase()] ?? lang;
-  }
-
-  @override
-  bool shouldRebuild(_CodeHeaderDelegate oldDelegate) {
-    return language != oldDelegate.language ||
-        code != oldDelegate.code ||
-        isIntegrated != oldDelegate.isIntegrated;
   }
 }
