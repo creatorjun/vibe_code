@@ -8,10 +8,11 @@ import '../../../../domain/providers/chat_provider.dart';
 import '../../../../domain/providers/database_provider.dart';
 import '../../../../domain/providers/session_stats_provider.dart';
 import '../../../../core/constants/ui_constants.dart';
-import '../../../../domain/providers/sidebar_state_provider.dart';
+// import '../../../../domain/providers/sidebar_state_provider.dart'; // ✅ 제거됨
 import '../../settings/settings_screen.dart';
 
-class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
+// ✅ 'implements PreferredSizeWidget' 제거
+class ChatAppBar extends ConsumerWidget {
   const ChatAppBar({super.key});
 
   // ✅ 캐싱된 상수 (UIConstants 적용)
@@ -26,30 +27,27 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
     horizontal: UIConstants.spacingMd,
   );
 
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  // ✅ 'preferredSize' getter 제거
+  // @override
+  // Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeSessionId = ref.watch(activeSessionProvider);
 
-    // ✅ Provider 감시 최적화 (.select() 사용)
-    final sidebarWidth = ref.watch(
-      sidebarStateProvider.select(
-        (state) => state.shouldShowExpanded
-            ? UIConstants.sessionListWidth + (UIConstants.spacingMd * 2)
-            : UIConstants.sessionListCollapsedWidth +
-                  (UIConstants.spacingMd * 2),
-      ),
-    );
+    // ✅ sidebarWidth Provider 감시 로직 제거
+    // final sidebarWidth = ref.watch(...);
 
-    // ✅ AnimatedPositioned를 유지 (애니메이션 보존)
-    return AnimatedPositioned(
-      duration: UIConstants.sidebarAnimationDuration,
-      curve: Curves.easeInOut,
-      top: UIConstants.spacingMd,
-      left: sidebarWidth,
-      right: UIConstants.spacingMd,
+    // ✅ AnimatedPositioned를 Padding으로 변경
+    return Padding(
+      // ✅ Stack의 Positioned 대신 Padding으로 여백 지정
+      //    left는 Column 내부이므로 0, top과 right는 기존 값 유지
+      padding: const EdgeInsets.fromLTRB(
+        0, // ✅ left: 0 (Column 내부에 위치)
+        UIConstants.spacingMd, // ✅ top
+        UIConstants.spacingMd, // ✅ right
+        0,
+      ),
       child: RepaintBoundary(
         child: ClipRRect(
           borderRadius: _borderRadius,
@@ -99,10 +97,10 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
 
   // ✅ 타이틀 빌더 메서드
   Widget _buildTitle(
-    BuildContext context,
-    WidgetRef ref,
-    int? activeSessionId,
-  ) {
+      BuildContext context,
+      WidgetRef ref,
+      int? activeSessionId,
+      ) {
     if (activeSessionId == null) {
       return Text(
         'Vibe Code',

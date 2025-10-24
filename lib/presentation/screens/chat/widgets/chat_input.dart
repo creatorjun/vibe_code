@@ -10,7 +10,7 @@ import '../../../../domain/mutations/create_session_mutation.dart';
 import '../../../../domain/mutations/send_message_mutation.dart';
 import '../../../../domain/providers/chat_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
-import '../../../../domain/providers/sidebar_state_provider.dart';
+// import '../../../../domain/providers/sidebar_state_provider.dart'; // ✅ 제거됨
 import '../../../shared/widgets/error_dialog.dart';
 import 'attachment_preview_section.dart';
 import 'chat_text_field.dart';
@@ -81,7 +81,7 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final renderBox =
-          _containerKey.currentContext?.findRenderObject() as RenderBox?;
+      _containerKey.currentContext?.findRenderObject() as RenderBox?;
       if (renderBox != null) {
         ref
             .read(chatInputStateProvider.notifier)
@@ -124,10 +124,10 @@ class _ChatInputState extends ConsumerState<ChatInput> {
       await ref
           .read(sendMessageMutationProvider.notifier)
           .sendMessage(
-            sessionId: sessionId,
-            content: content.isEmpty ? '첨부파일' : content,
-            attachmentIds: attachmentIds,
-          );
+        sessionId: sessionId,
+        content: content.isEmpty ? '첨부파일' : content,
+        attachmentIds: attachmentIds,
+      );
     } catch (e, stackTrace) {
       Logger.error('Send message mutation failed', e, stackTrace);
       if (mounted) {
@@ -162,29 +162,26 @@ class _ChatInputState extends ConsumerState<ChatInput> {
       sendMessageMutationProvider.select((state) => state.status),
     );
     final inputState = ref.watch(chatInputStateProvider);
-    final sidebarWidth = ref.watch(
-      sidebarStateProvider.select(
-        (state) => state.shouldShowExpanded
-            ? UIConstants.sessionListWidth + (UIConstants.spacingMd * 2)
-            : UIConstants.sessionListCollapsedWidth +
-                  (UIConstants.spacingMd * 2),
-      ),
-    );
+    // ✅ sidebarWidth Provider 감시 로직 제거
+    // final sidebarWidth = ref.watch(...);
 
     final isSending =
         sendStatus == SendMessageStatus.sending ||
-        sendStatus == SendMessageStatus.streaming;
+            sendStatus == SendMessageStatus.streaming;
 
     return RepaintBoundary(
-      child: AnimatedContainer(
+      // ✅ AnimatedContainer를 Container로 변경 (애니메이션 불필요)
+      child: Container(
         key: _containerKey,
-        duration: UIConstants.sidebarAnimationDuration,
-        curve: Curves.easeInOut,
-        margin: EdgeInsets.fromLTRB(
-          sidebarWidth,
-          UIConstants.spacingMd,
-          UIConstants.spacingMd,
-          UIConstants.spacingMd,
+        // ✅ duration, curve 제거
+        // duration: UIConstants.sidebarAnimationDuration,
+        // curve: Curves.easeInOut,
+        // ✅ margin에서 sidebarWidth 제거, left를 0으로 설정
+        margin: const EdgeInsets.fromLTRB(
+          0, // ✅ left: 0 (Column 내부에 위치)
+          UIConstants.spacingMd, // ✅ top
+          UIConstants.spacingMd, // ✅ right
+          UIConstants.spacingMd, // ✅ bottom
         ),
         decoration: _buildContainerDecoration(context),
         child: ClipRRect(
