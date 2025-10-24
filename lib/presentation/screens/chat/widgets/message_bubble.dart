@@ -74,7 +74,7 @@ class MessageBubble extends StatelessWidget {
                               ?.color,
                         ),
                       ),
-                      if (!isUser) ...[
+                      ...[
                         const SizedBox(width: UIConstants.spacingSm),
                         InkWell(
                           onTap: () {

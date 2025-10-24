@@ -1,10 +1,8 @@
 // lib/presentation/screens/chat/widgets/chat_input.dart
 
-import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../../../core/utils/logger.dart';
@@ -16,7 +14,6 @@ import '../../../../domain/providers/sidebar_state_provider.dart';
 import '../../../shared/widgets/error_dialog.dart';
 import 'attachment_preview_section.dart';
 import 'chat_text_field.dart';
-import 'github_analysis_dialog.dart';
 import 'left_buttons.dart';
 import 'right_buttons.dart';
 
@@ -142,75 +139,6 @@ class _ChatInputState extends ConsumerState {
     }
   }
 
-  // ✅ 파일 선택 최적화 (try-catch-finally 패턴)
-  Future<void> _pickFile() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(allowMultiple: false);
-      if (result == null || result.files.isEmpty) return;
-
-      final file = result.files.first;
-      if (file.path == null) return;
-
-      Logger.info('Uploading file: ${file.path}');
-      final repository = ref.read(attachmentRepositoryProvider);
-      final attachmentId = await repository.uploadFile(file.path!);
-      Logger.info('File uploaded successfully: $attachmentId');
-
-      if (mounted) {
-        ref.read(chatInputStateProvider.notifier).addAttachment(attachmentId);
-      }
-    } catch (e) {
-      if (mounted) {
-        await ErrorDialog.show(
-          context: context,
-          title: '파일 첨부 실패',
-          message: ErrorHandler.getErrorMessage(e),
-        );
-      }
-    } finally {
-      _requestFocus();
-    }
-  }
-
-  // ✅ 프로젝트 분석 최적화
-  Future<void> _analyzeProject() async {
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => const GitHubAnalysisDialog(),
-    );
-
-    if (result == null || !mounted) {
-      _requestFocus();
-      return;
-    }
-
-    Directory? tempDir;
-    try {
-      tempDir = Directory.systemTemp.createTempSync('github_analysis_');
-      final file = File('${tempDir.path}/github_analysis.md');
-      await file.writeAsString(result);
-
-      final repository = ref.read(attachmentRepositoryProvider);
-      final attachmentId = await repository.uploadFile(file.path);
-
-      if (mounted) {
-        ref.read(chatInputStateProvider.notifier).addAttachment(attachmentId);
-        _controller.text = '프로젝트 분석 결과를 요약해주세요.';
-      }
-    } catch (e) {
-      if (mounted) {
-        await ErrorDialog.show(
-          context: context,
-          title: '분석 결과 첨부 실패',
-          message: ErrorHandler.getErrorMessage(e),
-        );
-      }
-    } finally {
-      await tempDir?.delete(recursive: true);
-      _requestFocus();
-    }
-  }
-
   // ✅ 첨부파일 제거 최적화
   void _removeAttachment(String attachmentId) {
     ref.read(chatInputStateProvider.notifier).removeAttachment(attachmentId);
@@ -295,9 +223,10 @@ class _ChatInputState extends ConsumerState {
                             children: [
                               LeftButtons(
                                 isSending: isSending,
-                                onPickFile: _pickFile,
-                                onAnalyzeProject: _analyzeProject,
+                                onRequestFocus: _requestFocus,
+                                textController: _controller,
                               ),
+
                               // 오른쪽 버튼 섹션 (파이프라인 + 프리셋 + 전송 버튼)
                               RightButtons(
                                 isSending: isSending,
