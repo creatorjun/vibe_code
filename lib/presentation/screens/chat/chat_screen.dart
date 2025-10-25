@@ -1,5 +1,4 @@
 // lib/presentation/screens/chat/chat_screen.dart
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +15,6 @@ import 'widgets/chat_state_bar.dart';
 import 'widgets/message_bubble.dart';
 import 'widgets/session_list.dart';
 
-/// 채팅 화면 메인
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
 
@@ -25,20 +23,19 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
-  int? _previousSessionId;
-  Timer? _scrollDebounce;
-  double _prevKeyboardHeight = 0;
-  double _prevInputHeight = 0;
+  int? previousSessionId;
+  Timer? scrollDebounce;
+  double prevKeyboardHeight = 0;
+  double prevInputHeight = 0;
 
   @override
   void dispose() {
-    _scrollDebounce?.cancel();
+    scrollDebounce?.cancel();
     super.dispose();
   }
 
-  void _scrollToBottom(ScrollController controller) {
+  void scrollToBottom(ScrollController controller) {
     if (!controller.hasClients) return;
-
     controller.animateTo(
       controller.position.maxScrollExtent,
       duration: UIConstants.scrollDuration,
@@ -48,25 +45,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sidebarState = ref.watch(sidebarStateProvider);
-    final activeSessionId = ref.watch(activeSessionProvider);
+    // 최적화: select를 사용하여 필요한 값만 구독
+    final shouldShowExpanded = ref.watch(
+      sidebarStateProvider.select((state) => state.shouldShowExpanded),
+    );
+    final activeSessionId = ref.watch(
+      activeSessionProvider.select((id) => id),
+    );
+
     final messagesAsync = activeSessionId != null
         ? ref.watch(sessionMessagesProvider(activeSessionId))
         : const AsyncValue.data(<Message>[]);
+
     final scrollController = ref.watch(messageScrollProvider);
 
+    // 키보드와 입력 높이 변화 감지
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    final inputHeight = ref.watch(chatInputStateProvider.select((s) => s.height));
+    final inputHeight = ref.watch(
+      chatInputStateProvider.select((s) => s.height),
+    );
 
-    // 세션 변경 감지 및 스크롤
-    if (activeSessionId != _previousSessionId) {
-      _previousSessionId = activeSessionId;
+    // 세션 변경 시 스크롤
+    if (activeSessionId != previousSessionId) {
+      previousSessionId = activeSessionId;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToBottom(scrollController);
+        scrollToBottom(scrollController);
       });
     }
 
-    // 메시지 변경 감지 및 스크롤 (debounce 처리)
+    // 메시지 변경 감지 (debounce 적용)
     ref.listen<AsyncValue<List<Message>>>(
       activeSessionId != null
           ? sessionMessagesProvider(activeSessionId)
@@ -77,29 +84,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           final nextLength = next.value?.length ?? 0;
 
           if (prevLength != nextLength) {
-            _scrollDebounce?.cancel();
-            _scrollDebounce = Timer(const Duration(milliseconds: 100), () {
-              _scrollToBottom(scrollController);
-            });
+            scrollDebounce?.cancel();
+            scrollDebounce = Timer(
+              const Duration(milliseconds: 100),
+                  () => scrollToBottom(scrollController),
+            );
           }
         }
       },
     );
 
-    // 키보드 높이 또는 입력창 높이 변동 시 실시간 스크롤 처리
-    if (keyboardHeight != _prevKeyboardHeight || inputHeight != _prevInputHeight) {
+    // 키보드/입력 높이 변화 시 스크롤
+    if (keyboardHeight != prevKeyboardHeight || inputHeight != prevInputHeight) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToBottom(scrollController);
+        scrollToBottom(scrollController);
       });
-      _prevKeyboardHeight = keyboardHeight;
-      _prevInputHeight = inputHeight;
+      prevKeyboardHeight = keyboardHeight;
+      prevInputHeight = inputHeight;
     }
 
     return Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
-            left: sidebarState.shouldShowExpanded
+            left: shouldShowExpanded
                 ? UIConstants.sessionListWidth + UIConstants.spacingMd * 2
                 : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd * 2,
             child: messagesAsync.when(
@@ -110,16 +118,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 scrollController,
                 activeSessionId,
               ),
-              loading: () => const Center(
-                child: CircularProgressIndicator(),
-              ),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.error_outline, size: 48),
                     const SizedBox(height: 16),
-                    Text('오류: $error'),
+                    Text('$error'),
                   ],
                 ),
               ),
@@ -132,12 +138,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: SessionList(),
           ),
           Positioned(
-            left: sidebarState.shouldShowExpanded
+            left: shouldShowExpanded
                 ? UIConstants.sessionListWidth + UIConstants.spacingMd * 2
                 : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd * 2,
             right: 0,
             bottom: 0,
-            child: ChatInput(),
+            child: const ChatInput(),
           ),
         ],
       ),
@@ -151,8 +157,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ScrollController scrollController,
       int? activeSessionId,
       ) {
-    // inputHeight를 메서드 내에서 직접 watch
-    final inputHeight = ref.watch(chatInputStateProvider.select((s) => s.height));
+    // 최적화: inputHeight만 watch
+    final inputHeight = ref.watch(
+      chatInputStateProvider.select((s) => s.height),
+    );
 
     return CustomScrollView(
       controller: scrollController,
