@@ -48,6 +48,8 @@ class UIConstants {
   static const double fontSizeSm = 12.0;
   static const double fontSizeMd = 14.0;
   static const double fontSizeLg = 16.0;
+  static const double fontNormal = 14.0;
+
 
   // ===== Glass Effect =====
   static const double glassBlur = 10.0;

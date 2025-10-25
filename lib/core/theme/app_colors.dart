@@ -48,8 +48,8 @@ class AppColors {
   static const Color userBubbleDark = primary;
 
   // ===== AI Message Bubble =====
-  static Color get aiBubbleLight => lightSurface.withAlpha(230);
-  static Color get aiBubbleDark => darkSurface.withAlpha(230);
+  static Color get aiBubbleLight => lightSurface;
+  static Color get aiBubbleDark => darkSurface;
 
   // ===== Code Block =====
   static const Color codeBackgroundLight = Color(0xFFF6F8FA);

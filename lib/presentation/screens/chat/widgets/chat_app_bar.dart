@@ -3,19 +3,20 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vibe_code/core/theme/app_colors.dart';
-import '../../../../domain/providers/chat_provider.dart';
-import '../../../../domain/providers/database_provider.dart';
-import '../../../../domain/providers/session_stats_provider.dart';
+
 import '../../../../core/constants/ui_constants.dart';
-// import '../../../../domain/providers/sidebar_state_provider.dart'; // ✅ 제거됨
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/utils/token_counter.dart';
+import '../../../../domain/providers/database_provider.dart';
 import '../../settings/settings_screen.dart';
 
-// ✅ 'implements PreferredSizeWidget' 제거
-class ChatAppBar extends ConsumerWidget {
-  const ChatAppBar({super.key});
+/// ChatAppBarContent - SliverAppBar의 flexibleSpace에 사용될 위젯
+class ChatAppBarContent extends ConsumerWidget {
+  final int? sessionId;
 
-  // ✅ 캐싱된 상수 (UIConstants 적용)
+  const ChatAppBarContent({super.key, this.sessionId});
+
   static const _borderRadius = BorderRadius.all(
     Radius.circular(UIConstants.radiusLg),
   );
@@ -26,52 +27,41 @@ class ChatAppBar extends ConsumerWidget {
   static const _padding = EdgeInsets.symmetric(
     horizontal: UIConstants.spacingMd,
   );
-
-  // ✅ 'preferredSize' getter 제거
-  // @override
-  // Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  static const _outerPadding = EdgeInsets.all(UIConstants.spacingXs);
+  static const double _appBarHeight = 144.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activeSessionId = ref.watch(activeSessionProvider);
-
-    // ✅ sidebarWidth Provider 감시 로직 제거
-    // final sidebarWidth = ref.watch(...);
-
-    // ✅ AnimatedPositioned를 Padding으로 변경
     return Padding(
-      // ✅ Stack의 Positioned 대신 Padding으로 여백 지정
-      //    left는 Column 내부이므로 0, top과 right는 기존 값 유지
-      padding: const EdgeInsets.fromLTRB(
-        0, // ✅ left: 0 (Column 내부에 위치)
-        UIConstants.spacingMd, // ✅ top
-        UIConstants.spacingMd, // ✅ right
-        0,
-      ),
+      padding: _outerPadding,
       child: RepaintBoundary(
         child: ClipRRect(
           borderRadius: _borderRadius,
           child: BackdropFilter(
             filter: _blurFilter,
-            child: Container(
-              height: kToolbarHeight,
-              decoration: _buildContainerDecoration(context),
-              child: Padding(
-                padding: _padding,
-                child: Row(
-                  children: [
-                    // 타이틀 영역
-                    Expanded(child: _buildTitle(context, ref, activeSessionId)),
-                    // 통계 정보 (메시지 수 & 토큰)
-                    if (activeSessionId != null)
-                      _SessionStatsWidget(sessionId: activeSessionId),
-                    // 액션 버튼들
-                    if (activeSessionId != null) ...[
-                      const SizedBox(width: UIConstants.spacingSm),
-                      _RefreshButton(sessionId: activeSessionId),
+            child: SizedBox(
+              height: _appBarHeight,
+              child: Container(
+                decoration: _buildContainerDecoration(context),
+                child: Padding(
+                  padding: _padding,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // ✅ 타이틀 영역 - Flexible로 남은 공간만 차지
+                      Expanded(
+                        child: _buildTitle(context, ref, sessionId),
+                      ),
+
+                      // ✅ 우측 액션들 - 항상 우측 정렬 보장
+                      if (sessionId != null) ...[
+                        _SessionStatsWidget(sessionId: sessionId!),
+                        const SizedBox(width: UIConstants.spacingXs),
+                        _RefreshButton(sessionId: sessionId!),
+                      ],
+                      const _SettingsButton(),
                     ],
-                    const _SettingsButton(),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -81,222 +71,226 @@ class ChatAppBar extends ConsumerWidget {
     );
   }
 
-  // ✅ BoxDecoration 캐싱 (AppColors 적용)
   BoxDecoration _buildContainerDecoration(BuildContext context) {
     return BoxDecoration(
       gradient: AppColors.gradient,
       borderRadius: _borderRadius,
       border: Border.all(
-        color: Theme.of(
-          context,
-        ).colorScheme.outline.withAlpha(UIConstants.alpha20),
+        color: Theme.of(context)
+            .colorScheme
+            .outline
+            .withAlpha(UIConstants.alpha20),
         width: 1,
       ),
     );
   }
 
-  // ✅ 타이틀 빌더 메서드
-  Widget _buildTitle(
-      BuildContext context,
-      WidgetRef ref,
-      int? activeSessionId,
-      ) {
-    if (activeSessionId == null) {
-      return Text(
-        'Vibe Code',
-        style: Theme.of(
-          context,
-        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-      );
+  Widget _buildTitle(BuildContext context, WidgetRef ref, int? sessionId) {
+    if (sessionId == null) {
+      return const _TitleLabel(title: 'Vibe Code');
     }
 
-    return _SessionTitleWidget(sessionId: activeSessionId);
-  }
-}
+    final sessionsAsync = ref.watch(chatSessionsProvider);
 
-// ✅ 세션 제목을 별도 위젯으로 분리 (리빌드 범위 최소화)
-class _SessionTitleWidget extends ConsumerWidget {
-  const _SessionTitleWidget({required this.sessionId});
+    return sessionsAsync.when(
+      data: (sessions) {
+        final session = sessions.cast<dynamic>().firstWhere(
+              (s) => s.id == sessionId,
+          orElse: () => null,
+        );
 
-  final int sessionId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sessionAsync = ref.watch(sessionProvider(sessionId));
-    return sessionAsync.when(
-      data: (session) {
-        if (session != null) {
-          return Text(
-            session.title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          );
+        if (session == null) {
+          return const _TitleLabel(title: 'Vibe Code');
         }
 
-        return const Text('...');
+        // ✅ 타이틀이 너무 길어도 우측 버튼을 밀지 않도록 제한
+        return ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: 400, // ✅ 최대 너비 제한
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                session.title as String,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 1),
+              Text(
+                DateFormatter.formatChatTime(session.updatedAt as DateTime),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withAlpha(UIConstants.alpha70),
+                  fontSize: 10,
+                  height: 1.0,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+              ),
+            ],
+          ),
+        );
       },
-      loading: () => const Text('...'),
-      error: (_, __) => const Text('...'),
+      loading: () => const _TitleLabel(title: 'Vibe Code'),
+      error: (_, __) => const _TitleLabel(title: 'Vibe Code'),
     );
   }
 }
 
-// ✅ 통계 정보를 별도 위젯으로 분리 (중첩 Consumer 제거, UIConstants 적용)
+/// 단순 타이틀 표시용 위젯
+class _TitleLabel extends StatelessWidget {
+  final String title;
+
+  const _TitleLabel({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+/// 세션 통계 위젯
 class _SessionStatsWidget extends ConsumerWidget {
+  final int sessionId;
+
   const _SessionStatsWidget({required this.sessionId});
 
-  final int sessionId;
+  static const _messageIcon = Icon(
+    Icons.message_outlined,
+    size: UIConstants.iconSm,
+    color: Color(0xE6FFFFFF),
+  );
+
+  static const _tokenIcon = Icon(
+    Icons.data_usage,
+    size: UIConstants.iconSm,
+    color: Color(0xE6FFFFFF),
+  );
+
+  static const _statsDecoration = BoxDecoration(
+    color: Color(0x33FFFFFF),
+    borderRadius: BorderRadius.all(Radius.circular(UIConstants.radiusSm)),
+  );
+
+  static const _statsPadding = EdgeInsets.symmetric(
+    horizontal: UIConstants.spacingSm,
+    vertical: UIConstants.spacingXs,
+  );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(activeSessionStatsProvider);
-    return statsAsync.when(
-      data: (stats) {
-        if (stats.messageCount == 0) {
-          return const SizedBox.shrink();
-        }
+    final messagesAsync = ref.watch(sessionMessagesProvider(sessionId));
 
-        return _buildStatsContainer(context, stats);
+    return messagesAsync.when(
+      data: (messages) {
+        final messageCount = messages.length;
+        final totalTokens = messages.fold<int>(
+          0,
+              (sum, msg) => sum + TokenCounter.estimateTokens(msg.content),
+        );
+
+        return Container(
+          padding: _statsPadding,
+          decoration: _statsDecoration,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _messageIcon,
+              const SizedBox(width: 4),
+              Text(
+                '$messageCount',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(width: UIConstants.spacingSm),
+              _tokenIcon,
+              const SizedBox(width: 4),
+              Text(
+                TokenCounter.formatTokenCount(totalTokens),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        );
       },
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
     );
   }
-
-  Widget _buildStatsContainer(BuildContext context, SessionStats stats) {
-    final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: UIConstants.spacingSm),
-      padding: const EdgeInsets.symmetric(
-        horizontal: UIConstants.spacingMd,
-        vertical: UIConstants.spacingSm,
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withAlpha(
-          UIConstants.alpha30,
-        ),
-        borderRadius: const BorderRadius.all(
-          Radius.circular(UIConstants.radiusSm),
-        ),
-        border: Border.all(
-          color: primaryColor.withAlpha(UIConstants.alpha20),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 메시지 수
-          _StatItem(
-            icon: Icons.chat_bubble_outline,
-            value: '${stats.messageCount}',
-            color: primaryColor,
-          ),
-          // 구분선
-          _VerticalDivider(
-            color: theme.colorScheme.outline.withAlpha(UIConstants.alpha30),
-          ),
-          // 토큰 수
-          _StatItem(
-            icon: Icons.token_outlined,
-            value: stats.tokenDisplay,
-            color: primaryColor,
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-// ✅ 통계 항목 위젯 분리 (UIConstants 적용)
-class _StatItem extends StatelessWidget {
-  const _StatItem({
-    required this.icon,
-    required this.value,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String value;
-  final Color color;
-
-  static const _iconSpacing = SizedBox(width: UIConstants.spacingXs);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: UIConstants.iconSm, color: color),
-        _iconSpacing,
-        Text(
-          value,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ✅ 수직 구분선 위젯 (UIConstants 적용)
-class _VerticalDivider extends StatelessWidget {
-  const _VerticalDivider({required this.color});
-
-  final Color color;
-
-  static const _dividerHeight = UIConstants.iconSm;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: UIConstants.spacingSm),
-      width: 1,
-      height: _dividerHeight,
-      color: color,
-    );
-  }
-}
-
-// ✅ 새로고침 버튼 위젯 분리 (UIConstants 적용)
+/// 새로고침 버튼
 class _RefreshButton extends ConsumerWidget {
+  final int sessionId;
+
   const _RefreshButton({required this.sessionId});
 
-  final int sessionId;
+  static const _refreshIcon = Icon(Icons.refresh, color: Colors.white);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return IconButton(
-      icon: const Icon(Icons.refresh),
-      tooltip: '새로고침',
+      icon: _refreshIcon,
       iconSize: UIConstants.iconMd,
+      tooltip: '새로고침',
+      padding: const EdgeInsets.all(UIConstants.spacingXs),
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       onPressed: () {
         ref.invalidate(sessionMessagesProvider(sessionId));
+        ref.invalidate(chatSessionsProvider);
       },
     );
   }
 }
 
-// ✅ 설정 버튼 위젯 분리 (UIConstants 적용)
+/// 설정 버튼
 class _SettingsButton extends StatelessWidget {
   const _SettingsButton();
+
+  static const _settingsIcon = Icon(
+    Icons.settings_outlined,
+    color: Colors.white,
+  );
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.settings_outlined),
-      tooltip: '설정',
+      icon: _settingsIcon,
       iconSize: UIConstants.iconMd,
+      tooltip: '설정',
+      padding: const EdgeInsets.all(UIConstants.spacingXs),
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       onPressed: () {
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const SettingsScreen(),
+          ),
+        );
       },
     );
   }

@@ -17,9 +17,6 @@ class MessageList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final messagesAsync = ref.watch(sessionMessagesProvider(sessionId));
-    final inputHeight = ref.watch(
-      chatInputStateProvider.select((state) => state.height),
-    );
     final scrollController = ref.watch(messageScrollProvider);
     final scrollNotifier = ref.read(messageScrollProvider.notifier);
 
