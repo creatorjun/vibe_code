@@ -19,11 +19,7 @@ class SelectedPipelineDepthNotifier extends Notifier<int> {
   int build() {
     // 초기값: 파이프라인에 있는 모델 개수
     final settingsAsync = ref.watch(settingsProvider);
-    return settingsAsync.when(
-      data: (settings) => settings.modelPipeline.length,
-      loading: () => 1,
-      error: (_, __) => 1,
-    );
+    return 1;
   }
 
   /// 깊이 설정
