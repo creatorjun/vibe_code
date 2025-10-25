@@ -1,5 +1,6 @@
 // lib/presentation/screens/chat/widgets/chat_input.dart
 
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +11,6 @@ import '../../../../domain/mutations/create_session_mutation.dart';
 import '../../../../domain/mutations/send_message_mutation.dart';
 import '../../../../domain/providers/chat_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
-// import '../../../../domain/providers/sidebar_state_provider.dart'; // ✅ 제거됨
 import '../../../shared/widgets/error_dialog.dart';
 import 'attachment_preview_section.dart';
 import 'chat_text_field.dart';
@@ -29,6 +29,7 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final GlobalKey _containerKey = GlobalKey();
+  Timer? _heightDebounce;
 
   // ✅ 캐싱된 상수
   static const _borderRadius = BorderRadius.all(
@@ -36,20 +37,17 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   );
   static const _shadowOffset = Offset(0, -4);
 
-  // ✅ 높이 업데이트 제한을 위한 플래그
-  bool _isHeightUpdateScheduled = false;
-
   @override
   void initState() {
     super.initState();
     _controller.addListener(_onTextChanged);
-    // ✅ initState에서만 초기 높이 업데이트
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateHeight());
     _focusNode.addListener(_onFocusChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateHeight());
   }
 
   @override
   void dispose() {
+    _heightDebounce?.cancel();
     _focusNode.removeListener(_onFocusChanged);
     _controller.removeListener(_onTextChanged);
     _controller.dispose();
@@ -60,6 +58,12 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   // ✅ 텍스트 변경 핸들러 분리
   void _onTextChanged() {
     ref.read(chatInputStateProvider.notifier).updateContent(_controller.text);
+
+    // 최적화: debounce로 높이 계산 지연
+    _heightDebounce?.cancel();
+    _heightDebounce = Timer(const Duration(milliseconds: 50), () {
+      _updateHeight();
+    });
   }
 
   // ✅ 포커스 변경 핸들러 최적화
@@ -76,19 +80,31 @@ class _ChatInputState extends ConsumerState<ChatInput> {
 
   // ✅ 높이 업데이트 최적화 (중복 호출 방지)
   void _updateHeight() {
-    if (_isHeightUpdateScheduled) return;
-    _isHeightUpdateScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final renderBox =
-      _containerKey.currentContext?.findRenderObject() as RenderBox?;
-      if (renderBox != null) {
-        ref
-            .read(chatInputStateProvider.notifier)
-            .updateHeight(renderBox.size.height);
-      }
-      _isHeightUpdateScheduled = false;
-    });
+    if (!mounted) return;
+
+    // 1. 입력 컨테이너의 실제 높이 측정
+    final renderBox = _containerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    // 2. 실제 렌더링된 높이
+    final actualHeight = renderBox.size.height;
+
+    // 3. 첨부파일 여부에 따라 동적 최대값 설정
+    final inputState = ref.read(chatInputStateProvider);
+    final hasAttachments = inputState.attachmentIds.isNotEmpty;
+
+    // 첨부파일 있으면 더 큰 최대값, 없으면 기본값
+    final maxHeight = hasAttachments ? 500.0 : 300.0;
+
+    // 4. 높이 제한
+    final newHeight = actualHeight.clamp(72.0, maxHeight);
+
+    final currentHeight = ref.read(chatInputStateProvider).height;
+
+    // 높이 변화가 충분히 클 때만 업데이트
+    if ((newHeight - currentHeight).abs() > 2.0) {
+      ref.read(chatInputStateProvider.notifier).updateHeight(newHeight);
+    }
   }
 
   // ✅ 포커스 요청 메서드 통합 및 최적화
@@ -124,10 +140,10 @@ class _ChatInputState extends ConsumerState<ChatInput> {
       await ref
           .read(sendMessageMutationProvider.notifier)
           .sendMessage(
-        sessionId: sessionId,
-        content: content.isEmpty ? '첨부파일' : content,
-        attachmentIds: attachmentIds,
-      );
+            sessionId: sessionId,
+            content: content.isEmpty ? '첨부파일' : content,
+            attachmentIds: attachmentIds,
+          );
     } catch (e, stackTrace) {
       Logger.error('Send message mutation failed', e, stackTrace);
       if (mounted) {
@@ -162,21 +178,32 @@ class _ChatInputState extends ConsumerState<ChatInput> {
       sendMessageMutationProvider.select((state) => state.status),
     );
     final inputState = ref.watch(chatInputStateProvider);
-    // ✅ sidebarWidth Provider 감시 로직 제거
-    // final sidebarWidth = ref.watch(...);
 
     final isSending =
         sendStatus == SendMessageStatus.sending ||
-            sendStatus == SendMessageStatus.streaming;
+        sendStatus == SendMessageStatus.streaming;
+
+    // 최적화: 첨부파일 변경 감지
+    ref.listen(chatInputStateProvider.select((s) => s.attachmentIds.length), (
+      previous,
+      next,
+    ) {
+      if (previous != next) {
+        // 즉시 높이 재계산 (화면 업데이트 후)
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _heightDebounce?.cancel();
+          _heightDebounce = Timer(const Duration(milliseconds: 100), () {
+            _updateHeight();
+          });
+        });
+      }
+    });
 
     return RepaintBoundary(
       // ✅ AnimatedContainer를 Container로 변경 (애니메이션 불필요)
       child: Container(
         key: _containerKey,
         // ✅ duration, curve 제거
-        // duration: UIConstants.sidebarAnimationDuration,
-        // curve: Curves.easeInOut,
-        // ✅ margin에서 sidebarWidth 제거, left를 0으로 설정
         margin: const EdgeInsets.fromLTRB(
           0, // ✅ left: 0 (Column 내부에 위치)
           UIConstants.spacingMd, // ✅ top
@@ -196,7 +223,6 @@ class _ChatInputState extends ConsumerState<ChatInput> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 첨부파일 미리보기
                   if (inputState.attachmentIds.isNotEmpty)
                     AttachmentPreviewSection(
                       attachmentIds: inputState.attachmentIds,
