@@ -1,6 +1,8 @@
 // lib/presentation/screens/chat/widgets/chat_text_field.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
 import '../../../../../core/constants/ui_constants.dart';
 
 class ChatTextField extends StatelessWidget {
@@ -25,33 +27,45 @@ class ChatTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(minHeight: 40, maxHeight: 200),
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        autofocus: true,
-        maxLines: null,
-        enabled: !isSending,
-        textInputAction: TextInputAction.newline,
-        decoration: const InputDecoration(
-          hintText: '메시지를 입력하세요...',
-          border: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          disabledBorder: InputBorder.none,
-          hoverColor: Colors.transparent,
-          filled: false,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: UIConstants.spacingMd,
-            vertical: UIConstants.spacingSm,
-          ),
-        ),
-        style: Theme.of(context).textTheme.bodyLarge,
-        onChanged: onChanged,
-        onSubmitted: (value) {
-          if (canSend && !isSending) {
-            onSend();
+      child: Focus(
+        onKeyEvent: (FocusNode node, KeyEvent event) {
+          // Enter 키 down 이벤트만 처리
+          if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+            // Shift 키가 눌리지 않은 경우에만 전송
+            if (!HardwareKeyboard.instance.isShiftPressed) {
+              if (canSend && !isSending) {
+                onSend();
+                // 이벤트 소비하여 기본 동작(줄바꿈) 방지
+                return KeyEventResult.handled;
+              }
+            }
+            // Shift+Enter는 기본 동작(줄바꿈)을 허용
+            return KeyEventResult.ignored;
           }
+          return KeyEventResult.ignored;
         },
+        child: TextField(
+          controller: controller,
+          focusNode: focusNode,
+          autofocus: true,
+          maxLines: null,
+          textInputAction: TextInputAction.newline,
+          decoration: const InputDecoration(
+            hintText: '메시지를 입력하세요...',
+            border: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            disabledBorder: InputBorder.none,
+            hoverColor: Colors.transparent,
+            filled: false,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: UIConstants.spacingMd,
+              vertical: UIConstants.spacingSm,
+            ),
+          ),
+          style: Theme.of(context).textTheme.bodyLarge,
+          onChanged: onChanged,
+        ),
       ),
     );
   }
