@@ -285,10 +285,6 @@ class _UserMessageBubbleState extends State<UserMessageBubble> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: UIConstants.spacingMd,
-                  vertical: UIConstants.spacingSm,
-                ),
                 decoration: BoxDecoration(
                   gradient: AppColors.gradient,
                   borderRadius: BorderRadius.circular(UIConstants.radiusLg),
@@ -305,55 +301,121 @@ class _UserMessageBubbleState extends State<UserMessageBubble> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SelectableText(
-                      widget.message.content,
-                      maxLines: isExpanded || !needsExpansion ? null : 3,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
+                    // ✅ 헤더
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: UIConstants.spacingMd,
+                        vertical: UIConstants.spacingSm,
                       ),
-                    ),
-                    if (needsExpansion) ...[
-                      const SizedBox(height: UIConstants.spacingXs),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            isExpanded = !isExpanded;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(UIConstants.radiusSm),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: UIConstants.spacingXs,
-                            vertical: 2,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                isExpanded ? '접기' : '더 보기',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.white.withAlpha(
-                                    UIConstants.alpha90,
-                                  ),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 2),
-                              Icon(
-                                isExpanded
-                                    ? Icons.keyboard_arrow_up
-                                    : Icons.keyboard_arrow_down,
-                                size: UIConstants.iconSm,
-                                color: Colors.white.withAlpha(
-                                  UIConstants.alpha90,
-                                ),
-                              ),
-                            ],
-                          ),
+                      decoration: const BoxDecoration(
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(UIConstants.radiusLg),
+                          topRight: Radius.circular(UIConstants.radiusLg),
                         ),
                       ),
-                    ],
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(UIConstants.alpha20),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.person,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'You',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const Spacer(),
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(
+                                ClipboardData(text: widget.message.content),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+                            child: Padding(
+                              padding: const EdgeInsets.all(UIConstants.spacingXs),
+                              child: Icon(
+                                Icons.copy_all,
+                                size: UIConstants.iconSm,
+                                color: Colors.white.withAlpha(UIConstants.alpha70),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // ✅ 본문
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: UIConstants.spacingMd,
+                        vertical: UIConstants.spacingSm,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SelectableText(
+                            widget.message.content,
+                            maxLines: isExpanded || !needsExpansion ? null : 3,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (needsExpansion) ...[
+                            const SizedBox(height: UIConstants.spacingXs),
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  isExpanded = !isExpanded;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: UIConstants.spacingXs,
+                                  vertical: 2,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      isExpanded ? '접기' : '더 보기',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: Colors.white.withAlpha(
+                                          UIConstants.alpha90,
+                                        ),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Icon(
+                                      isExpanded
+                                          ? Icons.keyboard_arrow_up
+                                          : Icons.keyboard_arrow_down,
+                                      size: UIConstants.iconSm,
+                                      color: Colors.white.withAlpha(
+                                        UIConstants.alpha90,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
