@@ -104,7 +104,14 @@ class _AiMessageBubbleSliver extends StatelessWidget {
         // AI 헤더
         SliverToBoxAdapter(
           child: Container(
-            color: bubbleColor,
+            decoration: BoxDecoration(
+              color: bubbleColor,
+              border: Border(),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(UIConstants.radiusLg),
+                topRight: Radius.circular(UIConstants.radiusLg),
+              ),
+            ),
             child: _buildAiHeader(context),
           ),
         ),
@@ -115,7 +122,13 @@ class _AiMessageBubbleSliver extends StatelessWidget {
         // 하단 여백
         SliverToBoxAdapter(
           child: Container(
-            color: bubbleColor,
+            decoration: BoxDecoration(
+              color: bubbleColor,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(UIConstants.radiusLg),
+                bottomRight: Radius.circular(UIConstants.radiusLg),
+              ),
+            ),
             height: UIConstants.spacingSm,
             width: double.infinity,
           ),

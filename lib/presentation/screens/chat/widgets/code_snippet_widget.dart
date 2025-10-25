@@ -155,17 +155,22 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
       double shrinkOffset,
       bool overlapsContent,
       ) {
+
+    final borderRadius = shrinkOffset == 0
+        ? BorderRadius.only(
+      topLeft: Radius.circular(UIConstants.radiusSm),
+      topRight: Radius.circular(UIConstants.radiusSm),
+    )
+        : BorderRadius.zero;
+
     return Container(
       height: _headerHeight,
       color: isIntegrated ? bubbleColor : null,
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFF2D2D2D),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(UIConstants.radiusSm),
-            topRight: Radius.circular(UIConstants.radiusSm),
-          ),
+          color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+          borderRadius: borderRadius,
         ),
         child: _CodeHeader(
           language: language,
@@ -251,7 +256,7 @@ class _CodeHeaderState extends State<_CodeHeader> {
         widget.language.toUpperCase(),
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5,
         ),

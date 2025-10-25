@@ -104,38 +104,33 @@ class ChatAppBarContent extends ConsumerWidget {
         }
 
         // ✅ 타이틀이 너무 길어도 우측 버튼을 밀지 않도록 제한
-        return ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: 400, // ✅ 최대 너비 제한
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                session.title as String,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  height: 1.2,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              session.title as String,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
               ),
-              const SizedBox(height: 1),
-              Text(
-                DateFormatter.formatChatTime(session.updatedAt as DateTime),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white.withAlpha(UIConstants.alpha70),
-                  fontSize: 10,
-                  height: 1.0,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.fade,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 1),
+            Text(
+              DateFormatter.formatChatTime(session.updatedAt as DateTime),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.white.withAlpha(UIConstants.alpha70),
+                fontSize: 10,
+                height: 1.0,
               ),
-            ],
-          ),
+              maxLines: 1,
+              overflow: TextOverflow.fade,
+            ),
+          ],
         );
       },
       loading: () => const _TitleLabel(title: 'Vibe Code'),
