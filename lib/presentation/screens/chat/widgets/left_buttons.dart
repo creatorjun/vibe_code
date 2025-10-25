@@ -1,16 +1,16 @@
-// lib/presentation/screens/chat/widgets/left_buttons.dart
-
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart';
-import '../../../../core/constants/ui_constants.dart';
-import '../../../../core/errors/error_handler.dart';
-import '../../../../core/utils/logger.dart';
-import '../../../../domain/providers/chat_input_state_provider.dart';
-import '../../../../domain/providers/chat_provider.dart';
-import '../../../shared/widgets/error_dialog.dart';
 import 'github_analysis_dialog.dart';
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:vibe_code/core/utils/logger.dart';
+import 'package:vibe_code/core/errors/error_handler.dart';
+import 'package:vibe_code/core/constants/ui_constants.dart';
+import 'package:vibe_code/domain/providers/chat_provider.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:vibe_code/presentation/shared/widgets/error_dialog.dart';
+import 'package:vibe_code/domain/providers/chat_input_state_provider.dart';
 
 class LeftButtons extends ConsumerWidget {
   final bool isSending;
@@ -24,7 +24,6 @@ class LeftButtons extends ConsumerWidget {
     required this.textController,
   });
 
-  // 파일 첨부 기능
   Future<void> _pickFile(BuildContext context, WidgetRef ref) async {
     try {
       final result = await FilePicker.platform.pickFiles(allowMultiple: false);
@@ -45,7 +44,7 @@ class LeftButtons extends ConsumerWidget {
       if (context.mounted) {
         await ErrorDialog.show(
           context: context,
-          title: '파일 첨부 실패',
+          title: '파일 업로드 실패',
           message: ErrorHandler.getErrorMessage(e),
         );
       }
@@ -54,12 +53,9 @@ class LeftButtons extends ConsumerWidget {
     }
   }
 
-  // GitHub 프로젝트 분석 기능
-  Future<void> _analyzeProject(
-    BuildContext context,
-    WidgetRef ref,
-    TextEditingController controller,
-  ) async {
+  Future<void> _analyzeProject(BuildContext context,
+      WidgetRef ref,
+      TextEditingController controller,) async {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => const GitHubAnalysisDialog(),
@@ -81,13 +77,13 @@ class LeftButtons extends ConsumerWidget {
 
       if (context.mounted) {
         ref.read(chatInputStateProvider.notifier).addAttachment(attachmentId);
-        controller.text = '프로젝트 분석 결과를 요약해주세요.';
+        controller.text = '첨부된 GitHub 분석 결과를 검토해 주세요.';
       }
     } catch (e) {
       if (context.mounted) {
         await ErrorDialog.show(
           context: context,
-          title: '분석 결과 첨부 실패',
+          title: '분석 실패',
           message: ErrorHandler.getErrorMessage(e),
         );
       }
@@ -102,31 +98,55 @@ class LeftButtons extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
-          icon: const Icon(Icons.attach_file),
-          iconSize: UIConstants.iconMd,
-          onPressed: isSending ? null : () => _pickFile(context, ref),
-          tooltip: '파일 첨부',
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: UIConstants.iconLg + UIConstants.spacingSm,
-            minHeight: UIConstants.iconLg + UIConstants.spacingSm,
+        // 파일 첨부 버튼
+        Container(
+          decoration: BoxDecoration(
+            color: Theme
+                .of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withAlpha(UIConstants.alpha20),
+            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+          ),
+          child: IconButton(
+            icon: const FaIcon(FontAwesomeIcons.file),
+            iconSize: UIConstants.iconSm,
+            onPressed: isSending ? null : () => _pickFile(context, ref),
+            tooltip: '파일 첨부',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: UIConstants.iconLg + UIConstants.spacingSm,
+              minHeight: UIConstants.iconLg + UIConstants.spacingSm,
+            ),
           ),
         ),
-        IconButton(
-          icon: const Icon(Icons.code),
-          iconSize: UIConstants.iconMd,
-          onPressed: isSending
-              ? null
-              : () => _analyzeProject(context, ref, textController),
-          tooltip: 'GitHub 프로젝트 분석',
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: UIConstants.iconLg + UIConstants.spacingSm,
-            minHeight: UIConstants.iconLg + UIConstants.spacingSm,
+        const SizedBox(width: UIConstants.spacingSm),
+        // GitHub 분석 버튼
+        Container(
+          decoration: BoxDecoration(
+            color: Theme
+                .of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withAlpha(UIConstants.alpha20),
+            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+          ),
+          child: IconButton(
+            icon: const FaIcon(FontAwesomeIcons.github),
+            iconSize: UIConstants.iconSm,
+            onPressed: isSending
+                ? null
+                : () => _analyzeProject(context, ref, textController),
+            tooltip: 'GitHub 분석',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: UIConstants.iconLg + UIConstants.spacingSm,
+              minHeight: UIConstants.iconLg + UIConstants.spacingSm,
+            ),
           ),
         ),
       ],
     );
   }
 }
+

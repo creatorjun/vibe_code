@@ -17,8 +17,6 @@ final pipelineModelCountProvider = Provider<int>((ref) {
 class SelectedPipelineDepthNotifier extends Notifier<int> {
   @override
   int build() {
-    // 초기값: 파이프라인에 있는 모델 개수
-    final settingsAsync = ref.watch(settingsProvider);
     return 1;
   }
 

@@ -1,11 +1,12 @@
-// lib/presentation/screens/chat/widgets/right_buttons.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../../../core/constants/app_constants.dart';
-import '../../../../../../core/constants/ui_constants.dart';
-import '../../../../../../data/models/settings_state.dart';
-import '../../../../../../domain/providers/selected_model_count_provider.dart';
-import '../../../../../../domain/providers/settings_provider.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+import 'package:vibe_code/data/models/settings_state.dart';
+import 'package:vibe_code/core/constants/ui_constants.dart';
+import 'package:vibe_code/core/constants/app_constants.dart';
+import 'package:vibe_code/domain/providers/settings_provider.dart';
+import 'package:vibe_code/domain/providers/selected_model_count_provider.dart';
 
 class RightButtons extends ConsumerWidget {
   final bool isSending;
@@ -46,14 +47,13 @@ class RightButtons extends ConsumerWidget {
             ? availableModels
             : AppConstants.maxPipelineModels;
 
-        if (maxDepth < 1) {
+        if (maxDepth <= 1) {
           return const SizedBox(height: 40);
         }
 
         final minDepth = AppConstants.minPipelineModels;
         final currentValidDepth = selectedDepth.clamp(minDepth, maxDepth);
 
-        // 최적화: 개별 FilterChip 대신 Container로 감싸기
         return Container(
           height: 32,
           padding: const EdgeInsets.symmetric(
@@ -78,17 +78,14 @@ class RightButtons extends ConsumerWidget {
             children: List.generate(maxDepth, (index) {
               final depth = index + 1;
               final isSelected = depth == currentValidDepth;
-
               return Padding(
                 padding: EdgeInsets.only(
                   right: index < maxDepth - 1 ? 4.0 : 0,
                 ),
                 child: InkWell(
-                  onTap: () {
-                    ref
-                        .read(selectedPipelineDepthProvider.notifier)
-                        .setDepth(depth);
-                  },
+                  onTap: () => ref
+                      .read(selectedPipelineDepthProvider.notifier)
+                      .setDepth(depth),
                   borderRadius: BorderRadius.circular(UIConstants.radiusXs),
                   child: Container(
                     width: 28,
@@ -105,9 +102,12 @@ class RightButtons extends ConsumerWidget {
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: isSelected
                             ? Theme.of(context).colorScheme.onPrimary
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
+                            : Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -134,7 +134,6 @@ class RightButtons extends ConsumerWidget {
           return const SizedBox.shrink();
         }
 
-        // ✅ Flexible 제거하고 SingleChildScrollView 직접 사용
         return ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 300),
           child: SingleChildScrollView(
@@ -159,7 +158,11 @@ class RightButtons extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+      loading: () => const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
       error: (err, stack) => Tooltip(
         message: err.toString(),
         child: Icon(
@@ -177,7 +180,7 @@ class RightButtons extends ConsumerWidget {
         required bool isSelected,
       }) {
     final String label = preset.name;
-    const IconData icon = Icons.auto_awesome;
+    final IconData icon = Icons.auto_awesome;
 
     return FilterChip(
       label: Text(label),
@@ -218,7 +221,7 @@ class RightButtons extends ConsumerWidget {
   Widget _buildSendButton(BuildContext context) {
     if (isSending) {
       return IconButton(
-        icon: const Icon(Icons.stop_circle),
+        icon: const FaIcon(FontAwesomeIcons.circleStop),  // ✅ 변경
         onPressed: onCancel,
         tooltip: '중지',
         color: Theme.of(context).colorScheme.error,
@@ -226,7 +229,7 @@ class RightButtons extends ConsumerWidget {
     }
 
     return IconButton(
-      icon: const Icon(Icons.send),
+      icon: const FaIcon(FontAwesomeIcons.paperPlane),  // ✅ 변경
       onPressed: canSend && !isSending ? onSend : null,
       tooltip: '전송',
       color: canSend ? Theme.of(context).colorScheme.primary : null,

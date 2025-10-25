@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../domain/mutations/create_session_mutation.dart';
-import '../../../../domain/providers/database_provider.dart';
-import '../../../../domain/providers/sidebar_state_provider.dart';
-import '../../../../core/constants/ui_constants.dart';
-import '../../../shared/widgets/adaptive_loading.dart';
-import '../../settings/settings_screen.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:vibe_code/core/theme/app_colors.dart';
+import 'package:vibe_code/domain/mutations/create_session_mutation.dart';
+import 'package:vibe_code/domain/providers/database_provider.dart';
+import 'package:vibe_code/domain/providers/sidebar_state_provider.dart';
+import 'package:vibe_code/core/constants/ui_constants.dart';
+import 'package:vibe_code/presentation/shared/widgets/adaptive_loading.dart';
+import 'package:vibe_code/presentation/screens/settings/settings_screen.dart';
 import 'session_tile.dart';
 
 class SessionList extends ConsumerStatefulWidget {
@@ -82,14 +84,16 @@ class _SessionListState extends ConsumerState<SessionList> {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.surface.withAlpha(UIConstants.alpha95),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surface
+                      .withAlpha(UIConstants.alpha95),
                   borderRadius: BorderRadius.circular(UIConstants.radiusLg),
                   border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.outline.withAlpha(UIConstants.alpha20),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outline
+                        .withAlpha(UIConstants.alpha20),
                     width: 1,
                   ),
                   boxShadow: [
@@ -147,9 +151,7 @@ class _SessionListState extends ConsumerState<SessionList> {
                                   const SizedBox(height: UIConstants.spacingSm),
                                   Text(
                                     error.toString(),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
+                                    style: Theme.of(context).textTheme.bodySmall,
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
@@ -170,31 +172,39 @@ class _SessionListState extends ConsumerState<SessionList> {
     );
   }
 
+  /// 헤더: 앱 이름 + 디바이더 + 대화 목록 섹션
   Widget _buildHeader(BuildContext context, WidgetRef ref) {
-    return Container(
-      padding: const EdgeInsets.all(UIConstants.spacingMd),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(
-              context,
-            ).colorScheme.outlineVariant.withAlpha(UIConstants.alpha30),
-            width: 1,
-          ),
+    return Column(
+      children: [
+        // 상단: 메뉴 버튼 + 앱 이름
+        Container(
+          padding: const EdgeInsets.all(UIConstants.spacingMd),
+          child: showExpandedContent
+              ? _buildExpandedAppHeader(context, ref)
+              : _buildCollapsedAppHeader(context, ref),
         ),
-      ),
-      child: showExpandedContent
-          ? _buildExpandedHeader(context, ref)
-          : _buildCollapsedHeader(context, ref),
+        // 디바이더
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: Theme.of(context)
+              .colorScheme
+              .outlineVariant
+              .withAlpha(UIConstants.alpha30),
+        ),
+        // 하단: 대화 목록 섹션 (확장 시에만 표시)
+        if (showExpandedContent) _buildSessionHeader(context, ref),
+      ],
     );
   }
 
-  Widget _buildExpandedHeader(BuildContext context, WidgetRef ref) {
+  /// 확장 상태: 메뉴 버튼 + 앱 이름 (그라디언트)
+  Widget _buildExpandedAppHeader(BuildContext context, WidgetRef ref) {
     return Row(
       children: [
         IconButton(
           icon: const Icon(Icons.menu),
-          iconSize: UIConstants.iconSm,
+          iconSize: UIConstants.iconMd,
           tooltip: "메뉴 고정",
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(
@@ -205,37 +215,33 @@ class _SessionListState extends ConsumerState<SessionList> {
             ref.read(sidebarStateProvider.notifier).toggle();
           },
         ),
-        const SizedBox(width: UIConstants.spacingSm),
+        const SizedBox(width: UIConstants.spacingMd),
         Expanded(
-          child: Text(
-            '대화 목록',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            overflow: TextOverflow.ellipsis,
+          child: ShaderMask(
+            shaderCallback: (bounds) => AppColors.gradient.createShader(
+              Rect.fromLTWH(0, 0, bounds.width, bounds.height),
+            ),
+            child: Text(
+              'Vibe Code',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
           ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.add_circle_outline),
-          iconSize: UIConstants.iconMd,
-          tooltip: '새 대화',
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: UIConstants.iconLg + UIConstants.spacingSm,
-            minHeight: UIConstants.iconLg + UIConstants.spacingSm,
-          ),
-          color: Theme.of(context).colorScheme.primary,
-          onPressed: () => createNewSession(ref, '새로운 대화'),
         ),
       ],
     );
   }
 
-  Widget _buildCollapsedHeader(BuildContext context, WidgetRef ref) {
+  /// 축소 상태: 메뉴 버튼만
+  Widget _buildCollapsedAppHeader(BuildContext context, WidgetRef ref) {
     return Center(
       child: IconButton(
         icon: const Icon(Icons.menu),
-        iconSize: UIConstants.iconSm,
+        iconSize: UIConstants.iconMd,
         tooltip: '사이드바 펼치기',
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(
@@ -249,15 +255,55 @@ class _SessionListState extends ConsumerState<SessionList> {
     );
   }
 
+  /// 대화 목록 섹션 헤더 (확장 시에만 표시)
+  Widget _buildSessionHeader(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: UIConstants.spacingMd,
+        vertical: UIConstants.spacingSm,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '대화 목록',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withAlpha(UIConstants.alpha70),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            iconSize: UIConstants.iconMd,
+            tooltip: '새 대화',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: UIConstants.iconLg + UIConstants.spacingSm,
+              minHeight: UIConstants.iconLg + UIConstants.spacingSm,
+            ),
+            color: Theme.of(context).colorScheme.primary,
+            onPressed: () => createNewSession(ref, '새로운 대화'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 푸터: 그라디언트 프로필 카드
   Widget _buildFooter(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(UIConstants.spacingMd),
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: Theme.of(
-              context,
-            ).colorScheme.outlineVariant.withAlpha(UIConstants.alpha30),
+            color: Theme.of(context)
+                .colorScheme
+                .outlineVariant
+                .withAlpha(UIConstants.alpha30),
             width: 1,
           ),
         ),
@@ -268,6 +314,7 @@ class _SessionListState extends ConsumerState<SessionList> {
     );
   }
 
+  /// 확장된 상태: 그라디언트 프로필 카드
   Widget _buildExpandedFooter(BuildContext context) {
     return Material(
       color: Colors.transparent,
@@ -277,38 +324,70 @@ class _SessionListState extends ConsumerState<SessionList> {
         child: Container(
           padding: const EdgeInsets.all(UIConstants.spacingMd),
           decoration: BoxDecoration(
-            color: Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withAlpha(UIConstants.alpha30),
+            gradient: AppColors.gradient,
             borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-            border: Border.all(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withAlpha(UIConstants.alpha20),
-              width: 1,
-            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withAlpha(UIConstants.alpha30),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.settings_outlined,
-                size: UIConstants.iconSm,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: UIConstants.spacingMd),
-              Expanded(
-                child: Text(
-                  '설정',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.primary,
+              // 아바타
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(UIConstants.alpha20),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withAlpha(UIConstants.alpha40),
+                    width: 2,
+                  ),
+                ),
+                child: const Center(
+                  child: FaIcon(
+                    FontAwesomeIcons.user,
+                    color: Colors.white,
+                    size: 18,
                   ),
                 ),
               ),
+              const SizedBox(width: UIConstants.spacingMd),
+              // 텍스트
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'User',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: UIConstants.fontSizeLg,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'AI Chat Assistant',
+                      style: TextStyle(
+                        color: Colors.white.withAlpha(UIConstants.alpha70),
+                        fontSize: UIConstants.fontSizeSm,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              // 화살표 아이콘
               Icon(
                 Icons.arrow_forward_ios,
-                size: UIConstants.iconLg,
-                color: Theme.of(context).colorScheme.primary,
+                size: UIConstants.iconSm,
+                color: Colors.white.withAlpha(UIConstants.alpha80),
               ),
             ],
           ),
@@ -317,23 +396,42 @@ class _SessionListState extends ConsumerState<SessionList> {
     );
   }
 
+  /// 축소된 상태: 그라디언트 원형 아이콘 버튼
   Widget _buildCollapsedFooter(BuildContext context) {
     return Center(
-      child: IconButton(
-        icon: const Icon(Icons.settings_outlined),
-        iconSize: UIConstants.iconSm,
-        tooltip: '설정',
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(
-          minWidth: UIConstants.iconLg + UIConstants.spacingSm,
-          minHeight: UIConstants.iconLg + UIConstants.spacingSm,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _navigateToSettings(context),
+          customBorder: const CircleBorder(),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: AppColors.gradient,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withAlpha(UIConstants.alpha30),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: FaIcon(
+                FontAwesomeIcons.user,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+          ),
         ),
-        color: Theme.of(context).colorScheme.primary,
-        onPressed: () => _navigateToSettings(context),
       ),
     );
   }
 
+  /// 빈 상태 표시
   Widget _buildEmptyState(BuildContext context) {
     if (showExpandedContent) {
       return Center(
@@ -345,17 +443,19 @@ class _SessionListState extends ConsumerState<SessionList> {
               Icon(
                 Icons.chat_bubble_outline,
                 size: UIConstants.iconLg * 1.5,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withAlpha(UIConstants.alpha30),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withAlpha(UIConstants.alpha30),
               ),
               const SizedBox(height: UIConstants.spacingMd),
               Text(
                 '대화가 없습니다',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withAlpha(UIConstants.alpha60),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withAlpha(UIConstants.alpha60),
                 ),
               ),
             ],
@@ -367,9 +467,12 @@ class _SessionListState extends ConsumerState<SessionList> {
     return const SizedBox.shrink();
   }
 
+  /// 설정 화면으로 이동
   void _navigateToSettings(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
+      ),
+    );
   }
 }
