@@ -25,17 +25,16 @@ class ChatInput extends ConsumerStatefulWidget {
 }
 
 class _ChatInputState extends ConsumerState<ChatInput> {
-  // ✅ 컨트롤러 및 키
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final GlobalKey _containerKey = GlobalKey();
   Timer? _heightDebounce;
 
-  // ✅ 캐싱된 상수
-  static const _borderRadius = BorderRadius.all(
-    Radius.circular(UIConstants.radiusLg),
-  );
+  // ✅ const 상수로 변경
+  static const _borderRadius = BorderRadius.all(Radius.circular(UIConstants.radiusLg));
   static const _shadowOffset = Offset(0, -4);
+  static const _padding = EdgeInsets.all(UIConstants.spacingMd);
+  static const _margin = EdgeInsets.fromLTRB(0, UIConstants.spacingMd, UIConstants.spacingMd, UIConstants.spacingMd);
 
   @override
   void initState() {
@@ -55,95 +54,66 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     super.dispose();
   }
 
-  // ✅ 텍스트 변경 핸들러 분리
   void _onTextChanged() {
     ref.read(chatInputStateProvider.notifier).updateContent(_controller.text);
-
-    // 최적화: debounce로 높이 계산 지연
     _heightDebounce?.cancel();
-    _heightDebounce = Timer(const Duration(milliseconds: 50), () {
-      _updateHeight();
-    });
+    _heightDebounce = Timer(const Duration(milliseconds: 50), _updateHeight);
   }
 
-  // ✅ 포커스 변경 핸들러 최적화
   void _onFocusChanged() {
     if (!_focusNode.hasFocus && mounted) {
       Future.delayed(UIConstants.shortDuration, () {
         if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
-          Logger.debug('ChatInput Listener: Requesting focus.');
           _focusNode.requestFocus();
         }
       });
     }
   }
 
-  // ✅ 높이 업데이트 최적화 (중복 호출 방지)
   void _updateHeight() {
     if (!mounted) return;
 
-    // 1. 입력 컨테이너의 실제 높이 측정
     final renderBox = _containerKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
-    // 2. 실제 렌더링된 높이
     final actualHeight = renderBox.size.height;
-
-    // 3. 첨부파일 여부에 따라 동적 최대값 설정
     final inputState = ref.read(chatInputStateProvider);
-    final hasAttachments = inputState.attachmentIds.isNotEmpty;
-
-    // 첨부파일 있으면 더 큰 최대값, 없으면 기본값
-    final maxHeight = hasAttachments ? 500.0 : 300.0;
-
-    // 4. 높이 제한
+    final maxHeight = inputState.attachmentIds.isNotEmpty ? 500.0 : 300.0;
     final newHeight = actualHeight.clamp(72.0, maxHeight);
+    final currentHeight = inputState.height;
 
-    final currentHeight = ref.read(chatInputStateProvider).height;
-
-    // 높이 변화가 충분히 클 때만 업데이트
     if ((newHeight - currentHeight).abs() > 2.0) {
       ref.read(chatInputStateProvider.notifier).updateHeight(newHeight);
     }
   }
 
-  // ✅ 포커스 요청 메서드 통합 및 최적화
   void _requestFocus() {
     if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
       Future.microtask(() {
-        if (mounted) {
-          Logger.debug('ChatInput: Explicitly requesting focus.');
-          _focusNode.requestFocus();
-        }
+        if (mounted) _focusNode.requestFocus();
       });
     }
   }
 
-  // ✅ 메시지 전송 최적화
   Future<void> _sendMessage() async {
     final inputState = ref.read(chatInputStateProvider);
     if (!inputState.canSend) return;
+
     final activeSession = ref.read(activeSessionProvider);
-    final int sessionId;
-    if (activeSession == null) {
-      sessionId = await createNewSession(ref, '새로운 대화');
-      Logger.info('New session created and selected: $sessionId');
-    } else {
-      sessionId = activeSession;
-    }
+    final sessionId = activeSession ?? await createNewSession(ref, '새로운 대화');
 
     final content = inputState.content.trim();
     final attachmentIds = List<String>.from(inputState.attachmentIds);
+
     _controller.clear();
     ref.read(chatInputStateProvider.notifier).clear();
+
     try {
-      await ref
-          .read(sendMessageMutationProvider.notifier)
-          .sendMessage(
-            sessionId: sessionId,
-            content: content.isEmpty ? '첨부파일' : content,
-            attachmentIds: attachmentIds,
-          );
+      await ref.read(sendMessageMutationProvider.notifier).sendMessage(
+        sessionId: sessionId,
+        content: content.isEmpty ? '첨부파일' : content,
+        attachmentIds: attachmentIds,
+      );
     } catch (e, stackTrace) {
       Logger.error('Send message mutation failed', e, stackTrace);
       if (mounted) {
@@ -158,14 +128,12 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     }
   }
 
-  // ✅ 첨부파일 제거 최적화
   void _removeAttachment(String attachmentId) {
     ref.read(chatInputStateProvider.notifier).removeAttachment(attachmentId);
-    _updateHeight(); // ✅ 높이 변경이 필요한 시점에만 호출
+    _updateHeight();
     _requestFocus();
   }
 
-  // ✅ 스트리밍 취소 최적화
   void _cancelStreaming() {
     ref.read(sendMessageMutationProvider.notifier).cancel();
     _requestFocus();
@@ -173,44 +141,44 @@ class _ChatInputState extends ConsumerState<ChatInput> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Provider 감시 최적화 (.select() 사용)
-    final sendStatus = ref.watch(
-      sendMessageMutationProvider.select((state) => state.status),
+    final isSending = ref.watch(
+      sendMessageMutationProvider.select((state) =>
+      state.status == SendMessageStatus.sending ||
+          state.status == SendMessageStatus.streaming
+      ),
     );
     final inputState = ref.watch(chatInputStateProvider);
 
-    final isSending =
-        sendStatus == SendMessageStatus.sending ||
-        sendStatus == SendMessageStatus.streaming;
-
-    // 최적화: 첨부파일 변경 감지
-    ref.listen(chatInputStateProvider.select((s) => s.attachmentIds.length), (
-      previous,
-      next,
-    ) {
-      if (previous != next) {
-        // 즉시 높이 재계산 (화면 업데이트 후)
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _heightDebounce?.cancel();
-          _heightDebounce = Timer(const Duration(milliseconds: 100), () {
-            _updateHeight();
+    // ✅ 첨부파일 변경 감지
+    ref.listen(
+      chatInputStateProvider.select((s) => s.attachmentIds.length),
+          (previous, next) {
+        if (previous != next) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _heightDebounce?.cancel();
+            _heightDebounce = Timer(const Duration(milliseconds: 100), _updateHeight);
           });
-        });
-      }
-    });
+        }
+      },
+    );
+
+    // ✅ Theme을 한 번만 가져오기
+    final theme = Theme.of(context);
 
     return RepaintBoundary(
-      // ✅ AnimatedContainer를 Container로 변경 (애니메이션 불필요)
       child: Container(
         key: _containerKey,
-        // ✅ duration, curve 제거
-        margin: const EdgeInsets.fromLTRB(
-          0, // ✅ left: 0 (Column 내부에 위치)
-          UIConstants.spacingMd, // ✅ top
-          UIConstants.spacingMd, // ✅ right
-          UIConstants.spacingMd, // ✅ bottom
+        margin: _margin,
+        decoration: BoxDecoration(
+          borderRadius: _borderRadius,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(UIConstants.alpha10),
+              blurRadius: UIConstants.glassBlur,
+              offset: _shadowOffset,
+            ),
+          ],
         ),
-        decoration: _buildContainerDecoration(context),
         child: ClipRRect(
           borderRadius: _borderRadius,
           child: BackdropFilter(
@@ -218,8 +186,14 @@ class _ChatInputState extends ConsumerState<ChatInput> {
               sigmaX: UIConstants.glassBlur,
               sigmaY: UIConstants.glassBlur,
             ),
-            child: Container(
-              decoration: _buildInnerDecoration(context),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface.withAlpha(UIConstants.alpha90),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withAlpha(UIConstants.alpha20),
+                  width: 1,
+                ),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -228,14 +202,12 @@ class _ChatInputState extends ConsumerState<ChatInput> {
                       attachmentIds: inputState.attachmentIds,
                       onRemove: _removeAttachment,
                     ),
-                  // 입력 영역
-                  Container(
-                    padding: const EdgeInsets.all(UIConstants.spacingMd),
+                  Padding(
+                    padding: _padding,
                     child: SafeArea(
                       top: false,
                       child: Column(
                         children: [
-                          // 텍스트 입력 필드
                           ChatTextField(
                             controller: _controller,
                             focusNode: _focusNode,
@@ -244,7 +216,6 @@ class _ChatInputState extends ConsumerState<ChatInput> {
                             onSend: _sendMessage,
                             onChanged: (_) => _updateHeight(),
                           ),
-                          // 왼쪽 액션 버튼들만 표시
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -253,7 +224,6 @@ class _ChatInputState extends ConsumerState<ChatInput> {
                                 onRequestFocus: _requestFocus,
                                 textController: _controller,
                               ),
-                              // 오른쪽 버튼 섹션 (파이프라인 + 프리셋 + 전송 버튼)
                               RightButtons(
                                 isSending: isSending,
                                 canSend: inputState.canSend,
@@ -271,32 +241,6 @@ class _ChatInputState extends ConsumerState<ChatInput> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  // ✅ BoxDecoration 빌더 메서드 (재사용성 향상)
-  BoxDecoration _buildContainerDecoration(BuildContext context) {
-    return BoxDecoration(
-      borderRadius: _borderRadius,
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withAlpha(UIConstants.alpha10),
-          blurRadius: UIConstants.glassBlur,
-          offset: _shadowOffset,
-        ),
-      ],
-    );
-  }
-
-  BoxDecoration _buildInnerDecoration(BuildContext context) {
-    final theme = Theme.of(context);
-    return BoxDecoration(
-      color: theme.colorScheme.surface.withAlpha(UIConstants.alpha90),
-      borderRadius: _borderRadius,
-      border: Border.all(
-        color: theme.colorScheme.outline.withAlpha(UIConstants.alpha20),
-        width: 1,
       ),
     );
   }

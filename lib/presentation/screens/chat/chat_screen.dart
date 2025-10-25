@@ -6,6 +6,7 @@ import 'package:vibe_code/presentation/screens/chat/widgets/chat_input.dart';
 
 import '../../../core/constants/ui_constants.dart';
 import '../../../data/database/app_database.dart';
+import '../../../domain/mutations/send_message_mutation.dart';
 import '../../../domain/providers/chat_input_state_provider.dart';
 import '../../../domain/providers/database_provider.dart';
 import '../../../domain/providers/scroll_controller_provider.dart';
@@ -90,6 +91,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   () => scrollToBottom(scrollController),
             );
           }
+        }
+      },
+    );
+
+    // ✅ 스트리밍 상태 감지 - 완료 시 스크롤
+    ref.listen(
+      sendMessageMutationProvider.select((state) => state.status),
+          (previous, next) {
+        // 스트리밍이 완료되거나 성공했을 때 스크롤
+        if (previous == SendMessageStatus.streaming &&
+            (next == SendMessageStatus.success || next == SendMessageStatus.error || next == SendMessageStatus.idle)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            scrollToBottom(scrollController);
+          });
         }
       },
     );
