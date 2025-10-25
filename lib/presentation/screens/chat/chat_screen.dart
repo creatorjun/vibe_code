@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vibe_code/presentation/screens/chat/widgets/chat_input.dart';
 
 import '../../../core/constants/ui_constants.dart';
 import '../../../data/database/app_database.dart';
@@ -11,8 +12,7 @@ import '../../../domain/providers/database_provider.dart';
 import '../../../domain/providers/scroll_controller_provider.dart';
 import '../../../domain/providers/sidebar_state_provider.dart';
 import '../../../domain/providers/chat_provider.dart';
-import 'widgets/chat_app_bar.dart';
-import 'widgets/chat_input.dart';
+import 'widgets/chat_state_bar.dart';
 import 'widgets/message_bubble.dart';
 import 'widgets/session_list.dart';
 
@@ -27,11 +27,23 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   int? _previousSessionId;
   Timer? _scrollDebounce;
+  double _prevKeyboardHeight = 0;
+  double _prevInputHeight = 0;
 
   @override
   void dispose() {
     _scrollDebounce?.cancel();
     super.dispose();
+  }
+
+  void _scrollToBottom(ScrollController controller) {
+    if (!controller.hasClients) return;
+
+    controller.animateTo(
+      controller.position.maxScrollExtent,
+      duration: UIConstants.scrollDuration,
+      curve: Curves.easeOut,
+    );
   }
 
   @override
@@ -43,6 +55,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         : const AsyncValue.data(<Message>[]);
     final scrollController = ref.watch(messageScrollProvider);
 
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final inputHeight = ref.watch(chatInputStateProvider.select((s) => s.height));
+
     // 세션 변경 감지 및 스크롤
     if (activeSessionId != _previousSessionId) {
       _previousSessionId = activeSessionId;
@@ -51,7 +66,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       });
     }
 
-    // 메시지 변경 감지 및 스크롤
+    // 메시지 변경 감지 및 스크롤 (debounce 처리)
     ref.listen<AsyncValue<List<Message>>>(
       activeSessionId != null
           ? sessionMessagesProvider(activeSessionId)
@@ -71,17 +86,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       },
     );
 
+    // 키보드 높이 또는 입력창 높이 변동 시 실시간 스크롤 처리
+    if (keyboardHeight != _prevKeyboardHeight || inputHeight != _prevInputHeight) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToBottom(scrollController);
+      });
+      _prevKeyboardHeight = keyboardHeight;
+      _prevInputHeight = inputHeight;
+    }
+
     return Scaffold(
-      // ✅ ChatInput 추가
-      bottomNavigationBar: const ChatInput(),
       body: Stack(
         children: [
-          // 메인 채팅 영역
           Positioned.fill(
             left: sidebarState.shouldShowExpanded
                 ? UIConstants.sessionListWidth + UIConstants.spacingMd * 2
-                : UIConstants.sessionListCollapsedWidth +
-                UIConstants.spacingMd * 2,
+                : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd * 2,
             child: messagesAsync.when(
               data: (messages) => _buildChatContent(
                 context,
@@ -105,20 +125,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
           ),
-
-          // 세션 리스트 (왼쪽)
           const Positioned(
             left: 0,
             top: 0,
             bottom: 0,
             child: SessionList(),
           ),
+          Positioned(
+            left: sidebarState.shouldShowExpanded
+                ? UIConstants.sessionListWidth + UIConstants.spacingMd * 2
+                : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd * 2,
+            right: 0,
+            bottom: 0,
+            child: ChatInput(),
+          ),
         ],
       ),
     );
   }
 
-  /// 채팅 콘텐츠 빌드 (CustomScrollView 사용)
   Widget _buildChatContent(
       BuildContext context,
       WidgetRef ref,
@@ -126,40 +151,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ScrollController scrollController,
       int? activeSessionId,
       ) {
+    // inputHeight를 메서드 내에서 직접 watch
+    final inputHeight = ref.watch(chatInputStateProvider.select((s) => s.height));
+
     return CustomScrollView(
       controller: scrollController,
       slivers: [
-        // ✅ AppBar를 Sliver로 통합
         SliverAppBar(
           pinned: true,
-          floating: false,
+          floating: true,
           toolbarHeight: UIConstants.appBarHeight,
           automaticallyImplyLeading: false,
           backgroundColor: Colors.transparent,
-          flexibleSpace: ChatAppBarContent(sessionId: activeSessionId),
+          flexibleSpace: ChatStateBar(sessionId: activeSessionId),
         ),
-
-        // ✅ 메시지 리스트
         if (messages.isEmpty)
           _buildEmptyState(context, ref)
         else
           ...messages.expand((message) {
             return MessageBubble(message: message).buildAsSliver(context);
           }),
-
-        // ✅ 하단 여백 (ChatInput 높이만큼)
         SliverToBoxAdapter(
           child: SizedBox(
-            height: ref.watch(
-              chatInputStateProvider.select((s) => s.height),
-            ),
+            height: inputHeight,
           ),
         ),
       ],
     );
   }
 
-  /// 빈 상태 표시
   Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
     return SliverFillRemaining(
       hasScrollBody: false,
@@ -197,17 +217,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  /// 스크롤을 하단으로 이동
-  void _scrollToBottom(ScrollController controller) {
-    if (!controller.hasClients) return;
-
-    controller.animateTo(
-      controller.position.maxScrollExtent,
-      duration: UIConstants.scrollDuration,
-      curve: Curves.easeOut,
     );
   }
 }

@@ -1,4 +1,4 @@
-// lib/presentation/screens/chat/widgets/chat_app_bar.dart
+// lib/presentation/screens/chat/widgets/chat_state_bar.dart
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -11,11 +11,11 @@ import '../../../../core/utils/token_counter.dart';
 import '../../../../domain/providers/database_provider.dart';
 import '../../settings/settings_screen.dart';
 
-/// ChatAppBarContent - SliverAppBar의 flexibleSpace에 사용될 위젯
-class ChatAppBarContent extends ConsumerWidget {
+/// ChatStateBar - SliverAppBar의 flexibleSpace에 사용될 위젯
+class ChatStateBar extends ConsumerWidget {
   final int? sessionId;
 
-  const ChatAppBarContent({super.key, this.sessionId});
+  const ChatStateBar({super.key, this.sessionId});
 
   static const _borderRadius = BorderRadius.all(
     Radius.circular(UIConstants.radiusLg),
@@ -28,7 +28,7 @@ class ChatAppBarContent extends ConsumerWidget {
     horizontal: UIConstants.spacingMd,
   );
   static const _outerPadding = EdgeInsets.all(UIConstants.spacingXs);
-  static const double _appBarHeight = 144.0;
+  static const double _appBarHeight = 120.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
