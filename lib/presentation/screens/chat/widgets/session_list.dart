@@ -193,9 +193,9 @@ class _SessionListState extends ConsumerState<SessionList> {
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.menu_open),
+          icon: const Icon(Icons.menu),
           iconSize: UIConstants.iconSm,
-          tooltip: '사이드바 접기',
+          tooltip: "메뉴 고정",
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(
             minWidth: UIConstants.iconLg + UIConstants.spacingSm,
