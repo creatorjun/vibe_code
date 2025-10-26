@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../data/services/github_analysis_service.dart';
@@ -37,58 +38,133 @@ class _GitHubAnalysisDialogState extends State<GitHubAnalysisDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(UIConstants.radiusLg),
-      ),
+      backgroundColor: Colors.transparent,
       child: Container(
-        width: 500,
-        padding: const EdgeInsets.all(UIConstants.spacingLg),
+        width: 540,
+        padding: const EdgeInsets.all(UIConstants.spacingXl),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(UIConstants.radiusXl),
+          border: Border.all(
+            color: colorScheme.outline.withAlpha(UIConstants.alpha20),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(isDark ? UIConstants.alpha40 : UIConstants.alpha20),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ✅ 간소화된 헤더
+            // ✅ 현대적인 헤더
             Row(
               children: [
-                Icon(
-                  Icons.analytics_outlined,
-                  size: UIConstants.iconLg,
-                  color: colorScheme.primary,
-                ),
-                const SizedBox(width: UIConstants.spacingSm),
-                Expanded(
-                  child: Text(
-                    'GitHub 프로젝트 분석',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
+                Container(
+                  padding: const EdgeInsets.all(UIConstants.spacingMd),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        colorScheme.primary,
+                        colorScheme.primary.withAlpha(UIConstants.alpha70),
+                      ],
                     ),
+                    borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                  ),
+                  child: FaIcon(
+                    FontAwesomeIcons.github,
+                    size: UIConstants.iconLg,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: UIConstants.spacingMd),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'GitHub 프로젝트 분석',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '저장소 구조와 코드를 분석합니다',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface.withAlpha(UIConstants.alpha60),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: FaIcon(
+                    FontAwesomeIcons.xmark,
+                    size: UIConstants.iconSm,
+                  ),
                   onPressed: () => Navigator.of(context).pop(),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                  style: IconButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+                    ),
+                  ),
                 ),
               ],
             ),
 
-            const SizedBox(height: UIConstants.spacingLg),
+            const SizedBox(height: UIConstants.spacingXl),
 
             // ✅ GitHub URL 입력
+            Text(
+              '원격 저장소',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: UIConstants.spacingSm),
             TextField(
               controller: _urlController,
               decoration: InputDecoration(
-                labelText: '원격 저장소',
                 hintText: 'https://github.com/owner/repo',
-                prefixIcon: const Icon(Icons.link),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(UIConstants.spacingMd),
+                  child: FaIcon(
+                    FontAwesomeIcons.link,
+                    size: UIConstants.iconSm,
+                    color: colorScheme.primary,
+                  ),
+                ),
                 suffixIcon: _isUrlValid
-                    ? Icon(Icons.check_circle, color: colorScheme.primary)
+                    ? Padding(
+                  padding: const EdgeInsets.all(UIConstants.spacingMd),
+                  child: FaIcon(
+                    FontAwesomeIcons.circleCheck,
+                    size: UIConstants.iconSm,
+                    color: Colors.green,
+                  ),
+                )
                     : null,
+                filled: true,
+                fillColor: colorScheme.surfaceContainerHighest.withAlpha(UIConstants.alpha50),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                  borderSide: BorderSide(
+                    color: colorScheme.primary,
+                    width: 2,
+                  ),
                 ),
               ),
               onChanged: (value) {
@@ -98,61 +174,97 @@ class _GitHubAnalysisDialogState extends State<GitHubAnalysisDialog> {
               },
             ),
 
-            const SizedBox(height: UIConstants.spacingMd),
+            const SizedBox(height: UIConstants.spacingLg),
 
             // ✅ 구분선
             Row(
               children: [
-                const Expanded(child: Divider()),
+                Expanded(
+                  child: Divider(
+                    color: colorScheme.outline.withAlpha(UIConstants.alpha30),
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: UIConstants.spacingSm,
+                    horizontal: UIConstants.spacingMd,
                   ),
                   child: Text(
                     '또는',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface
-                          .withAlpha(UIConstants.alpha60),
+                      color: colorScheme.onSurface.withAlpha(UIConstants.alpha60),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-                const Expanded(child: Divider()),
+                Expanded(
+                  child: Divider(
+                    color: colorScheme.outline.withAlpha(UIConstants.alpha30),
+                  ),
+                ),
               ],
             ),
 
-            const SizedBox(height: UIConstants.spacingMd),
+            const SizedBox(height: UIConstants.spacingLg),
 
             // ✅ 로컬 폴더 선택
+            Text(
+              '로컬 폴더',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: UIConstants.spacingSm),
+
             OutlinedButton.icon(
               onPressed: _pickDirectory,
-              icon: const Icon(Icons.folder_open),
-              label: Text(_selectedDirectory == null ? '로컬 폴더 선택' : '폴더 변경'),
+              icon: FaIcon(
+                FontAwesomeIcons.folderOpen,
+                size: UIConstants.iconSm,
+              ),
+              label: Text(
+                _selectedDirectory == null ? '폴더 선택' : '폴더 변경',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.all(UIConstants.spacingMd),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: UIConstants.spacingLg,
+                  vertical: UIConstants.spacingMd,
+                ),
+                side: BorderSide(
+                  color: colorScheme.outline.withAlpha(UIConstants.alpha50),
+                  width: 1.5,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                ),
               ),
             ),
 
             if (_selectedDirectory != null) ...[
-              const SizedBox(height: UIConstants.spacingSm),
+              const SizedBox(height: UIConstants.spacingMd),
               Container(
-                padding: const EdgeInsets.all(UIConstants.spacingSm),
+                padding: const EdgeInsets.all(UIConstants.spacingMd),
                 decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer
-                      .withAlpha(UIConstants.alpha30),
-                  borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+                  color: colorScheme.primaryContainer.withAlpha(UIConstants.alpha30),
+                  borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                  border: Border.all(
+                    color: colorScheme.primary.withAlpha(UIConstants.alpha30),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.folder,
+                    FaIcon(
+                      FontAwesomeIcons.folder,
                       size: UIConstants.iconSm,
                       color: colorScheme.primary,
                     ),
-                    const SizedBox(width: UIConstants.spacingXs),
+                    const SizedBox(width: UIConstants.spacingSm),
                     Expanded(
                       child: Text(
                         _selectedDirectory!,
-                        style: theme.textTheme.bodySmall,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -162,7 +274,7 @@ class _GitHubAnalysisDialogState extends State<GitHubAnalysisDialog> {
               ),
             ],
 
-            const SizedBox(height: UIConstants.spacingLg),
+            const SizedBox(height: UIConstants.spacingXl),
 
             // ✅ 버튼
             Row(
@@ -172,22 +284,48 @@ class _GitHubAnalysisDialogState extends State<GitHubAnalysisDialog> {
                   onPressed: _isAnalyzing
                       ? null
                       : () => Navigator.of(context).pop(),
-                  child: const Text('취소'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: UIConstants.spacingLg,
+                      vertical: UIConstants.spacingMd,
+                    ),
+                  ),
+                  child: const Text(
+                    '취소',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
                 const SizedBox(width: UIConstants.spacingSm),
                 FilledButton.icon(
                   onPressed: _isAnalyzing || !_canAnalyze() ? null : _analyze,
                   icon: _isAnalyzing
-                      ? const SizedBox(
+                      ? SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        colorScheme.onPrimary,
+                      ),
                     ),
                   )
-                      : const Icon(Icons.play_arrow),
-                  label: Text(_isAnalyzing ? '분석 중...' : '분석'),
+                      : FaIcon(
+                    FontAwesomeIcons.play,
+                    size: UIConstants.iconSm,
+                  ),
+                  label: Text(
+                    _isAnalyzing ? '분석 중...' : '분석 시작',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: UIConstants.spacingLg,
+                      vertical: UIConstants.spacingMd,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -235,9 +373,24 @@ class _GitHubAnalysisDialogState extends State<GitHubAnalysisDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('분석 실패: $e'),
+            content: Row(
+              children: [
+                FaIcon(
+                  FontAwesomeIcons.triangleExclamation,
+                  size: UIConstants.iconSm,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: UIConstants.spacingSm),
+                Expanded(
+                  child: Text('분석 실패: $e'),
+                ),
+              ],
+            ),
             backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+            ),
           ),
         );
         setState(() {

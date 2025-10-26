@@ -14,7 +14,7 @@ import 'package:vibe_code/domain/providers/sidebar_state_provider.dart';
 import 'package:vibe_code/domain/providers/chat_provider.dart';
 import 'widgets/chat_state_bar.dart';
 import 'widgets/message_bubble.dart';
-import 'widgets/session_list.dart';
+import 'widgets/side_bar.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -152,7 +152,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
           ),
-          const Positioned(top: 0, bottom: 0, child: SessionList()),
+          const Positioned(top: 0, bottom: 0, child: SideBar()),
           AnimatedPositioned(
             duration: UIConstants.animationDuration,
             curve: Curves.easeOut,
