@@ -362,7 +362,7 @@ class _SessionListState extends ConsumerState<SessionList> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                      'User',
+                      'Creator Jun',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: UIConstants.fontSizeLg,
@@ -371,7 +371,7 @@ class _SessionListState extends ConsumerState<SessionList> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      'AI Chat Assistant',
+                      'Vibe Code',
                       style: TextStyle(
                         color: Colors.white.withAlpha(UIConstants.alpha70),
                         fontSize: UIConstants.fontSizeSm,
