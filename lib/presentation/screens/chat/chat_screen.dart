@@ -99,7 +99,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ref.listen(
       sendMessageMutationProvider.select((state) => state.status),
           (previous, next) {
-        // 스트리밍이 완료되거나 성공했을 때 스크롤
         if (previous == SendMessageStatus.streaming &&
             (next == SendMessageStatus.success || next == SendMessageStatus.error || next == SendMessageStatus.idle)) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -121,10 +120,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          Positioned.fill(
+          AnimatedPositioned(
+            duration: UIConstants.sidebarAnimationDuration,
+            curve: Curves.easeInOut,
             left: shouldShowExpanded
-                ? UIConstants.sessionListWidth + UIConstants.spacingMd * 2
-                : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd * 2,
+                ? UIConstants.sessionListWidth + UIConstants.spacingMd
+                : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd,
+            top: 0,
+            right: 0,
+            bottom: 0,
             child: messagesAsync.when(
               data: (messages) => _buildChatContent(
                 context,
@@ -152,7 +156,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             bottom: 0,
             child: SessionList(),
           ),
-          Positioned(
+          AnimatedPositioned(
+            duration: UIConstants.animationDuration,
             left: shouldShowExpanded
                 ? UIConstants.sessionListWidth + UIConstants.spacingMd * 2
                 : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd * 2,
@@ -172,7 +177,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ScrollController scrollController,
       int? activeSessionId,
       ) {
-    // 최적화: inputHeight만 watch
     final inputHeight = ref.watch(
       chatInputStateProvider.select((s) => s.height),
     );

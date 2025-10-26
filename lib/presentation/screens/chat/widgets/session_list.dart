@@ -178,6 +178,9 @@ class _SessionListState extends ConsumerState<SessionList> {
       children: [
         // 상단: 메뉴 버튼 + 앱 이름
         Container(
+          decoration: BoxDecoration(
+            gradient: AppColors.gradient
+          ),
           padding: const EdgeInsets.all(UIConstants.spacingMd),
           child: showExpandedContent
               ? _buildExpandedAppHeader(context, ref)
@@ -217,18 +220,13 @@ class _SessionListState extends ConsumerState<SessionList> {
         ),
         const SizedBox(width: UIConstants.spacingMd),
         Expanded(
-          child: ShaderMask(
-            shaderCallback: (bounds) => AppColors.gradient.createShader(
-              Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-            ),
-            child: Text(
-              'Vibe Code',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-                color: Colors.white,
-                letterSpacing: 0.5,
-              ),
+          child: Text(
+            'Vibe Code',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              color: Colors.white,
+              letterSpacing: 0.5,
             ),
           ),
         ),
