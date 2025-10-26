@@ -331,7 +331,7 @@ class _UserMessageBubbleState extends State<UserMessageBubble> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'You',
+                            'Creator Jun',
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
