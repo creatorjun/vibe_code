@@ -65,6 +65,7 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
   }) async {
     state = const SendMessageState.sending();
 
+    int? userMessageId;
     int? aiMessageId;
     // ===== 추가: 토큰 추적 변수 =====
     int totalInputTokens = 0;
@@ -91,10 +92,10 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       // =========================================
 
       // 사용자 메시지 추가
-      final userMessageId = await chatRepo.addUserMessage(
+      userMessageId = await chatRepo.addUserMessage(
         sessionId: sessionId,
         content: content,
-        inputTokens: userMessageTokens,  // ===== 추가 =====
+        inputTokens: userMessageTokens, // ===== 추가 =====
       );
 
       // 첨부파일 링크
@@ -126,7 +127,8 @@ $fileContent
 
 ---
 ''');
-                Logger.info('Attachment loaded: ${attachment.fileName} (${fileContent.length} chars)');
+                Logger.info(
+                    'Attachment loaded: ${attachment.fileName} (${fileContent.length} chars)');
               }
             }
           } catch (e) {
@@ -139,12 +141,14 @@ $content
 
 ${attachmentContents.join('\n')}
 ''';
-          Logger.info('Full content with attachments: ${fullContent.length} chars');
+          Logger.info(
+              'Full content with attachments: ${fullContent.length} chars');
         }
       }
 
       // 메시지 히스토리 구성
-      final apiMessages = await _buildMessageHistory(sessionId, settingsAsync);
+      final apiMessages =
+      await _buildMessageHistory(sessionId, settingsAsync);
       apiMessages.add(ChatMessage(
         role: 'user',
         content: fullContent,
@@ -153,31 +157,38 @@ ${attachmentContents.join('\n')}
       // 파이프라인 구성
       final selectedDepth = ref.read(selectedPipelineDepthProvider);
       final fullPipelineConfigs = settingsAsync.modelPipeline;
-      List<ModelConfig> activePipelineConfigs = fullPipelineConfigs.take(selectedDepth).toList();
+      List<ModelConfig> activePipelineConfigs =
+      fullPipelineConfigs.take(selectedDepth).toList();
 
       // 프리셋 적용
       final selectedPreset = settingsAsync.selectedPreset;
       if (selectedPreset != null) {
-        Logger.info('Applying preset "${selectedPreset.name}" to the pipeline.');
+        Logger.info(
+            'Applying preset "${selectedPreset.name}" to the pipeline.');
         List<ModelConfig> pipelineWithPresetPrompts = [];
         for (int i = 0; i < activePipelineConfigs.length; i++) {
           final config = activePipelineConfigs[i];
           final prompt = (i < selectedPreset.prompts.length)
               ? selectedPreset.prompts[i]
               : '';
-          pipelineWithPresetPrompts.add(config.copyWith(systemPrompt: prompt));
-          Logger.debug('  Step ${i+1}: Model=${config.modelId}, Prompt=${prompt.isNotEmpty ? "[Preset Prompt]" : "[Empty]"}');
+          pipelineWithPresetPrompts
+              .add(config.copyWith(systemPrompt: prompt));
+          Logger.debug(
+              '  Step ${i + 1}: Model=${config.modelId}, Prompt=${prompt.isNotEmpty ? "[Preset Prompt]" : "[Empty]"}');
         }
         activePipelineConfigs = pipelineWithPresetPrompts;
       } else {
-        Logger.info('No preset selected, using manually configured prompts.');
+        Logger.info(
+            'No preset selected, using manually configured prompts.');
         for (int i = 0; i < activePipelineConfigs.length; i++) {
           final config = activePipelineConfigs[i];
-          Logger.debug('  Step ${i+1}: Model=${config.modelId}, Prompt=${config.systemPrompt.isNotEmpty ? "[Manual Prompt]" : "[Empty]"}');
+          Logger.debug(
+              '  Step ${i + 1}: Model=${config.modelId}, Prompt=${config.systemPrompt.isNotEmpty ? "[Manual Prompt]" : "[Empty]"}');
         }
       }
 
-      Logger.info('Using ${activePipelineConfigs.length} models (depth: $selectedDepth)');
+      Logger.info(
+          'Using ${activePipelineConfigs.length} models (depth: $selectedDepth)');
 
       // AI 응답 메시지 생성
       final modelId = activePipelineConfigs.isNotEmpty
@@ -206,8 +217,10 @@ ${attachmentContents.join('\n')}
         initialInput: fullContent,
         messageHistory: apiMessages.sublist(0, apiMessages.length - 1),
         onStepStart: (step, config) {
-          Logger.info('Pipeline step ${step + 1}/${activePipelineConfigs.length}: ${config.modelId}');
-          state = SendMessageState.streaming(progress: step / activePipelineConfigs.length);
+          Logger.info(
+              'Pipeline step ${step + 1}/${activePipelineConfigs.length}: ${config.modelId}');
+          state = SendMessageState.streaming(
+              progress: step / activePipelineConfigs.length);
         },
         onChunk: (step, chunk) async {
           responseBuffer.write(chunk);
@@ -216,13 +229,6 @@ ${attachmentContents.join('\n')}
             responseBuffer.toString(),
           );
         },
-        // ===== 추가: 토큰 사용량 콜백 (PipelineService에 존재하지 않으므로 주석 처리) =====
-        // onTokenUsage: (inputTokens, outputTokens) {
-        //   totalInputTokens += inputTokens;
-        //   totalOutputTokens += outputTokens;
-        //   Logger.debug('Token usage - Input: $inputTokens, Output: $outputTokens');
-        // },
-        // ===================================================================================
         aiServiceFactory: ref.read(aiServiceFactoryProvider),
         apiKey: settingsAsync.apiKey,
       )) {
@@ -233,7 +239,8 @@ ${attachmentContents.join('\n')}
       final finalResponse = responseBuffer.toString();
       totalInputTokens = TokenCounter.estimateTokens(fullContent);
       totalOutputTokens = TokenCounter.estimateTokens(finalResponse);
-      Logger.info('Estimated tokens - Input: $totalInputTokens, Output: $totalOutputTokens');
+      Logger.info(
+          'Estimated tokens - Input: $totalInputTokens, Output: $totalOutputTokens');
       // =========================================================
 
       // ===== 수정: 토큰 정보와 함께 스트리밍 완료 =====
@@ -251,10 +258,43 @@ ${attachmentContents.join('\n')}
       await _updateSessionTitleIfNeeded(sessionId, content);
 
       state = const SendMessageState.success();
-      Logger.info('Message sent successfully with tokens: input=$totalInputTokens, output=$totalOutputTokens');
+      Logger.info(
+          'Message sent successfully with tokens: input=$totalInputTokens, output=$totalOutputTokens');
+
+    } on SocketException catch (e) {
+      // ✅ 네트워크 연결 오류
+      Logger.error('Network error', e);
+      state = const SendMessageState.error(
+          '네트워크 연결 오류: 인터넷 연결을 확인해주세요');
+      await _handleError(sessionId, userMessageId, aiMessageId);
+
+    } on HttpException catch (e) {
+      // ✅ HTTP 오류
+      Logger.error('HTTP error', e);
+      state = SendMessageState.error('HTTP 오류: ${e.message}');
+      await _handleError(sessionId, userMessageId, aiMessageId);
+
+    } on TimeoutException catch (e) {
+      // ✅ 타임아웃 오류
+      Logger.error('Timeout error', e);
+      state = const SendMessageState.error('요청 시간 초과: 다시 시도해주세요');
+      await _handleError(sessionId, userMessageId, aiMessageId);
+
+    } on ValidationException catch (e) {
+      // ✅ 검증 오류 (API 키 등)
+      Logger.error('Validation error', e);
+      state = SendMessageState.error(e.message);
+      await _handleError(sessionId, userMessageId, aiMessageId);
+
+    } on AppException catch (e) {
+      // ✅ 앱 커스텀 예외
+      Logger.error('App exception', e);
+      state = SendMessageState.error(e.message);
+      await _handleError(sessionId, userMessageId, aiMessageId);
 
     } catch (e, stackTrace) {
-      Logger.error('Send message failed', e, stackTrace);
+      // ✅ 기타 예외
+      Logger.error('Unexpected error during message send', e, stackTrace);
       ErrorHandler.logError(e, stackTrace);
 
       final errorMessage = ErrorHandler.getErrorMessage(e);
@@ -266,7 +306,8 @@ ${attachmentContents.join('\n')}
         String existingContent = '';
         try {
           final messages = await chatRepo.getMessages(sessionId);
-          final currentMessage = messages.firstWhere((m) => m.id == aiMessageId);
+          final currentMessage =
+          messages.firstWhere((m) => m.id == aiMessageId);
           existingContent = currentMessage.content;
         } catch (_) {}
 
@@ -276,13 +317,36 @@ ${attachmentContents.join('\n')}
 
         await chatRepo.updateMessageContent(aiMessageId, errorContent);
         await chatRepo.completeStreaming(aiMessageId);
-        Logger.info('Error message ${existingContent.isEmpty ? "saved" : "appended"} to database: $aiMessageId');
+        Logger.info(
+            'Error message ${existingContent.isEmpty ? "saved" : "appended"} to database: $aiMessageId');
       }
 
+    } finally {
+      // ✅ 항상 스트리밍 상태 정리
       ref.read(streamingStateProvider.notifier).stop();
       ref.read(currentStreamingMessageProvider.notifier).clear();
     }
   }
+
+// ✅ 에러 처리 헬퍼 메서드 추가
+  Future<void> _handleError(
+      int sessionId,
+      int? userMessageId,
+      int? aiMessageId,
+      ) async {
+    final chatRepo = ref.read(chatRepositoryProvider);
+
+    // AI 메시지 정리
+    if (aiMessageId != null) {
+      try {
+        await chatRepo.deleteMessage(aiMessageId);
+        Logger.debug('Cleaned up AI message: $aiMessageId');
+      } catch (e) {
+        Logger.error('Failed to delete AI message', e);
+      }
+    }
+  }
+
 
   /// 메시지 전송 취소
   void cancel() {

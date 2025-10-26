@@ -85,11 +85,6 @@ class _ModelConfigCardState extends State<ModelConfigCard> {
                   ),
                 ),
                 const SizedBox(width: UIConstants.spacingSm),
-                // 체크박스
-                Checkbox(
-                  value: widget.config.isEnabled,
-                  onChanged: (_) => widget.onToggle(),
-                ),
               ],
             ),
             // ✅ 타이틀 개선

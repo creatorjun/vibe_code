@@ -36,6 +36,11 @@ class MessageBubble {
     final isDark = theme.brightness == Brightness.dark;
     final bubbleColor = isDark ? AppColors.aiBubbleDark : AppColors.aiBubbleLight;
 
+    // ✅ 메시지가 비어있거나 매우 짧을 때 (스트리밍 시작 전)
+    final isThinking = message.content.trim().isEmpty ||
+        (message.isStreaming && message.content.length < 10);
+
+
     // 최적화: 마크다운 파싱 결과 저장
     final parts = MarkdownParser.parseMessage(message.content);
 
@@ -53,6 +58,7 @@ class MessageBubble {
           parts: parts,
           message: message,
           theme: theme,
+          isThinking: isThinking,
         ),
       ),
       SliverToBoxAdapter(
@@ -90,6 +96,8 @@ class _AiMessageBubbleSliver extends StatelessWidget {
   final List<dynamic> parts;
   final Message message;
   final ThemeData theme;
+  final bool isThinking;
+
 
   const _AiMessageBubbleSliver({
     required this.bubbleColor,
@@ -97,6 +105,7 @@ class _AiMessageBubbleSliver extends StatelessWidget {
     required this.parts,
     required this.message,
     required this.theme,
+    required this.isThinking,
   });
 
   @override
@@ -120,7 +129,9 @@ class _AiMessageBubbleSliver extends StatelessWidget {
           ),
         ),
         // 콘텐츠
-        ..._buildContentSlivers(context),
+        ...isThinking  // ✅ 수정
+            ? _buildThinkingSlivers(context)
+            : _buildContentSlivers(context),
         // 하단
         SliverToBoxAdapter(
           child: Container(
@@ -137,6 +148,42 @@ class _AiMessageBubbleSliver extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  List<Widget> _buildThinkingSlivers(BuildContext context) {
+    return [
+      SliverToBoxAdapter(
+        child: Container(
+          width: double.infinity,
+          color: bubbleColor,
+          padding: const EdgeInsets.all(UIConstants.spacingLg),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isDark ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              ),
+              const SizedBox(width: UIConstants.spacingMd),
+              Text(
+                '생각 중...',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: isDark
+                      ? Colors.white.withAlpha(UIConstants.alpha70)
+                      : Colors.black54,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
   }
 
   Widget _buildAiHeader(BuildContext context) {
@@ -175,22 +222,24 @@ class _AiMessageBubbleSliver extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          InkWell(
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: message.content));
-            },
-            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
-            child: Padding(
-              padding: const EdgeInsets.all(UIConstants.spacingXs),
-              child: Icon(
-                Icons.copy_all,
-                size: UIConstants.iconSm,
-                color: isDark
-                    ? Colors.white.withAlpha(UIConstants.alpha70)
-                    : Colors.black54,
+          // ✅ 생각 중일 때는 복사 버튼 숨기기
+          if (!isThinking)
+            InkWell(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: message.content));
+              },
+              borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+              child: Padding(
+                padding: const EdgeInsets.all(UIConstants.spacingXs),
+                child: Icon(
+                  Icons.copy_all,
+                  size: UIConstants.iconSm,
+                  color: isDark
+                      ? Colors.white.withAlpha(UIConstants.alpha70)
+                      : Colors.black54,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

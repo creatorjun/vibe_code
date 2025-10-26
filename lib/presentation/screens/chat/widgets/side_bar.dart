@@ -6,11 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../domain/mutations/create_session_mutation.dart';
 import '../../../../domain/providers/sidebar_state_provider.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../settings/settings_screen.dart';
-import 'session_list.dart';  // ✅ 추가
+import 'session_list.dart';
 
 class SideBar extends ConsumerStatefulWidget {
   const SideBar({super.key});
@@ -110,7 +109,7 @@ class _SideBarState extends ConsumerState<SideBar> {
                     ),
                     Expanded(
                       child: SessionList(
-                        isExpanded: showExpandedContent,  // ✅ 수정: SessionList로 분리
+                        isExpanded: showExpandedContent,
                       ),
                     ),
                     SideBarFooter(
@@ -160,8 +159,7 @@ class SideBarHeader extends ConsumerWidget {
               .outlineVariant
               .withAlpha(UIConstants.alpha30),
         ),
-        // 하단: 대화 목록 섹션 (확장 시에만 표시)
-        if (isExpanded) _buildSessionHeader(context, ref),
+        // ✅ 제거: 대화 목록 섹션 헤더
       ],
     );
   }
@@ -214,44 +212,6 @@ class SideBarHeader extends ConsumerWidget {
         onPressed: () {
           ref.read(sidebarStateProvider.notifier).toggle();
         },
-      ),
-    );
-  }
-
-  /// 대화 목록 섹션 헤더 (확장 시에만 표시)
-  Widget _buildSessionHeader(BuildContext context, WidgetRef ref) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: UIConstants.spacingMd,
-        vertical: UIConstants.spacingSm,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              '대화 목록',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withAlpha(UIConstants.alpha70),
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const FaIcon(FontAwesomeIcons.circlePlus),
-            iconSize: UIConstants.iconMd,
-            tooltip: '새 대화',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: UIConstants.iconLg + UIConstants.spacingSm,
-              minHeight: UIConstants.iconLg + UIConstants.spacingSm,
-            ),
-            color: Theme.of(context).colorScheme.primary,
-            onPressed: () => createNewSession(ref, '새로운 대화'),
-          ),
-        ],
       ),
     );
   }
