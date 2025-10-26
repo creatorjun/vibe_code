@@ -405,24 +405,17 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
     'role',
     aliasedName,
     false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 1,
-      maxTextLength: 20,
-    ),
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
-  );
+  static const VerificationMeta _modelMeta = const VerificationMeta('model');
   @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-    'created_at',
+  late final GeneratedColumn<String> model = GeneratedColumn<String>(
+    'model',
     aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
+    true,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
   );
   static const VerificationMeta _isStreamingMeta = const VerificationMeta(
     'isStreaming',
@@ -439,14 +432,41 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
     ),
     defaultValue: const Constant(false),
   );
-  static const VerificationMeta _modelMeta = const VerificationMeta('model');
+  static const VerificationMeta _inputTokensMeta = const VerificationMeta(
+    'inputTokens',
+  );
   @override
-  late final GeneratedColumn<String> model = GeneratedColumn<String>(
-    'model',
+  late final GeneratedColumn<int> inputTokens = GeneratedColumn<int>(
+    'input_tokens',
     aliasedName,
-    true,
-    type: DriftSqlType.string,
+    false,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _outputTokensMeta = const VerificationMeta(
+    'outputTokens',
+  );
+  @override
+  late final GeneratedColumn<int> outputTokens = GeneratedColumn<int>(
+    'output_tokens',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -454,9 +474,11 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
     sessionId,
     content,
     role,
-    createdAt,
-    isStreaming,
     model,
+    isStreaming,
+    inputTokens,
+    outputTokens,
+    createdAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -497,10 +519,10 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
     } else if (isInserting) {
       context.missing(_roleMeta);
     }
-    if (data.containsKey('created_at')) {
+    if (data.containsKey('model')) {
       context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+        _modelMeta,
+        model.isAcceptableOrUnknown(data['model']!, _modelMeta),
       );
     }
     if (data.containsKey('is_streaming')) {
@@ -512,10 +534,28 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
         ),
       );
     }
-    if (data.containsKey('model')) {
+    if (data.containsKey('input_tokens')) {
       context.handle(
-        _modelMeta,
-        model.isAcceptableOrUnknown(data['model']!, _modelMeta),
+        _inputTokensMeta,
+        inputTokens.isAcceptableOrUnknown(
+          data['input_tokens']!,
+          _inputTokensMeta,
+        ),
+      );
+    }
+    if (data.containsKey('output_tokens')) {
+      context.handle(
+        _outputTokensMeta,
+        outputTokens.isAcceptableOrUnknown(
+          data['output_tokens']!,
+          _outputTokensMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
     return context;
@@ -543,18 +583,26 @@ class $MessagesTable extends Messages with TableInfo<$MessagesTable, Message> {
         DriftSqlType.string,
         data['${effectivePrefix}role'],
       )!,
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
-      )!,
-      isStreaming: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_streaming'],
-      )!,
       model: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}model'],
       ),
+      isStreaming: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_streaming'],
+      )!,
+      inputTokens: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}input_tokens'],
+      )!,
+      outputTokens: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}output_tokens'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
     );
   }
 
@@ -569,17 +617,21 @@ class Message extends DataClass implements Insertable<Message> {
   final int sessionId;
   final String content;
   final String role;
-  final DateTime createdAt;
-  final bool isStreaming;
   final String? model;
+  final bool isStreaming;
+  final int inputTokens;
+  final int outputTokens;
+  final DateTime createdAt;
   const Message({
     required this.id,
     required this.sessionId,
     required this.content,
     required this.role,
-    required this.createdAt,
-    required this.isStreaming,
     this.model,
+    required this.isStreaming,
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.createdAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -588,11 +640,13 @@ class Message extends DataClass implements Insertable<Message> {
     map['session_id'] = Variable<int>(sessionId);
     map['content'] = Variable<String>(content);
     map['role'] = Variable<String>(role);
-    map['created_at'] = Variable<DateTime>(createdAt);
-    map['is_streaming'] = Variable<bool>(isStreaming);
     if (!nullToAbsent || model != null) {
       map['model'] = Variable<String>(model);
     }
+    map['is_streaming'] = Variable<bool>(isStreaming);
+    map['input_tokens'] = Variable<int>(inputTokens);
+    map['output_tokens'] = Variable<int>(outputTokens);
+    map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
 
@@ -602,11 +656,13 @@ class Message extends DataClass implements Insertable<Message> {
       sessionId: Value(sessionId),
       content: Value(content),
       role: Value(role),
-      createdAt: Value(createdAt),
-      isStreaming: Value(isStreaming),
       model: model == null && nullToAbsent
           ? const Value.absent()
           : Value(model),
+      isStreaming: Value(isStreaming),
+      inputTokens: Value(inputTokens),
+      outputTokens: Value(outputTokens),
+      createdAt: Value(createdAt),
     );
   }
 
@@ -620,9 +676,11 @@ class Message extends DataClass implements Insertable<Message> {
       sessionId: serializer.fromJson<int>(json['sessionId']),
       content: serializer.fromJson<String>(json['content']),
       role: serializer.fromJson<String>(json['role']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      isStreaming: serializer.fromJson<bool>(json['isStreaming']),
       model: serializer.fromJson<String?>(json['model']),
+      isStreaming: serializer.fromJson<bool>(json['isStreaming']),
+      inputTokens: serializer.fromJson<int>(json['inputTokens']),
+      outputTokens: serializer.fromJson<int>(json['outputTokens']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
   @override
@@ -633,9 +691,11 @@ class Message extends DataClass implements Insertable<Message> {
       'sessionId': serializer.toJson<int>(sessionId),
       'content': serializer.toJson<String>(content),
       'role': serializer.toJson<String>(role),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'isStreaming': serializer.toJson<bool>(isStreaming),
       'model': serializer.toJson<String?>(model),
+      'isStreaming': serializer.toJson<bool>(isStreaming),
+      'inputTokens': serializer.toJson<int>(inputTokens),
+      'outputTokens': serializer.toJson<int>(outputTokens),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
 
@@ -644,17 +704,21 @@ class Message extends DataClass implements Insertable<Message> {
     int? sessionId,
     String? content,
     String? role,
-    DateTime? createdAt,
-    bool? isStreaming,
     Value<String?> model = const Value.absent(),
+    bool? isStreaming,
+    int? inputTokens,
+    int? outputTokens,
+    DateTime? createdAt,
   }) => Message(
     id: id ?? this.id,
     sessionId: sessionId ?? this.sessionId,
     content: content ?? this.content,
     role: role ?? this.role,
-    createdAt: createdAt ?? this.createdAt,
-    isStreaming: isStreaming ?? this.isStreaming,
     model: model.present ? model.value : this.model,
+    isStreaming: isStreaming ?? this.isStreaming,
+    inputTokens: inputTokens ?? this.inputTokens,
+    outputTokens: outputTokens ?? this.outputTokens,
+    createdAt: createdAt ?? this.createdAt,
   );
   Message copyWithCompanion(MessagesCompanion data) {
     return Message(
@@ -662,11 +726,17 @@ class Message extends DataClass implements Insertable<Message> {
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
       content: data.content.present ? data.content.value : this.content,
       role: data.role.present ? data.role.value : this.role,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      model: data.model.present ? data.model.value : this.model,
       isStreaming: data.isStreaming.present
           ? data.isStreaming.value
           : this.isStreaming,
-      model: data.model.present ? data.model.value : this.model,
+      inputTokens: data.inputTokens.present
+          ? data.inputTokens.value
+          : this.inputTokens,
+      outputTokens: data.outputTokens.present
+          ? data.outputTokens.value
+          : this.outputTokens,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
 
@@ -677,16 +747,27 @@ class Message extends DataClass implements Insertable<Message> {
           ..write('sessionId: $sessionId, ')
           ..write('content: $content, ')
           ..write('role: $role, ')
-          ..write('createdAt: $createdAt, ')
+          ..write('model: $model, ')
           ..write('isStreaming: $isStreaming, ')
-          ..write('model: $model')
+          ..write('inputTokens: $inputTokens, ')
+          ..write('outputTokens: $outputTokens, ')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, sessionId, content, role, createdAt, isStreaming, model);
+  int get hashCode => Object.hash(
+    id,
+    sessionId,
+    content,
+    role,
+    model,
+    isStreaming,
+    inputTokens,
+    outputTokens,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -695,9 +776,11 @@ class Message extends DataClass implements Insertable<Message> {
           other.sessionId == this.sessionId &&
           other.content == this.content &&
           other.role == this.role &&
-          other.createdAt == this.createdAt &&
+          other.model == this.model &&
           other.isStreaming == this.isStreaming &&
-          other.model == this.model);
+          other.inputTokens == this.inputTokens &&
+          other.outputTokens == this.outputTokens &&
+          other.createdAt == this.createdAt);
 }
 
 class MessagesCompanion extends UpdateCompanion<Message> {
@@ -705,26 +788,32 @@ class MessagesCompanion extends UpdateCompanion<Message> {
   final Value<int> sessionId;
   final Value<String> content;
   final Value<String> role;
-  final Value<DateTime> createdAt;
-  final Value<bool> isStreaming;
   final Value<String?> model;
+  final Value<bool> isStreaming;
+  final Value<int> inputTokens;
+  final Value<int> outputTokens;
+  final Value<DateTime> createdAt;
   const MessagesCompanion({
     this.id = const Value.absent(),
     this.sessionId = const Value.absent(),
     this.content = const Value.absent(),
     this.role = const Value.absent(),
-    this.createdAt = const Value.absent(),
-    this.isStreaming = const Value.absent(),
     this.model = const Value.absent(),
+    this.isStreaming = const Value.absent(),
+    this.inputTokens = const Value.absent(),
+    this.outputTokens = const Value.absent(),
+    this.createdAt = const Value.absent(),
   });
   MessagesCompanion.insert({
     this.id = const Value.absent(),
     required int sessionId,
     required String content,
     required String role,
-    this.createdAt = const Value.absent(),
-    this.isStreaming = const Value.absent(),
     this.model = const Value.absent(),
+    this.isStreaming = const Value.absent(),
+    this.inputTokens = const Value.absent(),
+    this.outputTokens = const Value.absent(),
+    this.createdAt = const Value.absent(),
   }) : sessionId = Value(sessionId),
        content = Value(content),
        role = Value(role);
@@ -733,18 +822,22 @@ class MessagesCompanion extends UpdateCompanion<Message> {
     Expression<int>? sessionId,
     Expression<String>? content,
     Expression<String>? role,
-    Expression<DateTime>? createdAt,
-    Expression<bool>? isStreaming,
     Expression<String>? model,
+    Expression<bool>? isStreaming,
+    Expression<int>? inputTokens,
+    Expression<int>? outputTokens,
+    Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (sessionId != null) 'session_id': sessionId,
       if (content != null) 'content': content,
       if (role != null) 'role': role,
-      if (createdAt != null) 'created_at': createdAt,
-      if (isStreaming != null) 'is_streaming': isStreaming,
       if (model != null) 'model': model,
+      if (isStreaming != null) 'is_streaming': isStreaming,
+      if (inputTokens != null) 'input_tokens': inputTokens,
+      if (outputTokens != null) 'output_tokens': outputTokens,
+      if (createdAt != null) 'created_at': createdAt,
     });
   }
 
@@ -753,18 +846,22 @@ class MessagesCompanion extends UpdateCompanion<Message> {
     Value<int>? sessionId,
     Value<String>? content,
     Value<String>? role,
-    Value<DateTime>? createdAt,
-    Value<bool>? isStreaming,
     Value<String?>? model,
+    Value<bool>? isStreaming,
+    Value<int>? inputTokens,
+    Value<int>? outputTokens,
+    Value<DateTime>? createdAt,
   }) {
     return MessagesCompanion(
       id: id ?? this.id,
       sessionId: sessionId ?? this.sessionId,
       content: content ?? this.content,
       role: role ?? this.role,
-      createdAt: createdAt ?? this.createdAt,
-      isStreaming: isStreaming ?? this.isStreaming,
       model: model ?? this.model,
+      isStreaming: isStreaming ?? this.isStreaming,
+      inputTokens: inputTokens ?? this.inputTokens,
+      outputTokens: outputTokens ?? this.outputTokens,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -783,14 +880,20 @@ class MessagesCompanion extends UpdateCompanion<Message> {
     if (role.present) {
       map['role'] = Variable<String>(role.value);
     }
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
+    if (model.present) {
+      map['model'] = Variable<String>(model.value);
     }
     if (isStreaming.present) {
       map['is_streaming'] = Variable<bool>(isStreaming.value);
     }
-    if (model.present) {
-      map['model'] = Variable<String>(model.value);
+    if (inputTokens.present) {
+      map['input_tokens'] = Variable<int>(inputTokens.value);
+    }
+    if (outputTokens.present) {
+      map['output_tokens'] = Variable<int>(outputTokens.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
     }
     return map;
   }
@@ -802,9 +905,11 @@ class MessagesCompanion extends UpdateCompanion<Message> {
           ..write('sessionId: $sessionId, ')
           ..write('content: $content, ')
           ..write('role: $role, ')
-          ..write('createdAt: $createdAt, ')
+          ..write('model: $model, ')
           ..write('isStreaming: $isStreaming, ')
-          ..write('model: $model')
+          ..write('inputTokens: $inputTokens, ')
+          ..write('outputTokens: $outputTokens, ')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
@@ -2226,9 +2331,11 @@ typedef $$MessagesTableCreateCompanionBuilder =
       required int sessionId,
       required String content,
       required String role,
-      Value<DateTime> createdAt,
-      Value<bool> isStreaming,
       Value<String?> model,
+      Value<bool> isStreaming,
+      Value<int> inputTokens,
+      Value<int> outputTokens,
+      Value<DateTime> createdAt,
     });
 typedef $$MessagesTableUpdateCompanionBuilder =
     MessagesCompanion Function({
@@ -2236,9 +2343,11 @@ typedef $$MessagesTableUpdateCompanionBuilder =
       Value<int> sessionId,
       Value<String> content,
       Value<String> role,
-      Value<DateTime> createdAt,
-      Value<bool> isStreaming,
       Value<String?> model,
+      Value<bool> isStreaming,
+      Value<int> inputTokens,
+      Value<int> outputTokens,
+      Value<DateTime> createdAt,
     });
 
 final class $$MessagesTableReferences
@@ -2313,8 +2422,8 @@ class $$MessagesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
+  ColumnFilters<String> get model => $composableBuilder(
+    column: $table.model,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2323,8 +2432,18 @@ class $$MessagesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get model => $composableBuilder(
-    column: $table.model,
+  ColumnFilters<int> get inputTokens => $composableBuilder(
+    column: $table.inputTokens,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get outputTokens => $composableBuilder(
+    column: $table.outputTokens,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2401,8 +2520,8 @@ class $$MessagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
+  ColumnOrderings<String> get model => $composableBuilder(
+    column: $table.model,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2411,8 +2530,18 @@ class $$MessagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get model => $composableBuilder(
-    column: $table.model,
+  ColumnOrderings<int> get inputTokens => $composableBuilder(
+    column: $table.inputTokens,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get outputTokens => $composableBuilder(
+    column: $table.outputTokens,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2458,16 +2587,26 @@ class $$MessagesTableAnnotationComposer
   GeneratedColumn<String> get role =>
       $composableBuilder(column: $table.role, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<String> get model =>
+      $composableBuilder(column: $table.model, builder: (column) => column);
 
   GeneratedColumn<bool> get isStreaming => $composableBuilder(
     column: $table.isStreaming,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get model =>
-      $composableBuilder(column: $table.model, builder: (column) => column);
+  GeneratedColumn<int> get inputTokens => $composableBuilder(
+    column: $table.inputTokens,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get outputTokens => $composableBuilder(
+    column: $table.outputTokens,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
   $$ChatSessionsTableAnnotationComposer get sessionId {
     final $$ChatSessionsTableAnnotationComposer composer = $composerBuilder(
@@ -2551,17 +2690,21 @@ class $$MessagesTableTableManager
                 Value<int> sessionId = const Value.absent(),
                 Value<String> content = const Value.absent(),
                 Value<String> role = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<bool> isStreaming = const Value.absent(),
                 Value<String?> model = const Value.absent(),
+                Value<bool> isStreaming = const Value.absent(),
+                Value<int> inputTokens = const Value.absent(),
+                Value<int> outputTokens = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
               }) => MessagesCompanion(
                 id: id,
                 sessionId: sessionId,
                 content: content,
                 role: role,
-                createdAt: createdAt,
-                isStreaming: isStreaming,
                 model: model,
+                isStreaming: isStreaming,
+                inputTokens: inputTokens,
+                outputTokens: outputTokens,
+                createdAt: createdAt,
               ),
           createCompanionCallback:
               ({
@@ -2569,17 +2712,21 @@ class $$MessagesTableTableManager
                 required int sessionId,
                 required String content,
                 required String role,
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<bool> isStreaming = const Value.absent(),
                 Value<String?> model = const Value.absent(),
+                Value<bool> isStreaming = const Value.absent(),
+                Value<int> inputTokens = const Value.absent(),
+                Value<int> outputTokens = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
               }) => MessagesCompanion.insert(
                 id: id,
                 sessionId: sessionId,
                 content: content,
                 role: role,
-                createdAt: createdAt,
-                isStreaming: isStreaming,
                 model: model,
+                isStreaming: isStreaming,
+                inputTokens: inputTokens,
+                outputTokens: outputTokens,
+                createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(

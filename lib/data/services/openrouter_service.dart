@@ -29,6 +29,7 @@ class OpenRouterService implements AIService {
   Stream<String> streamChat({
     required List<ChatMessage> messages,
     required String model,
+    Function(int inputTokens, int outputTokens)? onTokenUsage, // ===== 추가 =====
   }) async* {
     _cancelToken = CancelToken();
 
@@ -95,6 +96,15 @@ class OpenRouterService implements AIService {
               if (content != null && content is String) {
                 yield content;
               }
+
+              // ===== 추가: 토큰 사용량 추출 =====
+              final usage = json['usage'];
+              if (usage != null && onTokenUsage != null) {
+                final inputTokens = usage['prompt_tokens'] ?? 0;
+                final outputTokens = usage['completion_tokens'] ?? 0;
+                onTokenUsage(inputTokens, outputTokens);
+              }
+              // ====================================
             } catch (e) {
               Logger.warning('Failed to parse chunk: $data');
             }

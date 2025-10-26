@@ -30,7 +30,7 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
         .watch();
   }
 
-  /// 특정 세션 정보를 스트림으로 반환 (새로 추가)
+  /// 특정 세션 정보를 스트림으로 반환
   Stream<ChatSession?> watchSession(int sessionId) {
     return (select(chatSessions)..where((t) => t.id.equals(sessionId)))
         .watchSingleOrNull();
@@ -102,13 +102,15 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
         .get();
   }
 
-  /// 메시지 추가
+  /// 메시지 추가 (===== 수정: 토큰 파라미터 추가 =====)
   Future<int> addMessage({
     required int sessionId,
     required String content,
     required String role,
     String? model,
     bool isStreaming = false,
+    int inputTokens = 0,      // ===== 추가 =====
+    int outputTokens = 0,     // ===== 추가 =====
   }) async {
     return into(messages).insert(
       MessagesCompanion.insert(
@@ -117,15 +119,24 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
         role: role,
         model: Value(model),
         isStreaming: Value(isStreaming),
+        inputTokens: Value(inputTokens),     // ===== 추가 =====
+        outputTokens: Value(outputTokens),   // ===== 추가 =====
       ),
     );
   }
 
-  /// 메시지 내용 업데이트
-  Future<void> updateMessageContent(int messageId, String content) async {
+  /// 메시지 내용 업데이트 (===== 수정: 토큰 업데이트 추가 =====)
+  Future<void> updateMessageContent(
+      int messageId,
+      String content, {
+        int? inputTokens,    // ===== 추가 =====
+        int? outputTokens,   // ===== 추가 =====
+      }) async {
     await (update(messages)..where((t) => t.id.equals(messageId))).write(
       MessagesCompanion(
         content: Value(content),
+        inputTokens: inputTokens != null ? Value(inputTokens) : const Value.absent(),    // ===== 추가 =====
+        outputTokens: outputTokens != null ? Value(outputTokens) : const Value.absent(), // ===== 추가 =====
       ),
     );
   }
@@ -158,6 +169,28 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
         .getSingleOrNull();
   }
 
+  // ===== 추가: 세션의 토큰 합계 조회 =====
+  /// 특정 세션의 총 토큰 사용량 조회
+  Future<TokenUsageSummary> getSessionTokenUsage(int sessionId) async {
+    final result = await (selectOnly(messages)
+      ..addColumns([
+        messages.inputTokens.sum(),
+        messages.outputTokens.sum(),
+      ])
+      ..where(messages.sessionId.equals(sessionId)))
+        .getSingleOrNull();
+
+    final inputTotal = result?.read(messages.inputTokens.sum()) ?? 0;
+    final outputTotal = result?.read(messages.outputTokens.sum()) ?? 0;
+
+    return TokenUsageSummary(
+      inputTokens: inputTotal,
+      outputTokens: outputTotal,
+      totalTokens: inputTotal + outputTotal,
+    );
+  }
+  // =========================================
+
   // ===== Cleanup Methods =====
 
   /// 모든 세션 삭제
@@ -170,3 +203,17 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
     await delete(messages).go();
   }
 }
+
+// ===== 추가: 토큰 사용량 요약 클래스 =====
+class TokenUsageSummary {
+  final int inputTokens;
+  final int outputTokens;
+  final int totalTokens;
+
+  const TokenUsageSummary({
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.totalTokens,
+  });
+}
+// ==========================================

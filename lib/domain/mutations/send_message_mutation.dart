@@ -5,9 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/errors/error_handler.dart';
 import '../../core/utils/logger.dart';
+import '../../core/utils/token_counter.dart';  // ===== 추가 =====
 import '../../core/utils/validators.dart';
 import '../../data/models/api_request.dart';
-import '../../data/models/settings_state.dart'; // SettingsState 추가
+import '../../data/models/settings_state.dart';
 import '../providers/ai_service_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/settings_provider.dart';
@@ -25,7 +26,7 @@ enum SendMessageStatus {
 class SendMessageState {
   final SendMessageStatus status;
   final String? error;
-  final double? progress; // Pipeline 진행률 (선택 사항)
+  final double? progress;
 
   const SendMessageState.idle()
       : status = SendMessageStatus.idle,
@@ -37,7 +38,6 @@ class SendMessageState {
         error = null,
         progress = null;
 
-  // progress 추가
   const SendMessageState.streaming({this.progress})
       : status = SendMessageStatus.streaming,
         error = null;
@@ -53,9 +53,6 @@ class SendMessageState {
 }
 
 class SendMessageMutationNotifier extends Notifier<SendMessageState> {
-  // OpenRouterService 참조 제거 (PipelineService가 내부에서 생성/관리)
-  // OpenRouterService? _activeService;
-
   @override
   SendMessageState build() {
     return const SendMessageState.idle();
@@ -69,14 +66,17 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
     state = const SendMessageState.sending();
 
     int? aiMessageId;
+    // ===== 추가: 토큰 추적 변수 =====
+    int totalInputTokens = 0;
+    int totalOutputTokens = 0;
+    // ================================
 
     try {
       final chatRepo = ref.read(chatRepositoryProvider);
       final attachmentRepo = ref.read(attachmentRepositoryProvider);
-      // settingsProvider에서 설정값 읽기 (프리셋 포함)
       final settingsAsync = await ref.read(settingsProvider.future);
 
-      // API 키 검증 (기존 코드 유지)
+      // API 키 검증
       if (settingsAsync.apiKey.isEmpty) {
         throw const ValidationException(
           'API 키를 설정해주세요. 설정 화면에서 API 키를 입력해주세요.',
@@ -86,13 +86,18 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         throw const ValidationException('올바르지 않은 API 키 형식입니다.');
       }
 
-      // 사용자 메시지 추가 (기존 코드 유지)
+      // ===== 추가: 사용자 메시지 토큰 계산 =====
+      final userMessageTokens = TokenCounter.estimateTokens(content);
+      // =========================================
+
+      // 사용자 메시지 추가
       final userMessageId = await chatRepo.addUserMessage(
         sessionId: sessionId,
         content: content,
+        inputTokens: userMessageTokens,  // ===== 추가 =====
       );
 
-      // 첨부파일 링크 (기존 코드 유지)
+      // 첨부파일 링크
       if (attachmentIds.isNotEmpty) {
         await attachmentRepo.linkToMessage(
           messageId: userMessageId,
@@ -100,7 +105,7 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         );
       }
 
-      // 첨부파일 내용 로드 (기존 코드 유지)
+      // 첨부파일 내용 로드
       String fullContent = content;
       if (attachmentIds.isNotEmpty) {
         final attachmentContents = <String>[];
@@ -138,22 +143,19 @@ ${attachmentContents.join('\n')}
         }
       }
 
-      // 메시지 히스토리 구성 (기존 코드 유지)
+      // 메시지 히스토리 구성
       final apiMessages = await _buildMessageHistory(sessionId, settingsAsync);
       apiMessages.add(ChatMessage(
         role: 'user',
-        content: fullContent, // 첨부파일 포함된 전체 내용
+        content: fullContent,
       ));
 
-      // 선택된 파이프라인 깊이 가져오기 (기존 코드 유지)
+      // 파이프라인 구성
       final selectedDepth = ref.read(selectedPipelineDepthProvider);
-      // SettingsState에서 모델 파이프라인 가져오기
       final fullPipelineConfigs = settingsAsync.modelPipeline;
-
-      // 선택된 깊이만큼만 사용
       List<ModelConfig> activePipelineConfigs = fullPipelineConfigs.take(selectedDepth).toList();
 
-      // --- 프리셋 적용 로직 (수정 없음) ---
+      // 프리셋 적용
       final selectedPreset = settingsAsync.selectedPreset;
       if (selectedPreset != null) {
         Logger.info('Applying preset "${selectedPreset.name}" to the pipeline.');
@@ -174,29 +176,27 @@ ${attachmentContents.join('\n')}
           Logger.debug('  Step ${i+1}: Model=${config.modelId}, Prompt=${config.systemPrompt.isNotEmpty ? "[Manual Prompt]" : "[Empty]"}');
         }
       }
-      // --- ---
 
       Logger.info('Using ${activePipelineConfigs.length} models (depth: $selectedDepth)');
 
-      // AI 응답 메시지 생성 (기존 코드 유지)
+      // AI 응답 메시지 생성
       final modelId = activePipelineConfigs.isNotEmpty
           ? activePipelineConfigs.first.modelId
           : 'anthropic/claude-3.5-sonnet';
 
-      aiMessageId = await chatRepo.addAssistantMessage(
+      aiMessageId = await chatRepo.addAiMessage(
         sessionId: sessionId,
         model: modelId,
         isStreaming: true,
       );
 
-      // 스트리밍 상태 시작 (기존 코드 유지)
+      // 스트리밍 상태 시작
       ref.read(streamingStateProvider.notifier).start();
       ref.read(currentStreamingMessageProvider.notifier).set(aiMessageId);
 
       state = const SendMessageState.streaming(progress: 0.0);
 
       final responseBuffer = StringBuffer();
-      // final int completedSteps = 0; // <-- 변수 제거
 
       // PipelineService를 통한 파이프라인 실행
       final pipelineService = ref.read(pipelineServiceProvider);
@@ -207,9 +207,7 @@ ${attachmentContents.join('\n')}
         messageHistory: apiMessages.sublist(0, apiMessages.length - 1),
         onStepStart: (step, config) {
           Logger.info('Pipeline step ${step + 1}/${activePipelineConfigs.length}: ${config.modelId}');
-          // --- setState 대신 state 직접 할당으로 수정 ---
           state = SendMessageState.streaming(progress: step / activePipelineConfigs.length);
-          // --- ---
         },
         onChunk: (step, chunk) async {
           responseBuffer.write(chunk);
@@ -218,23 +216,42 @@ ${attachmentContents.join('\n')}
             responseBuffer.toString(),
           );
         },
+        // ===== 추가: 토큰 사용량 콜백 (PipelineService에 존재하지 않으므로 주석 처리) =====
+        // onTokenUsage: (inputTokens, outputTokens) {
+        //   totalInputTokens += inputTokens;
+        //   totalOutputTokens += outputTokens;
+        //   Logger.debug('Token usage - Input: $inputTokens, Output: $outputTokens');
+        // },
+        // ===================================================================================
         aiServiceFactory: ref.read(aiServiceFactoryProvider),
         apiKey: settingsAsync.apiKey,
       )) {
-        // yield가 호출될 때마다 단계가 완료된 것으로 간주 (completedSteps 변수 제거됨)
-        // completedSteps++;
+        // Progress tracking
       }
 
-      // 스트리밍 완료 (기존 코드 유지)
-      await chatRepo.completeStreaming(aiMessageId);
+      // ===== 추가: API가 토큰 정보를 제공하지 않으므로 추정 =====
+      final finalResponse = responseBuffer.toString();
+      totalInputTokens = TokenCounter.estimateTokens(fullContent);
+      totalOutputTokens = TokenCounter.estimateTokens(finalResponse);
+      Logger.info('Estimated tokens - Input: $totalInputTokens, Output: $totalOutputTokens');
+      // =========================================================
+
+      // ===== 수정: 토큰 정보와 함께 스트리밍 완료 =====
+      await chatRepo.completeStreaming(
+        aiMessageId,
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+      );
+      // ===============================================
+
       ref.read(streamingStateProvider.notifier).stop();
       ref.read(currentStreamingMessageProvider.notifier).clear();
 
-      // 세션 제목 업데이트 (기존 코드 유지)
+      // 세션 제목 업데이트
       await _updateSessionTitleIfNeeded(sessionId, content);
 
       state = const SendMessageState.success();
-      Logger.info('Message sent successfully via pipeline');
+      Logger.info('Message sent successfully with tokens: input=$totalInputTokens, output=$totalOutputTokens');
 
     } catch (e, stackTrace) {
       Logger.error('Send message failed', e, stackTrace);
@@ -243,7 +260,7 @@ ${attachmentContents.join('\n')}
       final errorMessage = ErrorHandler.getErrorMessage(e);
       state = SendMessageState.error(errorMessage);
 
-      // AI 메시지를 에러 메시지로 업데이트 (기존 코드 유지)
+      // AI 메시지를 에러 메시지로 업데이트
       if (aiMessageId != null) {
         final chatRepo = ref.read(chatRepositoryProvider);
         String existingContent = '';
@@ -264,12 +281,10 @@ ${attachmentContents.join('\n')}
 
       ref.read(streamingStateProvider.notifier).stop();
       ref.read(currentStreamingMessageProvider.notifier).clear();
-    } finally {
-      // _activeService 관련 코드 제거 (기존 코드 유지)
     }
   }
 
-  /// 메시지 전송 취소 (기존 코드 유지)
+  /// 메시지 전송 취소
   void cancel() {
     Logger.info('Cancelling message send');
     ref.read(streamingStateProvider.notifier).stop();
@@ -277,7 +292,7 @@ ${attachmentContents.join('\n')}
     state = const SendMessageState.idle();
   }
 
-  /// 메시지 히스토리 구성 (기존 코드 유지)
+  /// 메시지 히스토리 구성
   Future<List<ChatMessage>> _buildMessageHistory(
       int sessionId,
       SettingsState settings,
@@ -292,7 +307,7 @@ ${attachmentContents.join('\n')}
     }).toList();
   }
 
-  /// 세션 제목 업데이트 (기존 코드 유지)
+  /// 세션 제목 업데이트
   Future<void> _updateSessionTitleIfNeeded(
       int sessionId,
       String content,
@@ -300,7 +315,6 @@ ${attachmentContents.join('\n')}
     final chatRepo = ref.read(chatRepositoryProvider);
     final session = await chatRepo.getSession(sessionId);
 
-    // ✅ 최선의 해결: 제목이 기본값일 때만 업데이트
     if (session != null && (session.title == '새로운 대화' || session.title.isEmpty)) {
       final title = content.length > 50 ? '${content.substring(0, 50)}...' : content;
       await chatRepo.updateSessionTitle(sessionId, title);

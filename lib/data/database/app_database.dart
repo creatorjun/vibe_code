@@ -34,8 +34,9 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  // ===== 변경: 스키마 버전 2로 증가 =====
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -47,9 +48,16 @@ class AppDatabase extends _$AppDatabase {
         // 기본 설정 초기화
         await _initializeDefaultSettings();
       },
+      // ===== 추가: 마이그레이션 로직 =====
       onUpgrade: (Migrator m, int from, int to) async {
-        // 향후 마이그레이션 로직
+        if (from == 1 && to == 2) {
+          // 버전 1 → 2: Messages 테이블에 토큰 컬럼 추가
+          await m.addColumn(messages, messages.inputTokens);
+          await m.addColumn(messages, messages.outputTokens);
+          Logger.debug('[Database] Migration 1->2: Added token columns to Messages table');
+        }
       },
+      // ================================
       beforeOpen: (details) async {
         await customStatement('PRAGMA foreign_keys = ON');
         Logger.debug('[Database] Foreign keys enabled');
