@@ -18,9 +18,9 @@ class ChatStateBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // RepaintBoundary: 이 위젯만 독립적으로 다시 그리도록 하여 성능 최적화
-    return RepaintBoundary(
-      child: Padding(
-        padding: const EdgeInsets.all(UIConstants.spacingXs),
+    return Padding(
+      padding: EdgeInsets.all(UIConstants.spacingMd),
+      child: RepaintBoundary(
         child: ClipRRect(
           borderRadius: const BorderRadius.all(
             Radius.circular(UIConstants.radiusLg),
@@ -31,7 +31,6 @@ class ChatStateBar extends ConsumerWidget {
               sigmaY: UIConstants.glassBlur,
             ),
             child: Container(
-              height: 120.0,
               padding: const EdgeInsets.symmetric(
                 horizontal: UIConstants.spacingMd,
               ),

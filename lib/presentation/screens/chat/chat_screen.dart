@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vibe_code/presentation/screens/chat/widgets/chat_input.dart';
 
-import '../../../core/constants/ui_constants.dart';
-import '../../../data/database/app_database.dart';
-import '../../../domain/mutations/send_message_mutation.dart';
-import '../../../domain/providers/chat_input_state_provider.dart';
-import '../../../domain/providers/database_provider.dart';
-import '../../../domain/providers/scroll_controller_provider.dart';
-import '../../../domain/providers/sidebar_state_provider.dart';
-import '../../../domain/providers/chat_provider.dart';
+import 'package:vibe_code/core/constants/ui_constants.dart';
+import 'package:vibe_code/data/database/app_database.dart';
+import 'package:vibe_code/domain/mutations/send_message_mutation.dart';
+import 'package:vibe_code/domain/providers/chat_input_state_provider.dart';
+import 'package:vibe_code/domain/providers/database_provider.dart';
+import 'package:vibe_code/domain/providers/scroll_controller_provider.dart';
+import 'package:vibe_code/domain/providers/sidebar_state_provider.dart';
+import 'package:vibe_code/domain/providers/chat_provider.dart';
 import 'widgets/chat_state_bar.dart';
 import 'widgets/message_bubble.dart';
 import 'widgets/session_list.dart';
@@ -50,9 +50,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final shouldShowExpanded = ref.watch(
       sidebarStateProvider.select((state) => state.shouldShowExpanded),
     );
-    final activeSessionId = ref.watch(
-      activeSessionProvider.select((id) => id),
-    );
+    final activeSessionId = ref.watch(activeSessionProvider.select((id) => id));
 
     final messagesAsync = activeSessionId != null
         ? ref.watch(sessionMessagesProvider(activeSessionId))
@@ -79,7 +77,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       activeSessionId != null
           ? sessionMessagesProvider(activeSessionId)
           : Provider((ref) => const AsyncValue.data(<Message>[])),
-          (previous, next) {
+      (previous, next) {
         if (next.hasValue && previous?.hasValue == true) {
           final prevLength = previous?.value?.length ?? 0;
           final nextLength = next.value?.length ?? 0;
@@ -88,7 +86,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             scrollDebounce?.cancel();
             scrollDebounce = Timer(
               const Duration(milliseconds: 100),
-                  () => scrollToBottom(scrollController),
+              () => scrollToBottom(scrollController),
             );
           }
         }
@@ -96,20 +94,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
 
     // ✅ 스트리밍 상태 감지 - 완료 시 스크롤
-    ref.listen(
-      sendMessageMutationProvider.select((state) => state.status),
-          (previous, next) {
-        if (previous == SendMessageStatus.streaming &&
-            (next == SendMessageStatus.success || next == SendMessageStatus.error || next == SendMessageStatus.idle)) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            scrollToBottom(scrollController);
-          });
-        }
-      },
-    );
+    ref.listen(sendMessageMutationProvider.select((state) => state.status), (
+      previous,
+      next,
+    ) {
+      if (previous == SendMessageStatus.streaming &&
+          (next == SendMessageStatus.success ||
+              next == SendMessageStatus.error ||
+              next == SendMessageStatus.idle)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          scrollToBottom(scrollController);
+        });
+      }
+    });
 
     // 키보드/입력 높이 변화 시 스크롤
-    if (keyboardHeight != prevKeyboardHeight || inputHeight != prevInputHeight) {
+    if (keyboardHeight != prevKeyboardHeight ||
+        inputHeight != prevInputHeight) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         scrollToBottom(scrollController);
       });
@@ -121,11 +122,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       body: Stack(
         children: [
           AnimatedPositioned(
-            duration: UIConstants.sidebarAnimationDuration,
-            curve: Curves.easeInOut,
+            duration: UIConstants.animationDuration,
+            curve: Curves.easeOut,
             left: shouldShowExpanded
                 ? UIConstants.sessionListWidth + UIConstants.spacingMd
-                : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd,
+                : UIConstants.sessionListCollapsedWidth +
+                      UIConstants.spacingMd,
             top: 0,
             right: 0,
             bottom: 0,
@@ -150,17 +152,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
           ),
-          const Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            child: SessionList(),
-          ),
+          const Positioned(top: 0, bottom: 0, child: SessionList()),
           AnimatedPositioned(
             duration: UIConstants.animationDuration,
+            curve: Curves.easeOut,
             left: shouldShowExpanded
-                ? UIConstants.sessionListWidth + UIConstants.spacingMd * 2
-                : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd * 2,
+                ? UIConstants.sessionListWidth + UIConstants.spacingMd
+                : UIConstants.sessionListCollapsedWidth +
+                      UIConstants.spacingMd,
             right: 0,
             bottom: 0,
             child: const ChatInput(),
@@ -171,12 +170,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildChatContent(
-      BuildContext context,
-      WidgetRef ref,
-      List<Message> messages,
-      ScrollController scrollController,
-      int? activeSessionId,
-      ) {
+    BuildContext context,
+    WidgetRef ref,
+    List<Message> messages,
+    ScrollController scrollController,
+    int? activeSessionId,
+  ) {
     final inputHeight = ref.watch(
       chatInputStateProvider.select((s) => s.height),
     );
@@ -198,11 +197,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ...messages.expand((message) {
             return MessageBubble(message: message).buildAsSliver(context);
           }),
-        SliverToBoxAdapter(
-          child: SizedBox(
-            height: inputHeight,
-          ),
-        ),
+        SliverToBoxAdapter(child: SizedBox(height: inputHeight)),
       ],
     );
   }
@@ -217,28 +212,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             Icon(
               Icons.chat_bubble_outline,
               size: 64,
-              color: Theme.of(context).colorScheme.primary.withAlpha(
-                UIConstants.alpha30,
-              ),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withAlpha(UIConstants.alpha30),
             ),
             const SizedBox(height: 16),
             Text(
               '새로운 대화를 시작하세요',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withAlpha(UIConstants.alpha50),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withAlpha(UIConstants.alpha50),
               ),
             ),
             const SizedBox(height: 8),
             Text(
               '메시지를 입력하거나 파일을 첨부해보세요',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withAlpha(UIConstants.alpha40),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withAlpha(UIConstants.alpha40),
               ),
             ),
           ],

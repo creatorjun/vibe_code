@@ -72,8 +72,8 @@ class _SessionListState extends ConsumerState<SessionList> {
       child: Padding(
         padding: const EdgeInsets.all(UIConstants.spacingMd),
         child: AnimatedContainer(
-          duration: UIConstants.sidebarAnimationDuration,
-          curve: Curves.easeInOut,
+          duration: UIConstants.animationDuration,
+          curve: Curves.easeOut,
           width: displayWidth,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(UIConstants.radiusLg),

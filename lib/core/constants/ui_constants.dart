@@ -61,7 +61,7 @@ class UIConstants {
   static const double messageBubblePadding = 12.0;
   static const double chatInputMinHeight = 48.0;
   static const double chatInputMaxHeight = 200.0;
-  static const double appBarHeight = 56.0;
+  static const double appBarHeight = 96.0;
 
   // ===== Text Limits =====
   static const int maxSessionTitlePreviewLength = 50;

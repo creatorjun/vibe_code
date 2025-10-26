@@ -34,7 +34,6 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   static const _borderRadius = BorderRadius.all(Radius.circular(UIConstants.radiusLg));
   static const _shadowOffset = Offset(0, -4);
   static const _padding = EdgeInsets.all(UIConstants.spacingMd);
-  static const _margin = EdgeInsets.fromLTRB(0, UIConstants.spacingMd, UIConstants.spacingMd, UIConstants.spacingMd);
 
   @override
   void initState() {
@@ -162,13 +161,12 @@ class _ChatInputState extends ConsumerState<ChatInput> {
       },
     );
 
-    // ✅ Theme을 한 번만 가져오기
     final theme = Theme.of(context);
 
     return RepaintBoundary(
       child: Container(
         key: _containerKey,
-        margin: _margin,
+        margin: const EdgeInsets.all(UIConstants.spacingMd),
         decoration: BoxDecoration(
           borderRadius: _borderRadius,
           boxShadow: [
