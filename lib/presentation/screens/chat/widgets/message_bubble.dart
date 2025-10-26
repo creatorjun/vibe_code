@@ -2,11 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../../../../core/constants/ui_constants.dart';
-import '../../../../../../core/theme/app_colors.dart';
-import '../../../../../../core/utils/date_formatter.dart';
-import '../../../../../../core/utils/markdown_parser.dart';
-import '../../../../../../data/database/app_database.dart';
+
+import 'package:vibe_code/core/theme/app_colors.dart';
+import 'package:vibe_code/core/utils/date_formatter.dart';
+import 'package:vibe_code/core/utils/markdown_parser.dart';
+import 'package:vibe_code/data/database/app_database.dart';
+import 'package:vibe_code/core/constants/ui_constants.dart';
 import 'code_snippet_widget.dart';
 
 /// 사용자 및 AI 메시지 버블
@@ -160,14 +161,14 @@ class _AiMessageBubbleSliver extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(
-              Icons.smart_toy,
+              Icons.android_outlined,
               size: 16,
               color: Colors.white,
             ),
           ),
           const SizedBox(width: 8),
           Text(
-            'AI Assistant',
+            'Vibe Code',
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
               color: isDark ? Colors.white : Colors.black87,

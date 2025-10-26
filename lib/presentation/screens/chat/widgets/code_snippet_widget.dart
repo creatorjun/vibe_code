@@ -249,7 +249,7 @@ class _CodeHeaderState extends State<_CodeHeader> {
         vertical: UIConstants.spacingXs,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(UIConstants.alpha20),
+        gradient: AppColors.gradient,
         borderRadius: BorderRadius.circular(UIConstants.radiusSm),
       ),
       child: Text(
