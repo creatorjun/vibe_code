@@ -6,7 +6,7 @@ import 'package:vibe_code/presentation/screens/chat/widgets/chat_input.dart';
 
 import 'package:vibe_code/core/constants/ui_constants.dart';
 import 'package:vibe_code/data/database/app_database.dart';
-import 'package:vibe_code/domain/mutations/send_message_mutation.dart';
+import 'package:vibe_code/domain/mutations/send_message/send_message_mutation.dart';
 import 'package:vibe_code/domain/providers/chat_input_state_provider.dart';
 import 'package:vibe_code/domain/providers/database_provider.dart';
 import 'package:vibe_code/domain/providers/scroll_controller_provider.dart';

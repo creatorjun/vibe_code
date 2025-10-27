@@ -11,7 +11,7 @@ import '../../../../core/errors/error_handler.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../core/utils/clipboard_helper.dart';
 import '../../../../domain/mutations/create_session_mutation.dart';
-import '../../../../domain/mutations/send_message_mutation.dart';
+import '../../../../domain/mutations/send_message/send_message_mutation.dart';
 import '../../../../domain/providers/chat_provider.dart';
 import '../../../../domain/providers/chat_input_state_provider.dart';
 import '../../../shared/widgets/error_dialog.dart';

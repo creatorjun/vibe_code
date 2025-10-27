@@ -24,9 +24,6 @@ class SessionList extends ConsumerWidget {
 
     return Column(
       children: [
-        // ✅ NEW 버튼 - 독립적으로 최적화
-        _NewChatButton(isExpanded: isExpanded),
-
         // ✅ 대화 목록 헤더 - 상수 위젯으로 최적화
         if (isExpanded) const _SectionHeader(),
 
@@ -57,6 +54,9 @@ class SessionList extends ConsumerWidget {
             error: (error, stack) => _ErrorState(error: error),
           ),
         ),
+
+        // ✅ NEW 버튼 - 프로필 카드 바로 위로 이동
+        _NewChatButton(isExpanded: isExpanded),
       ],
     );
   }
@@ -67,6 +67,7 @@ class SessionList extends ConsumerWidget {
 // ============================================================================
 
 /// NEW 버튼 - 독립 위젯
+/// NEW 버튼 - 독립 위젯
 class _NewChatButton extends ConsumerWidget {
   final bool isExpanded;
 
@@ -75,30 +76,74 @@ class _NewChatButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
-      padding: const EdgeInsets.all(UIConstants.spacingSm),
+      padding: EdgeInsets.all(
+        isExpanded ? UIConstants.spacingMd : UIConstants.spacingSm,
+      ),
+      child: isExpanded
+          ? _buildExpandedButton(context, ref)
+          : _buildCollapsedButton(context, ref),
+    );
+  }
+
+  // 확장된 상태: 그라디언트 컨테이너 + 아이콘
+  Widget _buildExpandedButton(BuildContext context, WidgetRef ref) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => createNewSession(ref, '새로운 대화'),
+        borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.all(UIConstants.spacingMd),
+          decoration: BoxDecoration(
+            gradient: AppColors.gradient,
+            borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withAlpha(UIConstants.alpha40),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Center(
+            child: FaIcon(
+              FontAwesomeIcons.circlePlus,
+              color: Colors.white,
+              size: UIConstants.iconLg,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 축소된 상태: 아이콘만 표시
+  Widget _buildCollapsedButton(BuildContext context, WidgetRef ref) {
+    return Center(
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => createNewSession(ref, '새로운 대화'),
-          borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+          customBorder: const CircleBorder(),
           child: Container(
-            padding: const EdgeInsets.all(UIConstants.spacingMd),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               gradient: AppColors.gradient,
-              borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+              shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withAlpha(UIConstants.alpha40),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+                  color: AppColors.primary.withAlpha(UIConstants.alpha30),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: Center(
+            child: const Center(
               child: FaIcon(
                 FontAwesomeIcons.circlePlus,
                 color: Colors.white,
-                size: isExpanded ? UIConstants.iconLg : UIConstants.iconSm,
+                size: 18,
               ),
             ),
           ),
@@ -107,6 +152,7 @@ class _NewChatButton extends ConsumerWidget {
     );
   }
 }
+
 
 /// 대화 목록 헤더 - 상수 위젯
 class _SectionHeader extends StatelessWidget {
