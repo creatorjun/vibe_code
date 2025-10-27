@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../../../core/utils/logger.dart';
@@ -31,8 +32,11 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   final FocusNode _focusNode = FocusNode();
   final GlobalKey _containerKey = GlobalKey();
   Timer? _heightDebounce;
+  bool _isDragging = false;
 
-  static const _borderRadius = BorderRadius.all(Radius.circular(UIConstants.radiusLg));
+  static const _borderRadius = BorderRadius.all(
+    Radius.circular(UIConstants.radiusLg),
+  );
   static const _shadowOffset = Offset(0, -4);
   static const _padding = EdgeInsets.all(UIConstants.spacingMd);
 
@@ -73,7 +77,8 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   void _updateHeight() {
     if (!mounted) return;
 
-    final renderBox = _containerKey.currentContext?.findRenderObject() as RenderBox?;
+    final renderBox =
+        _containerKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
     final actualHeight = renderBox.size.height;
@@ -95,7 +100,7 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     }
   }
 
-  /// 붙여넣기 처리 (이미지 우선, 텍스트 대체)
+  /// 붙여넣기 처리
   Future<void> _handlePaste() async {
     Logger.debug('[PASTE] Step 1: Paste detected');
 
@@ -105,7 +110,6 @@ class _ChatInputState extends ConsumerState<ChatInput> {
 
       if (!hasImage) {
         Logger.debug('[PASTE] Step 3: No image, trying text');
-        // 텍스트 붙여넣기
         final text = await ClipboardHelper.getTextFromClipboard();
         if (text != null && text.isNotEmpty) {
           final selection = _controller.selection;
@@ -168,6 +172,65 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     }
   }
 
+  /// ✅ 드래그 앤 드롭 파일 처리 (수정됨)
+  Future<void> _handleDroppedFiles(PerformDropEvent event) async {
+    Logger.info('[DROP] Drop event received');
+
+    try {
+      final item = event.session.items.first;
+      final reader = item.dataReader!;
+
+      // ✅ 파일 URI 읽기 (올바른 방법)
+      if (reader.canProvide(Formats.fileUri)) {
+        reader.getValue<Uri>(
+          Formats.fileUri,
+          (uri) async {
+            if (uri != null) {
+              final filePath = uri.toFilePath();
+              Logger.debug('[DROP] Processing file: $filePath');
+
+              // 파일 업로드
+              final attachmentRepo = ref.read(attachmentRepositoryProvider);
+              final attachmentId = await attachmentRepo.uploadFile(filePath);
+
+              Logger.info('[DROP] Upload success - ID: $attachmentId');
+              ref
+                  .read(chatInputStateProvider.notifier)
+                  .addAttachment(attachmentId);
+              _updateHeight();
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('파일이 첨부되었습니다: ${filePath.split('/').last}'),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            }
+          },
+          onError: (error) {
+            Logger.error('[DROP] Failed to read file URI', error, null);
+          },
+        );
+      }
+    } catch (e, stack) {
+      Logger.error('[DROP] Upload failed', e, stack);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('파일 첨부 실패: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _sendMessage() async {
     final inputState = ref.read(chatInputStateProvider);
     if (!inputState.canSend) return;
@@ -182,11 +245,13 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     ref.read(chatInputStateProvider.notifier).clear();
 
     try {
-      await ref.read(sendMessageMutationProvider.notifier).sendMessage(
-        sessionId: sessionId,
-        content: content.isEmpty ? '첨부파일' : content,
-        attachmentIds: attachmentIds,
-      );
+      await ref
+          .read(sendMessageMutationProvider.notifier)
+          .sendMessage(
+            sessionId: sessionId,
+            content: content.isEmpty ? '첨부파일' : content,
+            attachmentIds: attachmentIds,
+          );
     } catch (e, stackTrace) {
       Logger.error('Send message mutation failed', e, stackTrace);
       if (mounted) {
@@ -215,23 +280,28 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   @override
   Widget build(BuildContext context) {
     final isSending = ref.watch(
-      sendMessageMutationProvider.select((state) =>
-      state.status == SendMessageStatus.sending ||
-          state.status == SendMessageStatus.streaming),
+      sendMessageMutationProvider.select(
+        (state) =>
+            state.status == SendMessageStatus.sending ||
+            state.status == SendMessageStatus.streaming,
+      ),
     );
     final inputState = ref.watch(chatInputStateProvider);
 
-    ref.listen(
-      chatInputStateProvider.select((s) => s.attachmentIds.length),
-          (previous, next) {
-        if (previous != next) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _heightDebounce?.cancel();
-            _heightDebounce = Timer(const Duration(milliseconds: 100), _updateHeight);
-          });
-        }
-      },
-    );
+    ref.listen(chatInputStateProvider.select((s) => s.attachmentIds.length), (
+      previous,
+      next,
+    ) {
+      if (previous != next) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _heightDebounce?.cancel();
+          _heightDebounce = Timer(
+            const Duration(milliseconds: 100),
+            _updateHeight,
+          );
+        });
+      }
+    });
 
     final theme = Theme.of(context);
 
@@ -245,77 +315,129 @@ class _ChatInputState extends ConsumerState<ChatInput> {
         },
       },
       child: RepaintBoundary(
-        child: Container(
-          key: _containerKey,
-          margin: const EdgeInsets.all(UIConstants.spacingMd),
-          decoration: BoxDecoration(
-            borderRadius: _borderRadius,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(UIConstants.alpha10),
-                blurRadius: UIConstants.glassBlur,
-                offset: _shadowOffset,
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: _borderRadius,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: UIConstants.glassBlur,
-                sigmaY: UIConstants.glassBlur,
-              ),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface.withAlpha(UIConstants.alpha90),
-                  border: Border.all(
-                    color: theme.colorScheme.outline.withAlpha(UIConstants.alpha20),
-                    width: 1,
-                  ),
+        // ✅ DropRegion (onDropOver 추가)
+        child: DropRegion(
+          formats: Formats.standardFormats,
+          onDropOver: (event) {
+            // ✅ 필수 파라미터: 드롭 가능 여부 반환
+            return DropOperation.copy;
+          },
+          onDropEnter: (event) {
+            setState(() => _isDragging = true);
+            Logger.debug('[DROP] Drag entered');
+          },
+          onDropLeave: (event) {
+            setState(() => _isDragging = false);
+            Logger.debug('[DROP] Drag exited');
+          },
+          onPerformDrop: (event) async {
+            setState(() => _isDragging = false);
+            await _handleDroppedFiles(event);
+          },
+          child: Container(
+            key: _containerKey,
+            margin: const EdgeInsets.all(UIConstants.spacingMd),
+            decoration: BoxDecoration(
+              borderRadius: _borderRadius,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(UIConstants.alpha10),
+                  blurRadius: UIConstants.glassBlur,
+                  offset: _shadowOffset,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (inputState.attachmentIds.isNotEmpty)
-                      AttachmentPreviewSection(
-                        attachmentIds: inputState.attachmentIds,
-                        onRemove: _removeAttachment,
-                      ),
-                    Padding(
-                      padding: _padding,
-                      child: SafeArea(
-                        top: false,
-                        child: Column(
-                          children: [
-                            ChatTextField(
-                              controller: _controller,
-                              focusNode: _focusNode,
-                              isSending: isSending,
-                              canSend: inputState.canSend,
-                              onSend: _sendMessage,
-                              onChanged: (_) => _updateHeight(),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: _borderRadius,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: UIConstants.glassBlur,
+                  sigmaY: UIConstants.glassBlur,
+                ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: _isDragging
+                        ? theme.colorScheme.primary.withAlpha(
+                            UIConstants.alpha20,
+                          )
+                        : theme.colorScheme.surface.withAlpha(
+                            UIConstants.alpha90,
+                          ),
+                    border: Border.all(
+                      color: _isDragging
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline.withAlpha(
+                              UIConstants.alpha20,
                             ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                LeftButtons(
-                                  isSending: isSending,
-                                  onRequestFocus: _requestFocus,
-                                  textController: _controller,
+                      width: _isDragging ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isDragging)
+                        Padding(
+                          padding: const EdgeInsets.all(UIConstants.spacingMd),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.upload_file,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: UIConstants.spacingSm),
+                              Text(
+                                '파일을 여기에 놓으세요',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                                RightButtons(
-                                  isSending: isSending,
-                                  canSend: inputState.canSend,
-                                  onSend: _sendMessage,
-                                  onCancel: _cancelStreaming,
-                                ),
-                              ],
-                            ),
-                          ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (inputState.attachmentIds.isNotEmpty)
+                        AttachmentPreviewSection(
+                          attachmentIds: inputState.attachmentIds,
+                          onRemove: _removeAttachment,
+                        ),
+                      Padding(
+                        padding: _padding,
+                        child: SafeArea(
+                          top: false,
+                          child: Column(
+                            children: [
+                              ChatTextField(
+                                controller: _controller,
+                                focusNode: _focusNode,
+                                isSending: isSending,
+                                canSend: inputState.canSend,
+                                onSend: _sendMessage,
+                                onChanged: (_) => _updateHeight(),
+                              ),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  LeftButtons(
+                                    isSending: isSending,
+                                    onRequestFocus: _requestFocus,
+                                    textController: _controller,
+                                  ),
+                                  RightButtons(
+                                    isSending: isSending,
+                                    canSend: inputState.canSend,
+                                    onSend: _sendMessage,
+                                    onCancel: _cancelStreaming,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
