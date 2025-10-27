@@ -1,9 +1,9 @@
 // lib/presentation/screens/chat/chat_screen.dart
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vibe_code/presentation/screens/chat/widgets/chat_input.dart';
-
 import 'package:vibe_code/core/constants/ui_constants.dart';
 import 'package:vibe_code/data/database/app_database.dart';
 import 'package:vibe_code/domain/mutations/send_message/send_message_mutation.dart';
@@ -24,161 +24,193 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
-  int? previousSessionId;
-  Timer? scrollDebounce;
-  double prevKeyboardHeight = 0;
-  double prevInputHeight = 0;
+  static const _scrollDebounceDuration = Duration(milliseconds: 100);
+  static const _emptyMessagesProvider = AsyncValue<List<Message>>.data([]);
+
+  int? _previousSessionId;
+  Timer? _scrollDebounce;
+  double _prevKeyboardHeight = 0;
+  double _prevInputHeight = 0;
 
   @override
   void dispose() {
-    scrollDebounce?.cancel();
+    _scrollDebounce?.cancel();
     super.dispose();
   }
 
-  void scrollToBottom(ScrollController controller) {
+  void _scrollToBottom(ScrollController controller) {
     if (!controller.hasClients) return;
-    controller.animateTo(
-      controller.position.maxScrollExtent,
-      duration: UIConstants.scrollDuration,
-      curve: Curves.easeOut,
-    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (controller.hasClients) {
+        controller.animateTo(
+          controller.position.maxScrollExtent,
+          duration: UIConstants.scrollDuration,
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _scheduleScrollToBottom(ScrollController controller) {
+    _scrollDebounce?.cancel();
+    _scrollDebounce = Timer(_scrollDebounceDuration, () {
+      _scrollToBottom(controller);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    // 최적화: select를 사용하여 필요한 값만 구독
     final shouldShowExpanded = ref.watch(
       sidebarStateProvider.select((state) => state.shouldShowExpanded),
     );
-    final activeSessionId = ref.watch(activeSessionProvider.select((id) => id));
+    final activeSessionId = ref.watch(activeSessionProvider);
+    final scrollController = ref.watch(messageScrollProvider);
 
     final messagesAsync = activeSessionId != null
         ? ref.watch(sessionMessagesProvider(activeSessionId))
-        : const AsyncValue.data(<Message>[]);
+        : _emptyMessagesProvider;
 
-    final scrollController = ref.watch(messageScrollProvider);
-
-    // 키보드와 입력 높이 변화 감지
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    final inputHeight = ref.watch(
-      chatInputStateProvider.select((s) => s.height),
-    );
-
-    // 세션 변경 시 스크롤
-    if (activeSessionId != previousSessionId) {
-      previousSessionId = activeSessionId;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        scrollToBottom(scrollController);
-      });
-    }
-
-    // 메시지 변경 감지 (debounce 적용)
-    ref.listen<AsyncValue<List<Message>>>(
-      activeSessionId != null
-          ? sessionMessagesProvider(activeSessionId)
-          : Provider((ref) => const AsyncValue.data(<Message>[])),
-      (previous, next) {
-        if (next.hasValue && previous?.hasValue == true) {
-          final prevLength = previous?.value?.length ?? 0;
-          final nextLength = next.value?.length ?? 0;
-
-          if (prevLength != nextLength) {
-            scrollDebounce?.cancel();
-            scrollDebounce = Timer(
-              const Duration(milliseconds: 100),
-              () => scrollToBottom(scrollController),
-            );
-          }
-        }
-      },
-    );
-
-    // ✅ 스트리밍 상태 감지 - 완료 시 스크롤
-    ref.listen(sendMessageMutationProvider.select((state) => state.status), (
-      previous,
-      next,
-    ) {
-      if (previous == SendMessageStatus.streaming &&
-          (next == SendMessageStatus.success ||
-              next == SendMessageStatus.error ||
-              next == SendMessageStatus.idle)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          scrollToBottom(scrollController);
-        });
-      }
-    });
-
-    // 키보드/입력 높이 변화 시 스크롤
-    if (keyboardHeight != prevKeyboardHeight ||
-        inputHeight != prevInputHeight) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        scrollToBottom(scrollController);
-      });
-      prevKeyboardHeight = keyboardHeight;
-      prevInputHeight = inputHeight;
-    }
+    _setupListeners(activeSessionId, scrollController);
+    _handleHeightChanges(context, scrollController);
 
     return Scaffold(
       body: Stack(
         children: [
-          AnimatedPositioned(
-            duration: UIConstants.animationDuration,
-            curve: Curves.easeOut,
-            left: shouldShowExpanded
-                ? UIConstants.sessionListWidth + UIConstants.spacingMd
-                : UIConstants.sessionListCollapsedWidth +
-                      UIConstants.spacingMd,
-            top: 0,
-            right: 0,
-            bottom: 0,
-            child: messagesAsync.when(
-              data: (messages) => _buildChatContent(
-                context,
-                ref,
-                messages,
-                scrollController,
-                activeSessionId,
-              ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline, size: 48),
-                    const SizedBox(height: 16),
-                    Text('$error'),
-                  ],
-                ),
-              ),
-            ),
+          _ChatContentPositioned(
+            shouldShowExpanded: shouldShowExpanded,
+            messagesAsync: messagesAsync,
+            scrollController: scrollController,
+            activeSessionId: activeSessionId,
           ),
           const Positioned(top: 0, bottom: 0, child: SideBar()),
-          AnimatedPositioned(
-            duration: UIConstants.animationDuration,
-            curve: Curves.easeOut,
-            left: shouldShowExpanded
-                ? UIConstants.sessionListWidth + UIConstants.spacingMd
-                : UIConstants.sessionListCollapsedWidth +
-                      UIConstants.spacingMd,
-            right: 0,
-            bottom: 0,
-            child: const ChatInput(),
-          ),
+          _ChatInputPositioned(shouldShowExpanded: shouldShowExpanded),
         ],
       ),
     );
   }
 
-  Widget _buildChatContent(
-    BuildContext context,
-    WidgetRef ref,
-    List<Message> messages,
-    ScrollController scrollController,
-    int? activeSessionId,
-  ) {
-    final inputHeight = ref.watch(
-      chatInputStateProvider.select((s) => s.height),
+  void _setupListeners(int? activeSessionId, ScrollController controller) {
+    if (activeSessionId != _previousSessionId) {
+      _previousSessionId = activeSessionId;
+      _scrollToBottom(controller);
+    }
+
+    if (activeSessionId != null) {
+      ref.listen<AsyncValue<List<Message>>>(
+        sessionMessagesProvider(activeSessionId),
+            (previous, next) {
+          if (next.hasValue && previous?.hasValue == true) {
+            final prevLength = previous?.value?.length ?? 0;
+            final nextLength = next.value?.length ?? 0;
+            if (prevLength != nextLength) {
+              _scheduleScrollToBottom(controller);
+            }
+          }
+        },
+      );
+    }
+
+    ref.listen(
+      sendMessageMutationProvider.select((state) => state.status),
+          (previous, next) {
+        if (previous == SendMessageStatus.streaming &&
+            (next == SendMessageStatus.success ||
+                next == SendMessageStatus.error ||
+                next == SendMessageStatus.idle)) {
+          _scrollToBottom(controller);
+        }
+      },
     );
+  }
+
+  void _handleHeightChanges(BuildContext context, ScrollController controller) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final inputHeight = ref.watch(chatInputStateProvider.select((s) => s.height));
+
+    if (keyboardHeight != _prevKeyboardHeight || inputHeight != _prevInputHeight) {
+      _scrollToBottom(controller);
+      _prevKeyboardHeight = keyboardHeight;
+      _prevInputHeight = inputHeight;
+    }
+  }
+}
+
+class _ChatContentPositioned extends ConsumerWidget {
+  final bool shouldShowExpanded;
+  final AsyncValue<List<Message>> messagesAsync;
+  final ScrollController scrollController;
+  final int? activeSessionId;
+
+  const _ChatContentPositioned({
+    required this.shouldShowExpanded,
+    required this.messagesAsync,
+    required this.scrollController,
+    required this.activeSessionId,
+  });
+
+  double get _leftOffset => shouldShowExpanded
+      ? UIConstants.sessionListWidth + UIConstants.spacingMd
+      : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AnimatedPositioned(
+      duration: UIConstants.animationDuration,
+      curve: Curves.easeOut,
+      left: _leftOffset,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      child: messagesAsync.when(
+        data: (messages) => _ChatContent(
+          messages: messages,
+          scrollController: scrollController,
+          activeSessionId: activeSessionId,
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => _ErrorState(error: error),
+      ),
+    );
+  }
+}
+
+class _ChatInputPositioned extends StatelessWidget {
+  final bool shouldShowExpanded;
+
+  const _ChatInputPositioned({required this.shouldShowExpanded});
+
+  double get _leftOffset => shouldShowExpanded
+      ? UIConstants.sessionListWidth + UIConstants.spacingMd
+      : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedPositioned(
+      duration: UIConstants.animationDuration,
+      curve: Curves.easeOut,
+      left: _leftOffset,
+      right: 0,
+      bottom: 0,
+      child: const ChatInput(),
+    );
+  }
+}
+
+class _ChatContent extends ConsumerWidget {
+  final List<Message> messages;
+  final ScrollController scrollController;
+  final int? activeSessionId;
+
+  const _ChatContent({
+    required this.messages,
+    required this.scrollController,
+    required this.activeSessionId,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inputHeight = ref.watch(chatInputStateProvider.select((s) => s.height));
 
     return CustomScrollView(
       controller: scrollController,
@@ -187,22 +219,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           pinned: true,
           floating: true,
           toolbarHeight: UIConstants.appBarHeight,
-          automaticallyImplyLeading: false,
+          automaticallyImplyLeading: true,
           backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          shadowColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
           flexibleSpace: ChatStateBar(sessionId: activeSessionId),
         ),
         if (messages.isEmpty)
-          _buildEmptyState(context, ref)
+          const _EmptyState()
         else
-          ...messages.expand((message) {
-            return MessageBubble(message: message).buildAsSliver(context);
-          }),
+          ..._buildMessageSlivers(messages, context),
         SliverToBoxAdapter(child: SizedBox(height: inputHeight)),
       ],
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
+  List<Widget> _buildMessageSlivers(List<Message> messages, BuildContext context) {
+    return messages.expand((message) {
+      return MessageBubble(message: message).buildAsSliver(context);
+    }).toList();
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return SliverFillRemaining(
       hasScrollBody: false,
       child: Center(
@@ -212,30 +259,52 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             Icon(
               Icons.chat_bubble_outline,
               size: 64,
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withAlpha(UIConstants.alpha30),
+              color: colorScheme.primary.withAlpha(UIConstants.alpha30),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: UIConstants.spacingMd),
             Text(
               '새로운 대화를 시작하세요',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withAlpha(UIConstants.alpha50),
+                color: colorScheme.onSurface.withAlpha(UIConstants.alpha50),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: UIConstants.spacingSm),
             Text(
               '메시지를 입력하거나 파일을 첨부해보세요',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withAlpha(UIConstants.alpha40),
+                color: colorScheme.onSurface.withAlpha(UIConstants.alpha40),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final Object error;
+
+  const _ErrorState({required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 48,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(height: UIConstants.spacingMd),
+          Text(
+            '$error',
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

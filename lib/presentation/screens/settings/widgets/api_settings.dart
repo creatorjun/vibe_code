@@ -2,8 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/constants/ui_constants.dart';
-import '../../../../domain/providers/settings_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:vibe_code/core/constants/ui_constants.dart';
+import 'package:vibe_code/domain/providers/settings_provider.dart';
 
 class ApiSettings extends ConsumerStatefulWidget {
   const ApiSettings({super.key});
@@ -20,6 +21,38 @@ class _ApiSettingsState extends ConsumerState<ApiSettings> {
   void dispose() {
     _apiKeyController.dispose();
     super.dispose();
+  }
+
+  /// OpenRouter API 키 발급 페이지 열기
+  Future<void> _launchApiKeyPage() async {
+    final uri = Uri.parse('https://openrouter.ai/keys');
+
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        if (mounted) {
+          _showErrorSnackBar('링크를 열 수 없습니다');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('링크 열기 실패: $e');
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).colorScheme.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -39,7 +72,7 @@ class _ApiSettingsState extends ConsumerState<ApiSettings> {
                 color: colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(UIConstants.radiusSm),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.key_outlined,
                 size: UIConstants.iconMd,
               ),
@@ -87,8 +120,9 @@ class _ApiSettingsState extends ConsumerState<ApiSettings> {
                         const SizedBox(width: UIConstants.spacingXs),
                         Expanded(
                           child: Text(
-                            'OpenAI API 키를 입력하세요',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            'OpenRouter API 키를 입력하세요',
+                            style:
+                            Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
                           ),
@@ -102,15 +136,17 @@ class _ApiSettingsState extends ConsumerState<ApiSettings> {
                       controller: _apiKeyController,
                       obscureText: _isObscured,
                       decoration: InputDecoration(
-                        labelText: 'OpenAI API Key',
-                        hintText: 'sk-...',
+                        labelText: 'OpenRouter API Key',
+                        hintText: 'sk-or-v1-...',
                         prefixIcon: Icon(
                           Icons.vpn_key,
                           color: colorScheme.primary,
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _isObscured ? Icons.visibility : Icons.visibility_off,
+                            _isObscured
+                                ? Icons.visibility
+                                : Icons.visibility_off,
                           ),
                           onPressed: () {
                             setState(() {
@@ -120,7 +156,8 @@ class _ApiSettingsState extends ConsumerState<ApiSettings> {
                           tooltip: _isObscured ? '표시' : '숨기기',
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                          borderRadius:
+                          BorderRadius.circular(UIConstants.radiusMd),
                         ),
                       ),
                       onChanged: (value) {
@@ -129,15 +166,15 @@ class _ApiSettingsState extends ConsumerState<ApiSettings> {
                             .updateApiKey(value);
                       },
                     ),
-
                     const SizedBox(height: UIConstants.spacingSm),
 
-                    // ✅ 도움말 링크 (선택사항)
+                    // ✅ 도움말 링크 (작동하는 버전)
                     TextButton.icon(
-                      onPressed: () {
-                        // OpenAI API 키 발급 페이지 열기 (선택사항)
-                      },
-                      icon: const Icon(Icons.open_in_new, size: UIConstants.iconSm),
+                      onPressed: _launchApiKeyPage,
+                      icon: const Icon(
+                        Icons.open_in_new,
+                        size: UIConstants.iconSm,
+                      ),
                       label: const Text('API 키 발급받기'),
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,

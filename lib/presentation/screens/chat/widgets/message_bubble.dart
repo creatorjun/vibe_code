@@ -13,10 +13,8 @@ class MessageBubble {
 
   /// 메시지를 Sliver로 변환
   List<Widget> buildAsSliver(BuildContext context) {
-    if (message.role == 'user') {
-      return [SliverToBoxAdapter(child: UserMessageBubble(message: message))];
-    } else {
-      return AiMessageBubble(message: message).buildAsSliver(context);
-    }
+    return message.role == 'user'
+        ? [SliverToBoxAdapter(child: UserMessageBubble(message: message))]
+        : AiMessageBubble(message: message).buildAsSliver(context);
   }
 }

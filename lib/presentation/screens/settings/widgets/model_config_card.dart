@@ -64,6 +64,10 @@ class _ModelConfigCardState extends State<ModelConfigCard> {
       child: Column(
         children: [
           ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: UIConstants.spacingMd,
+              vertical: UIConstants.spacingXs,
+            ),
             leading: Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: UIConstants.spacingSm,
@@ -85,21 +89,14 @@ class _ModelConfigCardState extends State<ModelConfigCard> {
                 ),
               ),
             ),
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _getModelDisplayName(widget.config.modelId),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: widget.config.isEnabled
-                          ? colorScheme.onSurface
-                          : colorScheme.onSurface
-                          .withAlpha(UIConstants.alpha50),
-                    ),
-                  ),
-                ),
-              ],
+            title: Text(
+              _getModelDisplayName(widget.config.modelId),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: widget.config.isEnabled
+                    ? colorScheme.onSurface
+                    : colorScheme.onSurface.withAlpha(UIConstants.alpha50),
+              ),
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: UIConstants.spacingXs),
@@ -144,78 +141,82 @@ class _ModelConfigCardState extends State<ModelConfigCard> {
             ),
           ),
           if (_isExpanded)
-            Container(
-              margin: const EdgeInsets.fromLTRB(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
                 UIConstants.spacingMd,
                 0,
                 UIConstants.spacingMd,
                 UIConstants.spacingMd,
               ),
-              padding: const EdgeInsets.all(UIConstants.spacingMd),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest
-                    .withAlpha(UIConstants.alpha30),
-                borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.psychology_outlined,
-                        size: UIConstants.iconSm,
-                        color: colorScheme.primary,
-                      ),
-                      const SizedBox(width: UIConstants.spacingXs),
-                      Text(
-                        '시스템 프롬프트',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
+              child: Container(
+                padding: const EdgeInsets.all(UIConstants.spacingMd),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest
+                      .withAlpha(UIConstants.alpha30),
+                  borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.psychology_outlined,
+                          size: UIConstants.iconSm,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(width: UIConstants.spacingXs),
+                        Text(
+                          '시스템 프롬프트',
+                          style:
+                          Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: UIConstants.spacingSm),
+                    TextFormField(
+                      controller: _promptController,
+                      decoration: InputDecoration(
+                        hintText: '시스템 프롬프트를 입력하세요...',
+                        border: OutlineInputBorder(
+                          borderRadius:
+                          BorderRadius.circular(UIConstants.radiusMd),
+                        ),
+                        filled: true,
+                        fillColor: colorScheme.surface,
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.save),
+                          onPressed: () {
+                            widget.onUpdatePrompt(_promptController.text);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(Icons.check_circle,
+                                        color: Colors.white),
+                                    SizedBox(width: UIConstants.spacingSm),
+                                    Text('프롬프트가 저장되었습니다'),
+                                  ],
+                                ),
+                                backgroundColor: Colors.green,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                      UIConstants.radiusMd),
+                                ),
+                              ),
+                            );
+                          },
+                          tooltip: '저장',
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: UIConstants.spacingSm),
-                  TextFormField(
-                    controller: _promptController,
-                    decoration: InputDecoration(
-                      hintText: '시스템 프롬프트를 입력하세요...',
-                      border: OutlineInputBorder(
-                        borderRadius:
-                        BorderRadius.circular(UIConstants.radiusMd),
-                      ),
-                      filled: true,
-                      fillColor: colorScheme.surface,
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.save),
-                        onPressed: () {
-                          widget.onUpdatePrompt(_promptController.text);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Row(
-                                children: [
-                                  Icon(Icons.check_circle, color: Colors.white),
-                                  SizedBox(width: UIConstants.spacingSm),
-                                  Text('프롬프트가 저장되었습니다'),
-                                ],
-                              ),
-                              backgroundColor: Colors.green,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                    UIConstants.radiusMd),
-                              ),
-                            ),
-                          );
-                        },
-                        tooltip: '저장',
-                      ),
+                      maxLines: 5,
+                      enabled: widget.config.isEnabled,
                     ),
-                    maxLines: 5,
-                    enabled: widget.config.isEnabled,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
         ],
