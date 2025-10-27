@@ -9,23 +9,26 @@ import '../../../../core/theme/app_colors.dart';
 class CodeSnippetSliver {
   final String code;
   final String language;
-  final Color backgroundColor;
   final bool isIntegrated;
 
   const CodeSnippetSliver({
     required this.code,
     required this.language,
-    required this.backgroundColor,
     this.isIntegrated = false,
   });
 
   /// ✅ SliverMainAxisGroup으로 헤더와 본문을 그룹화
-  /// 코드 블록이 화면을 벗어나면 헤더도 함께 사라짐
+  /// 코드 블록이 화면을 벗어나면 헤더도 자연스럽게 사라짐
   List<Widget> buildAsSliverWithBackground(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final codeBackgroundColor = isDark
         ? AppColors.codeBackgroundDark
         : AppColors.codeBackgroundLight;
+
+    // ✅ AppColors에서 bubbleColor 가져오기
+    final bubbleColor = isDark
+        ? AppColors.aiBubbleDark
+        : AppColors.aiBubbleLight;
 
     return [
       // ✅ 헤더와 본문을 하나의 그룹으로 묶음
@@ -39,14 +42,14 @@ class CodeSnippetSliver {
               code: code,
               isDark: isDark,
               isIntegrated: isIntegrated,
-              bubbleColor: backgroundColor,
+              bubbleColor: bubbleColor,
               horizontalPadding: UIConstants.spacingLg,
             ),
           ),
           // 코드 본문
           SliverToBoxAdapter(
             child: Container(
-              color: backgroundColor,
+              color: bubbleColor,
               padding: const EdgeInsets.symmetric(
                 horizontal: UIConstants.spacingLg,
               ),
@@ -87,6 +90,11 @@ class CodeSnippetSliver {
         ? AppColors.codeBackgroundDark
         : AppColors.codeBackgroundLight;
 
+    // ✅ AppColors에서 bubbleColor 가져오기
+    final bubbleColor = isDark
+        ? AppColors.aiBubbleDark
+        : AppColors.aiBubbleLight;
+
     return [
       SliverMainAxisGroup(
         slivers: [
@@ -97,7 +105,7 @@ class CodeSnippetSliver {
               code: code,
               isDark: isDark,
               isIntegrated: false,
-              bubbleColor: backgroundColor,
+              bubbleColor: bubbleColor,
               horizontalPadding: 0,
             ),
           ),
@@ -281,7 +289,9 @@ class _CodeHeaderState extends State<_CodeHeader> {
         child: Icon(
           _isCopied ? Icons.check : Icons.copy_all,
           size: UIConstants.iconSm,
-          color: _isCopied ? Colors.green : Colors.white.withAlpha(230),
+          color: _isCopied
+              ? Colors.green
+              : Colors.white.withAlpha(230),
         ),
       ),
     );

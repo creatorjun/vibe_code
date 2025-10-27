@@ -285,7 +285,6 @@ class _AiMessageBubbleSliver extends StatelessWidget {
           CodeSnippetSliver(
             code: part.code,
             language: part.language,
-            backgroundColor: bubbleColor,
             isIntegrated: true,
           ).buildAsSliverWithBackground(context),
         );
