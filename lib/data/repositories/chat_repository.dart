@@ -95,16 +95,13 @@ class ChatRepository {
       }) async {
     Logger.info('Completing streaming for message: $messageId');
 
-    // ===== 추가: 토큰 정보와 함께 업데이트 =====
     if (inputTokens != null || outputTokens != null) {
-      await chatDao.updateMessageContent(
+      await chatDao.updateMessageTokens(
         messageId,
-        '', // 내용은 이미 updateMessageContent로 업데이트됨
         inputTokens: inputTokens,
         outputTokens: outputTokens,
       );
     }
-    // ===========================================
 
     await chatDao.completeStreaming(messageId);
   }

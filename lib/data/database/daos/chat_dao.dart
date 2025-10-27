@@ -141,6 +141,24 @@ class ChatDao extends DatabaseAccessor<AppDatabase> with _$ChatDaoMixin {
     );
   }
 
+  // lib/data/database/daos/chat_dao.dart
+
+  /// 토큰 정보만 업데이트
+  Future<void> updateMessageTokens(
+      int messageId, {
+        int? inputTokens,
+        int? outputTokens,
+      }) async {
+    // ✅ MessagesCompanion 올바른 사용법
+    final companion = MessagesCompanion(
+      inputTokens: inputTokens != null ? Value(inputTokens) : const Value.absent(),
+      outputTokens: outputTokens != null ? Value(outputTokens) : const Value.absent(),
+    );
+
+    await (update(messages)..where((t) => t.id.equals(messageId))).write(companion);
+  }
+
+
   /// 스트리밍 완료 처리
   Future<void> completeStreaming(int messageId) async {
     await (update(messages)..where((t) => t.id.equals(messageId))).write(

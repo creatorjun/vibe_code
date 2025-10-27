@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'package:vibe_code/core/theme/app_colors.dart';
 import 'package:vibe_code/core/utils/date_formatter.dart';
+import 'package:vibe_code/core/utils/logger.dart';
 import 'package:vibe_code/core/utils/markdown_parser.dart';
 import 'package:vibe_code/data/database/app_database.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
@@ -18,12 +19,10 @@ class MessageBubble {
 
   /// 메시지를 Sliver로 변환
   List<Widget> buildAsSliver(BuildContext context) {
+    Logger.debug('[MessageBubble] Building message ${message.id}, role: ${message.role}');
+
     if (message.role == 'user') {
-      return [
-        SliverToBoxAdapter(
-          child: UserMessageBubble(message: message),
-        ),
-      ];
+      return [SliverToBoxAdapter(child: UserMessageBubble(message: message))];
     } else {
       return _buildAiMessageSlivers(context);
     }
@@ -31,18 +30,27 @@ class MessageBubble {
 
   /// AI 메시지 Sliver 생성
   List<Widget> _buildAiMessageSlivers(BuildContext context) {
+    Logger.debug('[MessageBubble] Building AI message ${message.id}');
+    Logger.debug('[MessageBubble] Content length: ${message.content.length}');
+    Logger.debug('[MessageBubble] Is streaming: ${message.isStreaming}');
+    Logger.debug('[MessageBubble] Content preview: ${message.content.substring(0, message.content.length > 50 ? 50 : message.content.length)}...');
+
     // 최적화: Theme 정보를 한 번만 가져오기
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bubbleColor = isDark ? AppColors.aiBubbleDark : AppColors.aiBubbleLight;
 
-    // ✅ 메시지가 비어있거나 매우 짧을 때 (스트리밍 시작 전)
-    final isThinking = message.content.trim().isEmpty ||
-        (message.isStreaming && message.content.length < 10);
+    // ✅ 수정: 스트리밍 중이고 비어있을 때만 "생각 중"
+    final isThinking = message.content.trim().isEmpty && message.isStreaming;
+    Logger.debug('[MessageBubble] Is thinking: $isThinking');
 
+    // ✅ 수정: isThinking일 때만 파싱 건너뛰기
+    final parts = isThinking ? <dynamic>[] : MarkdownParser.parseMessage(message.content);
+    Logger.debug('[MessageBubble] Parts count: ${parts.length}');
 
-    // 최적화: 마크다운 파싱 결과 저장
-    final parts = MarkdownParser.parseMessage(message.content);
+    if (parts.isNotEmpty) {
+      Logger.debug('[MessageBubble] Parts types: ${parts.map((p) => p.runtimeType).toList()}');
+    }
 
     return [
       // AI 메시지 버블
@@ -61,9 +69,7 @@ class MessageBubble {
           isThinking: isThinking,
         ),
       ),
-      SliverToBoxAdapter(
-        child: _buildTimestamp(context, theme),
-      ),
+      SliverToBoxAdapter(child: _buildTimestamp(context, theme)),
     ];
   }
 
@@ -80,9 +86,7 @@ class MessageBubble {
       child: Text(
         DateFormatter.formatMessageTime(message.createdAt),
         style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.textTheme.bodySmall?.color?.withAlpha(
-            UIConstants.alpha70,
-          ),
+          color: theme.textTheme.bodySmall?.color?.withAlpha(UIConstants.alpha70),
         ),
       ),
     );
@@ -98,7 +102,6 @@ class _AiMessageBubbleSliver extends StatelessWidget {
   final ThemeData theme;
   final bool isThinking;
 
-
   const _AiMessageBubbleSliver({
     required this.bubbleColor,
     required this.isDark,
@@ -110,6 +113,8 @@ class _AiMessageBubbleSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Logger.debug('[AiMessageBubbleSliver] Building for message ${message.id}');
+
     return SliverMainAxisGroup(
       slivers: [
         // AI 헤더
@@ -118,7 +123,6 @@ class _AiMessageBubbleSliver extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 color: bubbleColor,
-                border: const Border(),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(UIConstants.radiusLg),
                   topRight: Radius.circular(UIConstants.radiusLg),
@@ -129,9 +133,7 @@ class _AiMessageBubbleSliver extends StatelessWidget {
           ),
         ),
         // 콘텐츠
-        ...isThinking  // ✅ 수정
-            ? _buildThinkingSlivers(context)
-            : _buildContentSlivers(context),
+        ...isThinking ? _buildThinkingSlivers(context) : _buildContentSlivers(context),
         // 하단
         SliverToBoxAdapter(
           child: Container(
@@ -151,6 +153,8 @@ class _AiMessageBubbleSliver extends StatelessWidget {
   }
 
   List<Widget> _buildThinkingSlivers(BuildContext context) {
+    Logger.debug('[AiMessageBubbleSliver] Building thinking indicator');
+
     return [
       SliverToBoxAdapter(
         child: Container(
@@ -193,12 +197,6 @@ class _AiMessageBubbleSliver extends StatelessWidget {
         horizontal: UIConstants.spacingMd,
         vertical: UIConstants.spacingSm,
       ),
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(UIConstants.radiusLg),
-          topRight: Radius.circular(UIConstants.radiusLg),
-        ),
-      ),
       child: Row(
         children: [
           Container(
@@ -222,7 +220,6 @@ class _AiMessageBubbleSliver extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          // ✅ 생각 중일 때는 복사 버튼 숨기기
           if (!isThinking)
             InkWell(
               onTap: () {
@@ -246,15 +243,55 @@ class _AiMessageBubbleSliver extends StatelessWidget {
   }
 
   List<Widget> _buildContentSlivers(BuildContext context) {
+    Logger.debug('[AiMessageBubbleSliver] Building content slivers');
+    Logger.debug('[AiMessageBubbleSliver] Message content empty: ${message.content.trim().isEmpty}');
+    Logger.debug('[AiMessageBubbleSliver] Parts length: ${parts.length}');
+
+    // ✅ 첫 번째 체크: 메시지가 비어있으면 빈 배열 반환
+    if (message.content.trim().isEmpty) {
+      Logger.debug('[AiMessageBubbleSliver] Message content is empty, returning empty list');
+      return [];
+    }
+
+    // ✅ 두 번째 체크: parts가 비어있으면 원본 텍스트 표시
+    if (parts.isEmpty) {
+      Logger.debug('[AiMessageBubbleSliver] Parts is empty, showing raw content');
+
+      return [
+        SliverToBoxAdapter(
+          child: Container(
+            width: double.infinity,
+            color: bubbleColor,
+            padding: const EdgeInsets.symmetric(
+              horizontal: UIConstants.spacingMd,
+              vertical: UIConstants.spacingSm,
+            ),
+            child: SelectableText(
+              message.content,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: isDark ? Colors.white : Colors.black87,
+                height: 1.6,
+              ),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    // ✅ parts 처리
+    Logger.debug('[AiMessageBubbleSliver] Processing ${parts.length} parts');
     final slivers = <Widget>[];
 
     for (int i = 0; i < parts.length; i++) {
       final part = parts[i];
+      Logger.debug('[AiMessageBubbleSliver] Processing part $i: ${part.runtimeType}');
 
       if (part is TextPart) {
-        slivers.add(
-          SliverToBoxAdapter(
-            child: RepaintBoundary(
+        Logger.debug('[AiMessageBubbleSliver] TextPart content length: ${part.content.length}');
+
+        if (part.content.trim().isNotEmpty) {
+          slivers.add(
+            SliverToBoxAdapter(
               child: Container(
                 width: double.infinity,
                 color: bubbleColor,
@@ -271,20 +308,50 @@ class _AiMessageBubbleSliver extends StatelessWidget {
                 ),
               ),
             ),
-          ),
-        );
+          );
+        }
       } else if (part is CodePart) {
-        slivers.addAll(
-          CodeSnippetSliver(
-            code: part.code,
-            language: part.language,
-            backgroundColor: bubbleColor,
-            isIntegrated: true,
-          ).buildAsSliverWithBackground(context),
-        );
+        Logger.debug('[AiMessageBubbleSliver] CodePart language: ${part.language}, code length: ${part.code.length}');
+
+        if (part.code.trim().isNotEmpty) {
+          slivers.addAll(
+            CodeSnippetSliver(
+              code: part.code,
+              language: part.language,
+              backgroundColor: bubbleColor,
+              isIntegrated: true,
+            ).buildAsSliverWithBackground(context),
+          );
+        }
       }
     }
 
+    // ✅ 세 번째 체크: 처리된 slivers가 비어있으면 원본 텍스트 표시
+    if (slivers.isEmpty) {
+      Logger.debug('[AiMessageBubbleSliver] Slivers is empty after processing, showing raw content as fallback');
+
+      return [
+        SliverToBoxAdapter(
+          child: Container(
+            width: double.infinity,
+            color: bubbleColor,
+            padding: const EdgeInsets.symmetric(
+              horizontal: UIConstants.spacingMd,
+              vertical: UIConstants.spacingSm,
+            ),
+            child: SelectableText(
+              message.content,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: isDark ? Colors.white : Colors.black87,
+                height: 1.6,
+              ),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    Logger.debug('[AiMessageBubbleSliver] Returning ${slivers.length} slivers');
     return slivers;
   }
 }
@@ -341,9 +408,7 @@ class _UserMessageBubbleState extends State<UserMessageBubble> {
                   borderRadius: BorderRadius.circular(UIConstants.radiusLg),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.gradientStart.withAlpha(
-                        UIConstants.alpha30,
-                      ),
+                      color: AppColors.gradientStart.withAlpha(UIConstants.alpha30),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -352,17 +417,10 @@ class _UserMessageBubbleState extends State<UserMessageBubble> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ✅ 헤더
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: UIConstants.spacingMd,
                         vertical: UIConstants.spacingSm,
-                      ),
-                      decoration: const BoxDecoration(
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(UIConstants.radiusLg),
-                          topRight: Radius.circular(UIConstants.radiusLg),
-                        ),
                       ),
                       child: Row(
                         children: [
@@ -406,7 +464,6 @@ class _UserMessageBubbleState extends State<UserMessageBubble> {
                         ],
                       ),
                     ),
-                    // ✅ 본문
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: UIConstants.spacingMd,
@@ -443,9 +500,7 @@ class _UserMessageBubbleState extends State<UserMessageBubble> {
                                     Text(
                                       isExpanded ? '접기' : '더 보기',
                                       style: theme.textTheme.bodySmall?.copyWith(
-                                        color: Colors.white.withAlpha(
-                                          UIConstants.alpha90,
-                                        ),
+                                        color: Colors.white.withAlpha(UIConstants.alpha90),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -455,9 +510,7 @@ class _UserMessageBubbleState extends State<UserMessageBubble> {
                                           ? Icons.keyboard_arrow_up
                                           : Icons.keyboard_arrow_down,
                                       size: UIConstants.iconSm,
-                                      color: Colors.white.withAlpha(
-                                        UIConstants.alpha90,
-                                      ),
+                                      color: Colors.white.withAlpha(UIConstants.alpha90),
                                     ),
                                   ],
                                 ),
@@ -472,15 +525,11 @@ class _UserMessageBubbleState extends State<UserMessageBubble> {
               ),
               const SizedBox(height: UIConstants.spacingXs),
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: UIConstants.spacingXs,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: UIConstants.spacingXs),
                 child: Text(
                   DateFormatter.formatMessageTime(widget.message.createdAt),
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.textTheme.bodySmall?.color?.withAlpha(
-                      UIConstants.alpha70,
-                    ),
+                    color: theme.textTheme.bodySmall?.color?.withAlpha(UIConstants.alpha70),
                   ),
                 ),
               ),
