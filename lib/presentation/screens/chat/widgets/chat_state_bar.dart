@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vibe_code/domain/providers/chat_provider.dart';
-import '../../../../../../core/constants/ui_constants.dart';
-import '../../../../../../core/theme/app_colors.dart';
-import '../../../../../../core/utils/date_formatter.dart';
-import '../../../../../../domain/providers/database_provider.dart';
-import '../../../../../../domain/providers/session_stats_provider.dart';
+import 'package:vibe_code/core/constants/ui_constants.dart';
+import 'package:vibe_code/core/theme/app_colors.dart';
+import 'package:vibe_code/core/utils/date_formatter.dart';
+import 'package:vibe_code/domain/providers/database_provider.dart';
+import 'package:vibe_code/domain/providers/session_stats_provider.dart';
 import '../../settings/settings_screen.dart';
 import 'export_dialog.dart'; // ✅ 추가
 
@@ -233,7 +233,7 @@ class ExportButton extends ConsumerWidget {
         FontAwesomeIcons.download, // ✅ 아웃라인 아이콘
         color: Colors.white,
       ),
-      iconSize: UIConstants.iconMd,
+      iconSize: UIConstants.iconSm,
       tooltip: '대화 내보내기',
       padding: const EdgeInsets.all(UIConstants.spacingXs),
       onPressed: () async {
@@ -288,7 +288,7 @@ class RefreshButton extends ConsumerWidget {
         FontAwesomeIcons.arrowsRotate, // ✅ FaIcon 사용
         color: Colors.white,
       ),
-      iconSize: UIConstants.iconMd,
+      iconSize: UIConstants.iconSm,
       tooltip: '새로고침',
       padding: const EdgeInsets.all(UIConstants.spacingXs),
       onPressed: () {
@@ -307,10 +307,10 @@ class SettingsButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       icon: const FaIcon(
-        FontAwesomeIcons.gear, // ✅ FaIcon 사용 (gear = 아웃라인 스타일)
+        FontAwesomeIcons.gear,
         color: Colors.white,
       ),
-      iconSize: UIConstants.iconMd,
+      iconSize: UIConstants.iconSm,
       tooltip: '설정',
       padding: const EdgeInsets.all(UIConstants.spacingXs),
       onPressed: () {

@@ -1,6 +1,8 @@
+// lib/data/models/api_request.dart
+
 class ChatMessage {
   final String role;
-  final String content;
+  final dynamic content; // ✅ String 또는 List<Map> 지원
 
   const ChatMessage({
     required this.role,
@@ -10,7 +12,7 @@ class ChatMessage {
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
       role: json['role'] as String,
-      content: json['content'] as String,
+      content: json['content'], // dynamic으로 받음
     );
   }
 
@@ -19,6 +21,42 @@ class ChatMessage {
       'role': role,
       'content': content,
     };
+  }
+
+  /// ✅ 텍스트 메시지 생성
+  factory ChatMessage.text({
+    required String role,
+    required String text,
+  }) {
+    return ChatMessage(
+      role: role,
+      content: text,
+    );
+  }
+
+  /// ✅ 이미지 포함 메시지 생성 (Vision API)
+  factory ChatMessage.withImages({
+    required String role,
+    required String text,
+    required List<String> base64Images, // base64 인코딩된 이미지들
+  }) {
+    final contentList = <Map<String, dynamic>>[
+      {
+        'type': 'text',
+        'text': text,
+      },
+      ...base64Images.map((base64) => {
+        'type': 'image_url',
+        'image_url': {
+          'url': 'data:image/jpeg;base64,$base64',
+        },
+      }),
+    ];
+
+    return ChatMessage(
+      role: role,
+      content: contentList,
+    );
   }
 }
 
