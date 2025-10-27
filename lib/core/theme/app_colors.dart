@@ -52,7 +52,7 @@ class AppColors {
   static Color get aiBubbleDark => darkSurface;
 
   // ===== Code Block =====
-  static const Color codeBackgroundLight = Color(0xFFF6F8FA);
+  static const Color codeBackgroundLight = Color(0xFF161B22);
   static const Color codeBackgroundDark = Color(0xFF161B22);
 
   // ===== Hover Effects =====

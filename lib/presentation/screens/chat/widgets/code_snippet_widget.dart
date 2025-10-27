@@ -9,72 +9,40 @@ import '../../../../core/theme/app_colors.dart';
 class CodeSnippetSliver {
   final String code;
   final String language;
-  final bool isIntegrated;
 
   const CodeSnippetSliver({
     required this.code,
     required this.language,
-    this.isIntegrated = false,
   });
 
-  /// ✅ SliverMainAxisGroup으로 헤더와 본문을 그룹화
-  /// 코드 블록이 화면을 벗어나면 헤더도 자연스럽게 사라짐
+  /// SliverMainAxisGroup으로 헤더와 본문을 그룹화
   List<Widget> buildAsSliverWithBackground(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final codeBackgroundColor = isDark
-        ? AppColors.codeBackgroundDark
-        : AppColors.codeBackgroundLight;
-
-    // ✅ AppColors에서 bubbleColor 가져오기
-    final bubbleColor = isDark
-        ? AppColors.aiBubbleDark
-        : AppColors.aiBubbleLight;
+    final colors = _getColorScheme(context);
 
     return [
-      // ✅ 헤더와 본문을 하나의 그룹으로 묶음
       SliverMainAxisGroup(
         slivers: [
-          // Sticky 헤더 (이 그룹 범위 내에서만 유효)
+          // Sticky 헤더
           SliverPersistentHeader(
             pinned: true,
             delegate: _CodeHeaderDelegate(
               language: language,
               code: code,
-              isDark: isDark,
-              isIntegrated: isIntegrated,
-              bubbleColor: bubbleColor,
+              colors: colors,
               horizontalPadding: UIConstants.spacingLg,
             ),
           ),
           // 코드 본문
           SliverToBoxAdapter(
             child: Container(
-              color: bubbleColor,
+              color: colors.bubbleColor,
               padding: const EdgeInsets.symmetric(
                 horizontal: UIConstants.spacingLg,
               ),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(UIConstants.spacingMd),
-                decoration: BoxDecoration(
-                  color: codeBackgroundColor,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(UIConstants.radiusSm),
-                    bottomRight: Radius.circular(UIConstants.radiusSm),
-                  ),
-                ),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SelectableText(
-                    code,
-                    style: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 13,
-                      height: 1.5,
-                      color: isDark ? Colors.white.withAlpha(230) : Colors.black87,
-                    ),
-                  ),
-                ),
+              child: _CodeBody(
+                code: code,
+                backgroundColor: colors.codeBackground,
+                textColor: colors.textColor,
               ),
             ),
           ),
@@ -83,80 +51,90 @@ class CodeSnippetSliver {
     ];
   }
 
-  /// 기본 Sliver 리스트로 변환 (독립 사용)
-  List<Widget> buildAsSliver(BuildContext context) {
+  /// 색상 스키마 계산
+  _CodeColorScheme _getColorScheme(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final codeBackgroundColor = isDark
-        ? AppColors.codeBackgroundDark
-        : AppColors.codeBackgroundLight;
-
-    // ✅ AppColors에서 bubbleColor 가져오기
-    final bubbleColor = isDark
-        ? AppColors.aiBubbleDark
-        : AppColors.aiBubbleLight;
-
-    return [
-      SliverMainAxisGroup(
-        slivers: [
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _CodeHeaderDelegate(
-              language: language,
-              code: code,
-              isDark: isDark,
-              isIntegrated: false,
-              bubbleColor: bubbleColor,
-              horizontalPadding: 0,
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(UIConstants.spacingMd),
-              decoration: BoxDecoration(
-                color: codeBackgroundColor,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(UIConstants.radiusSm),
-                  bottomRight: Radius.circular(UIConstants.radiusSm),
-                ),
-              ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SelectableText(
-                  code,
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                    height: 1.5,
-                    color: isDark ? Colors.white.withAlpha(230) : Colors.black87,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ];
+    return _CodeColorScheme(
+      isDark: isDark,
+      bubbleColor: isDark ? AppColors.aiBubbleDark : AppColors.aiBubbleLight,
+      codeBackground: isDark ? AppColors.codeBackgroundDark : AppColors.codeBackgroundLight,
+      headerBackground: isDark ? AppColors.glassDark : AppColors.glassLight,
+      textColor: isDark ? Colors.white.withAlpha(230) : Colors.black87,
+    );
   }
 }
 
-/// 코드 헤더 Delegate (Sticky Header)
+/// 색상 스키마
+class _CodeColorScheme {
+  final bool isDark;
+  final Color bubbleColor;
+  final Color codeBackground;
+  final Color headerBackground;
+  final Color textColor;
+
+  const _CodeColorScheme({
+    required this.isDark,
+    required this.bubbleColor,
+    required this.codeBackground,
+    required this.headerBackground,
+    required this.textColor,
+  });
+}
+
+/// 코드 본문 위젯
+class _CodeBody extends StatelessWidget {
+  final String code;
+  final Color backgroundColor;
+  final Color textColor;
+
+  const _CodeBody({
+    required this.code,
+    required this.backgroundColor,
+    required this.textColor,
+  });
+
+  static const _codeStyle = TextStyle(
+    fontFamily: 'monospace',
+    fontSize: 13,
+    height: 1.5,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(UIConstants.spacingMd),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(UIConstants.radiusSm),
+          bottomRight: Radius.circular(UIConstants.radiusSm),
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SelectableText(
+          code,
+          style: _codeStyle.copyWith(color: textColor),
+        ),
+      ),
+    );
+  }
+}
+
+/// 코드 헤더 Delegate
 class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String language;
   final String code;
-  final bool isDark;
-  final bool isIntegrated;
-  final Color bubbleColor;
+  final _CodeColorScheme colors;
   final double horizontalPadding;
 
   static const double _headerHeight = 44.0;
 
-  _CodeHeaderDelegate({
+  const _CodeHeaderDelegate({
     required this.language,
     required this.code,
-    required this.isDark,
-    required this.isIntegrated,
-    required this.bubbleColor,
+    required this.colors,
     this.horizontalPadding = 0,
   });
 
@@ -181,11 +159,11 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
 
     return Container(
       height: _headerHeight,
-      color: isIntegrated ? bubbleColor : null,
+      color: colors.bubbleColor,
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Container(
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+          color: colors.headerBackground,
           borderRadius: borderRadius,
         ),
         child: _CodeHeader(
@@ -200,9 +178,7 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_CodeHeaderDelegate oldDelegate) {
     return language != oldDelegate.language ||
         code != oldDelegate.code ||
-        isDark != oldDelegate.isDark ||
-        isIntegrated != oldDelegate.isIntegrated ||
-        bubbleColor != oldDelegate.bubbleColor ||
+        colors.isDark != oldDelegate.colors.isDark ||
         horizontalPadding != oldDelegate.horizontalPadding;
   }
 }
@@ -224,25 +200,26 @@ class _CodeHeader extends StatefulWidget {
 class _CodeHeaderState extends State<_CodeHeader> {
   bool _isCopied = false;
 
-  void _copyToClipboard() async {
+  Future<void> _copyToClipboard() async {
     await Clipboard.setData(ClipboardData(text: widget.code));
-    setState(() => _isCopied = true);
+    if (!mounted) return;
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('코드가 복사되었습니다'),
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+    setState(() => _isCopied = true);
+    _showCopiedSnackBar();
 
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() => _isCopied = false);
-      }
+      if (mounted) setState(() => _isCopied = false);
     });
+  }
+
+  void _showCopiedSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('코드가 복사되었습니다'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -289,9 +266,7 @@ class _CodeHeaderState extends State<_CodeHeader> {
         child: Icon(
           _isCopied ? Icons.check : Icons.copy_all,
           size: UIConstants.iconSm,
-          color: _isCopied
-              ? Colors.green
-              : Colors.white.withAlpha(230),
+          color: _isCopied ? Colors.green : Colors.white.withAlpha(230),
         ),
       ),
     );

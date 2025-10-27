@@ -22,7 +22,7 @@ class ChatStateBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
-      padding: EdgeInsets.all(UIConstants.spacingSm),
+      padding: EdgeInsets.symmetric(vertical:  UIConstants.spacingSm, horizontal: UIConstants.spacingMd),
       child: RepaintBoundary(
         child: ClipRRect(
           borderRadius: const BorderRadius.all(
