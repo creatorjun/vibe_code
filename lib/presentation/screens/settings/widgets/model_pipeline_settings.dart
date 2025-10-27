@@ -145,6 +145,7 @@ class ModelPipelineSettings extends ConsumerWidget {
         ReorderableListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
           onReorder: (oldIndex, newIndex) async {
             try {
               await ref

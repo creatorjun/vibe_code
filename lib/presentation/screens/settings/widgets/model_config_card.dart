@@ -64,54 +64,29 @@ class _ModelConfigCardState extends State<ModelConfigCard> {
       child: Column(
         children: [
           ListTile(
-            // ✅ Leading 영역 개선
-            leading: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 드래그 핸들
-                Container(
-                  padding: const EdgeInsets.all(UIConstants.spacingXs),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(UIConstants.radiusSm),
-                  ),
-                  child: ReorderableDragStartListener(
-                    index: widget.index,
-                    child: Icon(
-                      Icons.drag_handle,
-                      size: UIConstants.iconMd,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+            leading: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: UIConstants.spacingSm,
+                vertical: UIConstants.spacingXs,
+              ),
+              decoration: BoxDecoration(
+                color: widget.config.isEnabled
+                    ? colorScheme.primaryContainer
+                    : colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+              ),
+              child: Text(
+                '${widget.index + 1}',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: widget.config.isEnabled
+                      ? colorScheme.onPrimaryContainer
+                      : colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: UIConstants.spacingSm),
-              ],
+              ),
             ),
-            // ✅ 타이틀 개선
             title: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: UIConstants.spacingSm,
-                    vertical: UIConstants.spacingXs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: widget.config.isEnabled
-                        ? colorScheme.primaryContainer
-                        : colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(UIConstants.radiusSm),
-                  ),
-                  child: Text(
-                    '${widget.index + 1}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: widget.config.isEnabled
-                          ? colorScheme.onPrimaryContainer
-                          : colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: UIConstants.spacingSm),
                 Expanded(
                   child: Text(
                     _getModelDisplayName(widget.config.modelId),
@@ -119,7 +94,8 @@ class _ModelConfigCardState extends State<ModelConfigCard> {
                       fontWeight: FontWeight.w600,
                       color: widget.config.isEnabled
                           ? colorScheme.onSurface
-                          : colorScheme.onSurface.withAlpha(UIConstants.alpha50),
+                          : colorScheme.onSurface
+                          .withAlpha(UIConstants.alpha50),
                     ),
                   ),
                 ),
@@ -135,7 +111,6 @@ class _ModelConfigCardState extends State<ModelConfigCard> {
                 ),
               ),
             ),
-            // ✅ Trailing 버튼 개선
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -154,7 +129,7 @@ class _ModelConfigCardState extends State<ModelConfigCard> {
                       _isExpanded = !_isExpanded;
                     });
                   },
-                  tooltip: '시스템 프롬프트',
+                  tooltip: '프롬프트 설정',
                   visualDensity: VisualDensity.compact,
                 ),
                 if (widget.canRemove)
@@ -162,13 +137,12 @@ class _ModelConfigCardState extends State<ModelConfigCard> {
                     icon: const Icon(Icons.delete_outline),
                     onPressed: widget.onRemove,
                     color: colorScheme.error,
-                    tooltip: '모델 제거',
+                    tooltip: '제거',
                     visualDensity: VisualDensity.compact,
                   ),
               ],
             ),
           ),
-          // ✅ 확장 영역 개선
           if (_isExpanded)
             Container(
               margin: const EdgeInsets.fromLTRB(
@@ -206,9 +180,10 @@ class _ModelConfigCardState extends State<ModelConfigCard> {
                   TextFormField(
                     controller: _promptController,
                     decoration: InputDecoration(
-                      hintText: '이 모델의 역할과 동작을 정의하세요...',
+                      hintText: '시스템 프롬프트를 입력하세요...',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                        borderRadius:
+                        BorderRadius.circular(UIConstants.radiusMd),
                       ),
                       filled: true,
                       fillColor: colorScheme.surface,
@@ -222,14 +197,14 @@ class _ModelConfigCardState extends State<ModelConfigCard> {
                                 children: [
                                   Icon(Icons.check_circle, color: Colors.white),
                                   SizedBox(width: UIConstants.spacingSm),
-                                  Text('시스템 프롬프트가 저장되었습니다'),
+                                  Text('프롬프트가 저장되었습니다'),
                                 ],
                               ),
                               backgroundColor: Colors.green,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(
-                                borderRadius:
-                                BorderRadius.circular(UIConstants.radiusMd),
+                                borderRadius: BorderRadius.circular(
+                                    UIConstants.radiusMd),
                               ),
                             ),
                           );
