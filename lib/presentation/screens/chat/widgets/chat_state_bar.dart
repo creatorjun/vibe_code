@@ -1,6 +1,9 @@
+// lib/presentation/screens/chat/widgets/chat_state_bar.dart
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vibe_code/domain/providers/chat_provider.dart';
 import '../../../../../../core/constants/ui_constants.dart';
 import '../../../../../../core/theme/app_colors.dart';
@@ -8,6 +11,7 @@ import '../../../../../../core/utils/date_formatter.dart';
 import '../../../../../../domain/providers/database_provider.dart';
 import '../../../../../../domain/providers/session_stats_provider.dart';
 import '../../settings/settings_screen.dart';
+import 'export_dialog.dart'; // ✅ 추가
 
 /// ChatStateBar - SliverAppBar의 flexibleSpace에 사용되는 UI 최적화 버전
 class ChatStateBar extends ConsumerWidget {
@@ -17,7 +21,6 @@ class ChatStateBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // RepaintBoundary: 이 위젯만 독립적으로 다시 그리도록 하여 성능 최적화
     return Padding(
       padding: EdgeInsets.all(UIConstants.spacingMd),
       child: RepaintBoundary(
@@ -62,6 +65,8 @@ class ChatStateBar extends ConsumerWidget {
                   if (sessionId != null) ...[
                     _SessionStatsWidget(sessionId: sessionId!),
                     const SizedBox(width: UIConstants.spacingXs),
+                    ExportButton(sessionId: sessionId!), // ✅ 내보내기 버튼
+                    const SizedBox(width: UIConstants.spacingXs),
                     const RefreshButton(),
                   ],
                   const SettingsButton(),
@@ -96,23 +101,21 @@ class ChatStateBar extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ✅ 세션 제목
             Text(
               session.title as String,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Colors.white,
-                fontWeight: FontWeight.w700, // ✅ 굵기 강화
-                fontSize: 18, // ✅ 폰트 크기 조정
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: UIConstants.spacingXs),
-            // ✅ 업데이트 시간
             Text(
               DateFormatter.formatChatTime(session.updatedAt as DateTime),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.white.withAlpha(UIConstants.alpha80), // ✅ 대비 강화
+                color: Colors.white.withAlpha(UIConstants.alpha80),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -141,7 +144,7 @@ class TitleLabel extends StatelessWidget {
         title,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
           color: Colors.white,
-          fontWeight: FontWeight.w700, // ✅ 굵기 강화
+          fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
         ),
         maxLines: 1,
@@ -168,21 +171,21 @@ class _SessionStatsWidget extends ConsumerWidget {
             vertical: UIConstants.spacingXs,
           ),
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(UIConstants.alpha25), // ✅ 대비 강화
-            borderRadius: BorderRadius.circular(UIConstants.radiusMd), // ✅ 반경 통일
+            color: Colors.white.withAlpha(UIConstants.alpha25),
+            borderRadius: BorderRadius.circular(UIConstants.radiusMd),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildStatItem(
                 context,
-                icon: Icons.message_outlined,
+                icon: FontAwesomeIcons.message, // ✅ FaIcon 사용
                 value: '${stats.messageCount}',
               ),
               const SizedBox(width: UIConstants.spacingMd),
               _buildStatItem(
                 context,
-                icon: Icons.data_usage_outlined, // ✅ 아이콘 변경
+                icon: FontAwesomeIcons.boltLightning, // ✅ FaIcon 사용
                 value: stats.tokenDisplay,
               ),
             ],
@@ -194,11 +197,11 @@ class _SessionStatsWidget extends ConsumerWidget {
     );
   }
 
-  // ✅ 통계 아이템을 위한 분리된 위젯
-  Widget _buildStatItem(BuildContext context, {required IconData icon, required String value}) {
+  Widget _buildStatItem(BuildContext context,
+      {required IconData icon, required String value}) {
     return Row(
       children: [
-        Icon(
+        FaIcon(
           icon,
           size: UIConstants.iconSm,
           color: Colors.white.withAlpha(UIConstants.alpha90),
@@ -218,6 +221,59 @@ class _SessionStatsWidget extends ConsumerWidget {
   }
 }
 
+/// ✅ 내보내기 버튼 위젯 (새로 추가)
+class ExportButton extends ConsumerWidget {
+  final int sessionId;
+  const ExportButton({super.key, required this.sessionId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return IconButton(
+      icon: const FaIcon(
+        FontAwesomeIcons.download, // ✅ 아웃라인 아이콘
+        color: Colors.white,
+      ),
+      iconSize: UIConstants.iconMd,
+      tooltip: '대화 내보내기',
+      padding: const EdgeInsets.all(UIConstants.spacingXs),
+      onPressed: () async {
+        // 세션과 메시지 가져오기
+        final sessionsAsync = ref.read(chatSessionsProvider);
+        final messagesAsync = ref.read(sessionMessagesProvider(sessionId));
+
+        await sessionsAsync.when(
+          data: (sessions) async {
+            final session = sessions.cast<dynamic>().firstWhere(
+                  (s) => s.id == sessionId,
+              orElse: () => null,
+            );
+
+            if (session != null) {
+              await messagesAsync.when(
+                data: (messages) {
+                  if (context.mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (context) => ExportDialog(
+                        session: session,
+                        messages: messages,
+                      ),
+                    );
+                  }
+                },
+                loading: () {},
+                error: (_, __) {},
+              );
+            }
+          },
+          loading: () {},
+          error: (_, __) {},
+        );
+      },
+    );
+  }
+}
+
 /// 새로고침 버튼 위젯
 class RefreshButton extends ConsumerWidget {
   const RefreshButton({super.key});
@@ -228,7 +284,10 @@ class RefreshButton extends ConsumerWidget {
     if (sessionId == null) return const SizedBox.shrink();
 
     return IconButton(
-      icon: const Icon(Icons.refresh, color: Colors.white),
+      icon: const FaIcon(
+        FontAwesomeIcons.arrowsRotate, // ✅ FaIcon 사용
+        color: Colors.white,
+      ),
       iconSize: UIConstants.iconMd,
       tooltip: '새로고침',
       padding: const EdgeInsets.all(UIConstants.spacingXs),
@@ -247,7 +306,10 @@ class SettingsButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.settings_outlined, color: Colors.white),
+      icon: const FaIcon(
+        FontAwesomeIcons.gear, // ✅ FaIcon 사용 (gear = 아웃라인 스타일)
+        color: Colors.white,
+      ),
       iconSize: UIConstants.iconMd,
       tooltip: '설정',
       padding: const EdgeInsets.all(UIConstants.spacingXs),
