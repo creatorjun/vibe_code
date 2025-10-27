@@ -110,7 +110,6 @@ class GitHubAnalysisService {
       '.symlinks',
       '.symlink',
       'Generated.xcconfig',
-      'flutter_export_environment.sh',
     ];
 
     return excludeList.contains(name) || name.startsWith('.');
