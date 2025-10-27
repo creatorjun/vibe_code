@@ -19,7 +19,8 @@ class CodeSnippetSliver {
     this.isIntegrated = false,
   });
 
-  /// 배경색을 포함한 Sliver 리스트로 변환 (스티키 헤더 유지)
+  /// ✅ SliverMainAxisGroup으로 헤더와 본문을 그룹화
+  /// 코드 블록이 화면을 벗어나면 헤더도 함께 사라짐
   List<Widget> buildAsSliverWithBackground(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final codeBackgroundColor = isDark
@@ -27,50 +28,54 @@ class CodeSnippetSliver {
         : AppColors.codeBackgroundLight;
 
     return [
-      // ✅ 스티키 헤더 (배경색 포함)
-      SliverPersistentHeader(
-        pinned: true,
-        delegate: _CodeHeaderDelegate(
-          language: language,
-          code: code,
-          isDark: isDark,
-          isIntegrated: isIntegrated,
-          bubbleColor: backgroundColor,
-          horizontalPadding: UIConstants.spacingLg,
-        ),
-      ),
-
-      // ✅ 코드 본문 (배경색 포함)
-      SliverToBoxAdapter(
-        child: Container(
-          color: backgroundColor,
-          padding: const EdgeInsets.symmetric(
-            horizontal: UIConstants.spacingLg,
-          ),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(UIConstants.spacingMd),
-            decoration: BoxDecoration(
-              color: codeBackgroundColor,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(UIConstants.radiusSm),
-                bottomRight: Radius.circular(UIConstants.radiusSm),
-              ),
+      // ✅ 헤더와 본문을 하나의 그룹으로 묶음
+      SliverMainAxisGroup(
+        slivers: [
+          // Sticky 헤더 (이 그룹 범위 내에서만 유효)
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _CodeHeaderDelegate(
+              language: language,
+              code: code,
+              isDark: isDark,
+              isIntegrated: isIntegrated,
+              bubbleColor: backgroundColor,
+              horizontalPadding: UIConstants.spacingLg,
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SelectableText(
-                code,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                  height: 1.5,
-                  color: isDark ? Colors.white.withAlpha(230) : Colors.black87,
+          ),
+          // 코드 본문
+          SliverToBoxAdapter(
+            child: Container(
+              color: backgroundColor,
+              padding: const EdgeInsets.symmetric(
+                horizontal: UIConstants.spacingLg,
+              ),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(UIConstants.spacingMd),
+                decoration: BoxDecoration(
+                  color: codeBackgroundColor,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(UIConstants.radiusSm),
+                    bottomRight: Radius.circular(UIConstants.radiusSm),
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SelectableText(
+                    code,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                      height: 1.5,
+                      color: isDark ? Colors.white.withAlpha(230) : Colors.black87,
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     ];
   }
@@ -83,41 +88,45 @@ class CodeSnippetSliver {
         : AppColors.codeBackgroundLight;
 
     return [
-      SliverPersistentHeader(
-        pinned: true,
-        delegate: _CodeHeaderDelegate(
-          language: language,
-          code: code,
-          isDark: isDark,
-          isIntegrated: false,
-          bubbleColor: backgroundColor,
-          horizontalPadding: 0,
-        ),
-      ),
-      SliverToBoxAdapter(
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(UIConstants.spacingMd),
-          decoration: BoxDecoration(
-            color: codeBackgroundColor,
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(UIConstants.radiusSm),
-              bottomRight: Radius.circular(UIConstants.radiusSm),
+      SliverMainAxisGroup(
+        slivers: [
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _CodeHeaderDelegate(
+              language: language,
+              code: code,
+              isDark: isDark,
+              isIntegrated: false,
+              bubbleColor: backgroundColor,
+              horizontalPadding: 0,
             ),
           ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SelectableText(
-              code,
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 13,
-                height: 1.5,
-                color: isDark ? Colors.white.withAlpha(230) : Colors.black87,
+          SliverToBoxAdapter(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(UIConstants.spacingMd),
+              decoration: BoxDecoration(
+                color: codeBackgroundColor,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(UIConstants.radiusSm),
+                  bottomRight: Radius.circular(UIConstants.radiusSm),
+                ),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SelectableText(
+                  code,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                    height: 1.5,
+                    color: isDark ? Colors.white.withAlpha(230) : Colors.black87,
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     ];
   }
@@ -155,9 +164,8 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
       double shrinkOffset,
       bool overlapsContent,
       ) {
-
     final borderRadius = shrinkOffset == 0
-        ? BorderRadius.only(
+        ? const BorderRadius.only(
       topLeft: Radius.circular(UIConstants.radiusSm),
       topRight: Radius.circular(UIConstants.radiusSm),
     )
