@@ -1,5 +1,6 @@
 // lib/presentation/screens/chat/widgets/attachment_item.dart
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../data/database/app_database.dart';
@@ -8,19 +9,101 @@ class AttachmentItem extends StatelessWidget {
   final Attachment attachment;
   final VoidCallback? onRemove;
 
-  const AttachmentItem({super.key, required this.attachment, this.onRemove});
+  const AttachmentItem({
+    super.key,
+    required this.attachment,
+    this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isImage = _isImageFile(attachment.fileName);
+
+    if (isImage) {
+      return _buildImageThumbnail(context);
+    }
+
+    return _buildFileItem(context);
+  }
+
+  /// 이미지 썸네일 빌더 (축소된 전체 이미지)
+  Widget _buildImageThumbnail(BuildContext context) {
+    return Container(
+      width: 120,
+      height: 120,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      ),
+      child: Stack(
+        children: [
+          // 이미지 (전체 표시)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+            child: Container(
+              width: 120,
+              height: 120,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Image.file(
+                File(attachment.filePath),
+                fit: BoxFit.contain, // ✅ 축소된 전체 이미지
+                errorBuilder: (context, error, stackTrace) {
+                  return Center(
+                    child: Icon(
+                      Icons.broken_image,
+                      size: UIConstants.iconLg,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withAlpha(UIConstants.alpha40),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          // 삭제 버튼
+          if (onRemove != null)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onRemove,
+                  borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                  child: Container(
+                    padding: const EdgeInsets.all(UIConstants.spacingXs),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha(180),
+                      borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      size: UIConstants.iconSm,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 일반 파일 아이템
+  Widget _buildFileItem(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 200),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(UIConstants.radiusMd),
         border: Border.all(
-          color: Theme.of(
-            context,
-          ).colorScheme.outline.withAlpha(UIConstants.alpha30),
+          color: Theme.of(context)
+              .colorScheme
+              .outline
+              .withAlpha(UIConstants.alpha30),
           width: 1,
         ),
       ),
@@ -31,7 +114,6 @@ class AttachmentItem extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 파일 아이콘
                 Container(
                   width: UIConstants.iconLg + UIConstants.spacingSm,
                   height: UIConstants.iconLg + UIConstants.spacingSm,
@@ -46,7 +128,6 @@ class AttachmentItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: UIConstants.spacingMd),
-                // 파일 정보
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,19 +145,19 @@ class AttachmentItem extends StatelessWidget {
                       Text(
                         _formatFileSize(attachment.fileSize),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
                               .withAlpha(UIConstants.alpha60),
                         ),
                       ),
                     ],
                   ),
                 ),
-                // 삭제 버튼 공간 확보
                 const SizedBox(width: UIConstants.spacingLg),
               ],
             ),
           ),
-          // 삭제 버튼 (오른쪽 상단)
           if (onRemove != null)
             Positioned(
               top: UIConstants.spacingXs,
@@ -100,6 +181,11 @@ class AttachmentItem extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  bool _isImageFile(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension);
   }
 
   IconData _getFileIcon(String fileName) {
