@@ -1,12 +1,13 @@
 // lib/data/services/pipeline_service.dart
 
 import '../../core/utils/logger.dart';
+import '../../core/utils/token_counter.dart';
 import '../../data/models/settings_state.dart';
 import '../../data/models/api_request.dart';
 import 'ai_service.dart';
 
 class PipelineService {
-  /// 순차 파이프라인 실행
+  /// 순차 파이프라인 실행 (컨텍스트 압축 적용)
   Stream<void> executePipeline({
     required List<ModelConfig> pipeline,
     required String initialInput,
@@ -15,7 +16,7 @@ class PipelineService {
     required Function(int step, String chunk) onChunk,
     required AIService Function(String apiKey) aiServiceFactory,
     required String apiKey,
-    Function(int inputTokens, int outputTokens)? onTokenUsage, // ✅ 신규 파라미터
+    Function(int inputTokens, int outputTokens)? onTokenUsage,
   }) async* {
     if (pipeline.isEmpty) {
       throw Exception('파이프라인이 비어있습니다.');
@@ -36,17 +37,24 @@ class PipelineService {
       try {
         final stepOutput = StringBuffer();
 
+        // ✅ 중간 단계에서 히스토리 압축
+        final compressedHistory = _compressHistoryForStep(
+          conversationHistory,
+          isFirstStep: i == 0,
+          isLastStep: i == pipeline.length - 1,
+        );
+
         // 시스템 프롬프트 포함한 메시지 구성
         final messages = _buildMessages(
-          messageHistory: conversationHistory,
+          messageHistory: compressedHistory,
           systemPrompt: config.systemPrompt,
         );
 
-        // ✅ onTokenUsage 콜백 전달
+        // 스트리밍 실행
         await for (final chunk in aiService.streamChat(
           messages: messages,
           model: config.modelId,
-          onTokenUsage: onTokenUsage, // 파이프라인의 콜백 전달
+          onTokenUsage: onTokenUsage,
         )) {
           stepOutput.write(chunk);
           onChunk(i, chunk);
@@ -77,6 +85,74 @@ class PipelineService {
     }
 
     Logger.info('Pipeline execution completed');
+  }
+
+  /// ✅ 신규: 파이프라인 단계별 히스토리 압축
+  List<ChatMessage> _compressHistoryForStep(
+      List<ChatMessage> history, {
+        required bool isFirstStep,
+        required bool isLastStep,
+      }) {
+    // 첫 번째 단계: 전체 히스토리 사용
+    if (isFirstStep) {
+      Logger.debug('Step 1: Using full history (${history.length} messages)');
+      return history;
+    }
+
+    // 마지막 단계: 최근 대화만 유지
+    if (isLastStep && history.length > 10) {
+      final compressed = history.sublist(history.length - 10);
+      Logger.info(
+        'Last step: Compressed history ${history.length} → ${compressed.length} messages',
+      );
+      return compressed;
+    }
+
+    // 중간 단계: 토큰 기반 압축
+    if (history.length > 15) {
+      return _compressHistoryByTokens(history, maxTokens: 4000);
+    }
+
+    // 히스토리가 짧으면 그대로 사용
+    return history;
+  }
+
+  /// ✅ 신규: 토큰 기반 히스토리 압축
+  List<ChatMessage> _compressHistoryByTokens(
+      List<ChatMessage> history, {
+        int maxTokens = 4000,
+      }) {
+    final compressed = <ChatMessage>[];
+    var currentTokens = 0;
+
+    // 최신 메시지부터 역순으로 추가
+    for (var i = history.length - 1; i >= 0; i--) {
+      final message = history[i];
+      final content = message.content is String
+          ? message.content as String
+          : '';
+      final msgTokens = TokenCounter.estimateTokens(content);
+
+      if (currentTokens + msgTokens > maxTokens) {
+        // 토큰 한계 도달: 요약 메시지 추가
+        if (i > 0) {
+          compressed.insert(0, ChatMessage(
+            role: 'system',
+            content: '[이전 대화 ${i + 1}개 메시지 요약됨]',
+          ));
+        }
+        break;
+      }
+
+      compressed.insert(0, message);
+      currentTokens += msgTokens;
+    }
+
+    Logger.info(
+      'Token-based compression: ${history.length} → ${compressed.length} messages (~$currentTokens tokens)',
+    );
+
+    return compressed;
   }
 
   /// 메시지 히스토리 구성
