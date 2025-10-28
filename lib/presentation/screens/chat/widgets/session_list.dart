@@ -1,13 +1,11 @@
-// lib/presentation/screens/chat/widgets/session_list.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../../../core/constants/ui_constants.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../domain/mutations/create_session_mutation.dart';
-import '../../../../domain/providers/database_provider.dart';
-import '../../../shared/widgets/adaptive_loading.dart';
+import 'package:vibe_code/presentation/shared/widgets/loading_indicator.dart';
+import 'package:vibe_code/core/constants/ui_constants.dart';
+import 'package:vibe_code/core/theme/app_colors.dart';
+import 'package:vibe_code/domain/mutations/create_session_mutation.dart';
+import 'package:vibe_code/domain/providers/database_provider.dart';
 import 'session_tile.dart';
 
 class SessionList extends ConsumerWidget {
@@ -24,17 +22,13 @@ class SessionList extends ConsumerWidget {
 
     return Column(
       children: [
-        // ✅ 대화 목록 헤더 - 상수 위젯으로 최적화
-        if (isExpanded) const _SectionHeader(),
-
-        // ✅ 세션 리스트
+        if (isExpanded) const SectionHeader(),
         Expanded(
           child: sessionsAsync.when(
             data: (sessions) {
               if (sessions.isEmpty) {
-                return _EmptyState(isExpanded: isExpanded);
+                return EmptyState(isExpanded: isExpanded);
               }
-
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(
                   horizontal: UIConstants.spacingSm,
@@ -50,113 +44,18 @@ class SessionList extends ConsumerWidget {
                 },
               );
             },
-            loading: () => const _LoadingState(),
-            error: (error, stack) => _ErrorState(error: error),
+            loading: () => const LoadingState(),
+            error: (error, stack) => ErrorState(error: error),
           ),
         ),
-
-        // ✅ NEW 버튼 - 프로필 카드 바로 위로 이동
-        _NewChatButton(isExpanded: isExpanded),
+        NewChatButton(isExpanded: isExpanded),
       ],
     );
   }
 }
 
-// ============================================================================
-// ✅ 최적화: 독립적인 위젯으로 분리하여 불필요한 리빌드 방지
-// ============================================================================
-
-/// NEW 버튼 - 독립 위젯
-/// NEW 버튼 - 독립 위젯
-class _NewChatButton extends ConsumerWidget {
-  final bool isExpanded;
-
-  const _NewChatButton({required this.isExpanded});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: EdgeInsets.all(
-        isExpanded ? UIConstants.spacingMd : UIConstants.spacingSm,
-      ),
-      child: isExpanded
-          ? _buildExpandedButton(context, ref)
-          : _buildCollapsedButton(context, ref),
-    );
-  }
-
-  // 확장된 상태: 그라디언트 컨테이너 + 아이콘
-  Widget _buildExpandedButton(BuildContext context, WidgetRef ref) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => createNewSession(ref, '새로운 대화'),
-        borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-        child: Container(
-          padding: const EdgeInsets.all(UIConstants.spacingMd),
-          decoration: BoxDecoration(
-            gradient: AppColors.gradient,
-            borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withAlpha(UIConstants.alpha40),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Center(
-            child: FaIcon(
-              FontAwesomeIcons.circlePlus,
-              color: Colors.white,
-              size: UIConstants.iconLg,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 축소된 상태: 아이콘만 표시
-  Widget _buildCollapsedButton(BuildContext context, WidgetRef ref) {
-    return Center(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => createNewSession(ref, '새로운 대화'),
-          customBorder: const CircleBorder(),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: AppColors.gradient,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withAlpha(UIConstants.alpha30),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Center(
-              child: FaIcon(
-                FontAwesomeIcons.circlePlus,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-
-/// 대화 목록 헤더 - 상수 위젯
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader();
+class SectionHeader extends StatelessWidget {
+  const SectionHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +76,7 @@ class _SectionHeader extends StatelessWidget {
           ),
           const SizedBox(width: UIConstants.spacingSm),
           Text(
-            '대화 목록',
+            '최근 대화',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
               fontWeight: FontWeight.w600,
               letterSpacing: 0.5,
@@ -193,26 +92,27 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// 로딩 상태 - 상수 위젯
-class _LoadingState extends StatelessWidget {
-  const _LoadingState();
+class LoadingState extends StatelessWidget {
+  const LoadingState({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: AdaptiveLoading(
-        message: '...',
+      child: LoadingIndicator(
+        message: '대화 불러오는 중...',
         size: UIConstants.iconLg,
       ),
     );
   }
 }
 
-/// 에러 상태 - 독립 위젯
-class _ErrorState extends StatelessWidget {
+class ErrorState extends StatelessWidget {
   final Object error;
 
-  const _ErrorState({required this.error});
+  const ErrorState({
+    super.key,
+    required this.error,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -263,11 +163,13 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
-/// 빈 상태 - 독립 위젯
-class _EmptyState extends StatelessWidget {
+class EmptyState extends StatelessWidget {
   final bool isExpanded;
 
-  const _EmptyState({required this.isExpanded});
+  const EmptyState({
+    super.key,
+    required this.isExpanded,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -301,7 +203,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: UIConstants.spacingLg),
             Text(
-              '대화가 없습니다',
+              '대화 내역 없음',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: Theme.of(context)
@@ -312,7 +214,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: UIConstants.spacingSm),
             Text(
-              'NEW 버튼을 눌러\n새로운 대화를 시작하세요',
+              'NEW 버튼을 눌러 대화를 시작하세요',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context)
                     .colorScheme
@@ -325,5 +227,95 @@ class _EmptyState extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class NewChatButton extends ConsumerWidget {
+  final bool isExpanded;
+
+  const NewChatButton({
+    super.key,
+    required this.isExpanded,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: EdgeInsets.all(
+        isExpanded ? UIConstants.spacingMd : UIConstants.spacingSm,
+      ),
+      child: isExpanded
+          ? _buildExpandedButton(context, ref)
+          : _buildCollapsedButton(context, ref),
+    );
+  }
+
+  Widget _buildExpandedButton(BuildContext context, WidgetRef ref) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _createNewSession(ref),
+        borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.all(UIConstants.spacingMd),
+          decoration: BoxDecoration(
+            gradient: AppColors.gradient,
+            borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withAlpha(UIConstants.alpha40),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Center(
+            child: FaIcon(
+              FontAwesomeIcons.circlePlus,
+              color: Colors.white,
+              size: UIConstants.iconLg,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCollapsedButton(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _createNewSession(ref),
+          customBorder: const CircleBorder(),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: AppColors.gradient,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withAlpha(UIConstants.alpha30),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: FaIcon(
+                FontAwesomeIcons.circlePlus,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _createNewSession(WidgetRef ref) {
+    createNewSession(ref);
   }
 }

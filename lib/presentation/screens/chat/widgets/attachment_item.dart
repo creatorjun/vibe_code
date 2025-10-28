@@ -1,5 +1,3 @@
-// lib/presentation/screens/chat/widgets/attachment_item.dart
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/ui_constants.dart';
@@ -17,17 +15,16 @@ class AttachmentItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isImage = _isImageFile(attachment.fileName);
+    final isImage = isImageFile(attachment.fileName);
 
     if (isImage) {
-      return _buildImageThumbnail(context);
+      return buildImageThumbnail(context);
     }
 
-    return _buildFileItem(context);
+    return buildFileItem(context);
   }
 
-  /// 이미지 썸네일 빌더 (축소된 전체 이미지)
-  Widget _buildImageThumbnail(BuildContext context) {
+  Widget buildImageThumbnail(BuildContext context) {
     return Container(
       width: 120,
       height: 120,
@@ -37,7 +34,6 @@ class AttachmentItem extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // 이미지 (전체 표시)
           ClipRRect(
             borderRadius: BorderRadius.circular(UIConstants.radiusMd),
             child: Container(
@@ -46,7 +42,7 @@ class AttachmentItem extends StatelessWidget {
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               child: Image.file(
                 File(attachment.filePath),
-                fit: BoxFit.contain, // ✅ 축소된 전체 이미지
+                fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   return Center(
                     child: Icon(
@@ -62,7 +58,6 @@ class AttachmentItem extends StatelessWidget {
               ),
             ),
           ),
-          // 삭제 버튼
           if (onRemove != null)
             Positioned(
               top: 4,
@@ -76,7 +71,8 @@ class AttachmentItem extends StatelessWidget {
                     padding: const EdgeInsets.all(UIConstants.spacingXs),
                     decoration: BoxDecoration(
                       color: Colors.black.withAlpha(180),
-                      borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                      borderRadius:
+                      BorderRadius.circular(UIConstants.radiusMd),
                     ),
                     child: const Icon(
                       Icons.close,
@@ -92,8 +88,7 @@ class AttachmentItem extends StatelessWidget {
     );
   }
 
-  /// 일반 파일 아이템
-  Widget _buildFileItem(BuildContext context) {
+  Widget buildFileItem(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 200),
       decoration: BoxDecoration(
@@ -123,7 +118,7 @@ class AttachmentItem extends StatelessWidget {
                     borderRadius: BorderRadius.circular(UIConstants.radiusSm),
                   ),
                   child: Icon(
-                    _getFileIcon(attachment.fileName),
+                    getFileIcon(attachment.fileName),
                     size: UIConstants.iconMd,
                   ),
                 ),
@@ -143,7 +138,7 @@ class AttachmentItem extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _formatFileSize(attachment.fileSize),
+                        formatFileSize(attachment.fileSize),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context)
                               .colorScheme
@@ -171,9 +166,13 @@ class AttachmentItem extends StatelessWidget {
                     padding: const EdgeInsets.all(UIConstants.spacingXs),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.errorContainer,
-                      borderRadius: BorderRadius.circular(UIConstants.radiusMd),
+                      borderRadius:
+                      BorderRadius.circular(UIConstants.radiusMd),
                     ),
-                    child: const Icon(Icons.close, size: UIConstants.iconSm),
+                    child: const Icon(
+                      Icons.close,
+                      size: UIConstants.iconSm,
+                    ),
                   ),
                 ),
               ),
@@ -183,12 +182,12 @@ class AttachmentItem extends StatelessWidget {
     );
   }
 
-  bool _isImageFile(String fileName) {
+  bool isImageFile(String fileName) {
     final extension = fileName.split('.').last.toLowerCase();
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension);
   }
 
-  IconData _getFileIcon(String fileName) {
+  IconData getFileIcon(String fileName) {
     final extension = fileName.split('.').last.toLowerCase();
     switch (extension) {
       case 'dart':
@@ -228,11 +227,9 @@ class AttachmentItem extends StatelessWidget {
     }
   }
 
-  String _formatFileSize(int bytes) {
+  String formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    }
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 }

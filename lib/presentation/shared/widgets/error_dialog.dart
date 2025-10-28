@@ -70,7 +70,7 @@ class ErrorDialog extends StatelessWidget {
               Navigator.of(context).pop();
               onDismiss!();
             },
-            child: const Text('설정으로'),
+            child: const Text('취소'),
           ),
         ElevatedButton(
           onPressed: () => Navigator.of(context).pop(),

@@ -29,18 +29,25 @@ class GlassContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final defaultColor = isDark ? AppColors.glassDark : AppColors.glassLight;
-    final defaultBorderColor = isDark ? AppColors.glassBorderDark : AppColors.glassBorderLight;
+    final defaultBorderColor =
+    isDark ? AppColors.glassBorderDark : AppColors.glassBorderLight;
 
     return Container(
       width: width,
       height: height,
       margin: margin,
       decoration: BoxDecoration(
-        borderRadius: borderRadius ?? BorderRadius.circular(UIConstants.radiusMd),
-        border: border ?? Border.all(color: defaultBorderColor, width: 1),
+        borderRadius:
+        borderRadius ?? BorderRadius.circular(UIConstants.radiusMd),
+        border: border ??
+            Border.all(
+              color: defaultBorderColor,
+              width: 1,
+            ),
       ),
       child: ClipRRect(
-        borderRadius: borderRadius ?? BorderRadius.circular(UIConstants.radiusMd),
+        borderRadius:
+        borderRadius ?? BorderRadius.circular(UIConstants.radiusMd),
         child: BackdropFilter(
           filter: ImageFilter.blur(
             sigmaX: UIConstants.glassBlur,
@@ -50,7 +57,8 @@ class GlassContainer extends StatelessWidget {
             padding: padding ?? const EdgeInsets.all(UIConstants.spacingMd),
             decoration: BoxDecoration(
               color: color ?? defaultColor,
-              borderRadius: borderRadius ?? BorderRadius.circular(UIConstants.radiusMd),
+              borderRadius:
+              borderRadius ?? BorderRadius.circular(UIConstants.radiusMd),
             ),
             child: child,
           ),

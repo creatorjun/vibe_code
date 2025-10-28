@@ -28,9 +28,10 @@ class SessionTile extends ConsumerWidget {
         ),
         decoration: BoxDecoration(
           color: isActive
-              ? Theme.of(
-                  context,
-                ).colorScheme.primary.withAlpha(UIConstants.alpha30)
+              ? Theme.of(context)
+              .colorScheme
+              .primary
+              .withAlpha(UIConstants.alpha30)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(UIConstants.radiusMd),
         ),
@@ -45,9 +46,8 @@ class SessionTile extends ConsumerWidget {
           tooltip: session.title,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          onPressed: () {
-            ref.read(activeSessionProvider.notifier).select(session.id);
-          },
+          onPressed: () =>
+              ref.read(activeSessionProvider.notifier).select(session.id),
         ),
       );
     }
@@ -59,9 +59,10 @@ class SessionTile extends ConsumerWidget {
       ),
       decoration: BoxDecoration(
         color: isActive
-            ? Theme.of(
-                context,
-              ).colorScheme.primary.withAlpha(UIConstants.alpha30)
+            ? Theme.of(context)
+            .colorScheme
+            .primary
+            .withAlpha(UIConstants.alpha30)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(UIConstants.radiusMd),
       ),
@@ -69,9 +70,8 @@ class SessionTile extends ConsumerWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-          onTap: () {
-            ref.read(activeSessionProvider.notifier).select(session.id);
-          },
+          onTap: () =>
+              ref.read(activeSessionProvider.notifier).select(session.id),
           child: Padding(
             padding: const EdgeInsets.all(UIConstants.spacingSm),
             child: Row(
@@ -90,25 +90,28 @@ class SessionTile extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       GestureDetector(
-                        onDoubleTap: () => showRenameDialog(context, ref),
+                        onDoubleTap: () => _showRenameDialog(context, ref),
                         child: Text(
                           session.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
                               ?.copyWith(
-                                fontWeight: isActive
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                              ),
+                            fontWeight: isActive
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         DateFormatter.formatChatTime(session.updatedAt),
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(fontSize: 11),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(fontSize: 11),
                       ),
                     ],
                   ),
@@ -117,19 +120,17 @@ class SessionTile extends ConsumerWidget {
                 IconButton(
                   icon: const Icon(Icons.delete_outline),
                   iconSize: 16,
-                  tooltip: '대화 삭제',
+                  tooltip: '삭제',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(
                     minWidth: 28,
                     minHeight: 28,
                   ),
                   onPressed: () {
-                    // 다이얼로그 없이 바로 삭제
                     final activeSession = ref.read(activeSessionProvider);
                     if (activeSession == session.id) {
                       ref.read(activeSessionProvider.notifier).clear();
                     }
-
                     ref.read(chatRepositoryProvider).deleteSession(session.id);
                   },
                 ),
@@ -141,18 +142,19 @@ class SessionTile extends ConsumerWidget {
     );
   }
 
-  void showRenameDialog(BuildContext context, WidgetRef ref) {
+  void _showRenameDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController(text: session.title);
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('대화 이름 변경'),
+        title: const Text('세션 이름 변경'),
         content: TextField(
           controller: controller,
           autofocus: true,
           decoration: const InputDecoration(
-            labelText: '대화 이름',
-            hintText: '새로운 대화 이름을 입력하세요',
+            labelText: '새 이름',
+            hintText: '세션 이름을 입력하세요',
           ),
           onSubmitted: (value) {
             if (value.trim().isNotEmpty) {
@@ -178,7 +180,7 @@ class SessionTile extends ConsumerWidget {
                     .updateSessionTitle(session.id, newTitle);
               }
             },
-            child: const Text('변경'),
+            child: const Text('확인'),
           ),
         ],
       ),

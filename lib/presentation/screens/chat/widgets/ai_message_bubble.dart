@@ -1,5 +1,3 @@
-// lib/presentation/screens/chat/widgets/ai_message_bubble.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vibe_code/core/theme/app_colors.dart';
@@ -10,22 +8,19 @@ import 'package:vibe_code/data/database/app_database.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
 import 'code_snippet_widget.dart';
 
-/// AI 메시지 버블
 class AiMessageBubble {
   final Message message;
 
   const AiMessageBubble({required this.message});
 
-  /// AI 메시지 Sliver 생성
   List<Widget> buildAsSliver(BuildContext context) {
-    Logger.debug('[AiMessageBubble] Building AI message ${message.id}');
+    Logger.debug('[AiMessageBubble] Building AI message: ${message.id}');
     Logger.debug('[AiMessageBubble] Content length: ${message.content.length}');
     Logger.debug('[AiMessageBubble] Is streaming: ${message.isStreaming}');
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bubbleColor = isDark ? AppColors.aiBubbleDark : AppColors.aiBubbleLight;
-
     final isThinking = message.content.trim().isEmpty && message.isStreaming;
     final parts = isThinking ? <dynamic>[] : MarkdownParser.parseMessage(message.content);
 
@@ -36,7 +31,7 @@ class AiMessageBubble {
           right: UIConstants.spacingMd,
           top: UIConstants.spacingSm,
         ),
-        sliver: _AiMessageBubbleSliver(
+        sliver: AiMessageBubbleSliver(
           bubbleColor: bubbleColor,
           isDark: isDark,
           parts: parts,
@@ -69,8 +64,7 @@ class AiMessageBubble {
   }
 }
 
-/// AI 메시지 버블 Sliver
-class _AiMessageBubbleSliver extends StatelessWidget {
+class AiMessageBubbleSliver extends StatelessWidget {
   final Color bubbleColor;
   final bool isDark;
   final List<dynamic> parts;
@@ -78,7 +72,8 @@ class _AiMessageBubbleSliver extends StatelessWidget {
   final ThemeData theme;
   final bool isThinking;
 
-  const _AiMessageBubbleSliver({
+  const AiMessageBubbleSliver({
+    super.key,
     required this.bubbleColor,
     required this.isDark,
     required this.parts,
@@ -91,7 +86,6 @@ class _AiMessageBubbleSliver extends StatelessWidget {
   Widget build(BuildContext context) {
     return SliverMainAxisGroup(
       slivers: [
-        // AI 헤더
         SliverToBoxAdapter(
           child: RepaintBoundary(
             child: Container(
@@ -106,9 +100,7 @@ class _AiMessageBubbleSliver extends StatelessWidget {
             ),
           ),
         ),
-        // 콘텐츠
-        ...isThinking ? _buildThinkingSlivers(context) : _buildContentSlivers(context),
-        // 하단
+        ...(isThinking ? _buildThinkingSlivers(context) : _buildContentSlivers(context)),
         SliverToBoxAdapter(
           child: Container(
             decoration: BoxDecoration(
@@ -196,12 +188,10 @@ class _AiMessageBubbleSliver extends StatelessWidget {
             InkWell(
               onTap: () async {
                 await Clipboard.setData(ClipboardData(text: message.content));
-
-                // ✅ 스낵바 표시
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('클립보드에 복사되었습니다'),
+                      content: const Text('복사되었습니다'),
                       duration: const Duration(seconds: 2),
                       behavior: SnackBarBehavior.floating,
                       backgroundColor: AppColors.primary,
@@ -231,9 +221,7 @@ class _AiMessageBubbleSliver extends StatelessWidget {
   }
 
   List<Widget> _buildContentSlivers(BuildContext context) {
-    if (message.content.trim().isEmpty) {
-      return [];
-    }
+    if (message.content.trim().isEmpty) return [];
 
     if (parts.isEmpty) {
       return [

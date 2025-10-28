@@ -17,12 +17,12 @@ class EmptyStateWidget extends StatelessWidget {
           ),
           const SizedBox(height: UIConstants.spacingLg),
           Text(
-            '새 대화를 시작하세요',
+            '새로운 대화 시작',
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: UIConstants.spacingSm),
           Text(
-            '아래 입력란에 메시지를 입력하면\n자동으로 새 대화방이 생성됩니다',
+            '메시지를 입력해 대화를 시작하세요',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).textTheme.bodySmall?.color,

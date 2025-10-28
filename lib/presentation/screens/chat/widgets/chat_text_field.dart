@@ -1,9 +1,6 @@
-// lib/presentation/screens/chat/widgets/chat_text_field.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import '../../../../../core/constants/ui_constants.dart';
+import '../../../../core/constants/ui_constants.dart';
 
 class ChatTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -26,20 +23,23 @@ class ChatTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 40, maxHeight: 200),
+      constraints: const BoxConstraints(
+        minHeight: 40,
+        maxHeight: 200,
+      ),
       child: Focus(
         onKeyEvent: (FocusNode node, KeyEvent event) {
-          // Enter 키 down 이벤트만 처리
-          if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
-            // Shift 키가 눌리지 않은 경우에만 전송
+          // Enter (down)
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.enter) {
+            // Shift (X)
             if (!HardwareKeyboard.instance.isShiftPressed) {
               if (canSend && !isSending) {
                 onSend();
-                // 이벤트 소비하여 기본 동작(줄바꿈) 방지
-                return KeyEventResult.handled;
               }
+              return KeyEventResult.handled;
             }
-            // Shift+Enter는 기본 동작(줄바꿈)을 허용
+            // Shift+Enter (O)
             return KeyEventResult.ignored;
           }
           return KeyEventResult.ignored;

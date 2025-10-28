@@ -1,5 +1,3 @@
-// lib/presentation/screens/chat/widgets/export_dialog.dart
-
 import 'package:flutter/material.dart';
 import 'package:vibe_code/core/theme/app_colors.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
@@ -25,7 +23,10 @@ class ExportDialog extends StatelessWidget {
     return AlertDialog(
       title: Row(
         children: [
-          Icon(Icons.download, color: AppColors.primary),
+          Icon(
+            Icons.download,
+            color: AppColors.primary,
+          ),
           const SizedBox(width: 8),
           const Text('대화 내보내기'),
         ],
@@ -35,7 +36,7 @@ class ExportDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '이 대화를 마크다운 형식으로 내보낼 수 있습니다.',
+            '이 대화를 마크다운 파일로 저장하거나 클립보드에 복사할 수 있습니다.',
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: UIConstants.spacingMd),
@@ -88,11 +89,21 @@ class ExportDialog extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.grey),
+          Icon(
+            icon,
+            size: 16,
+            color: Colors.grey,
+          ),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(color: Colors.grey)),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.grey),
+          ),
           const Spacer(),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );
@@ -108,13 +119,10 @@ class ExportDialog extends StatelessWidget {
 
     if (context.mounted) {
       Navigator.pop(context);
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            success
-                ? '클립보드에 복사되었습니다 (${markdown.length} 자)'
-                : '복사 실패',
+            success ? '클립보드에 복사되었습니다 (${markdown.length}자)' : '복사 실패',
           ),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
@@ -137,7 +145,6 @@ class ExportDialog extends StatelessWidget {
 
       final filename = MarkdownExporter.generateFilename(session.title);
 
-      // 파일 저장 위치 선택
       final path = await FilePicker.platform.saveFile(
         dialogTitle: '마크다운 파일 저장',
         fileName: filename,
@@ -151,10 +158,9 @@ class ExportDialog extends StatelessWidget {
 
         if (context.mounted) {
           Navigator.pop(context);
-
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('파일 저장 완료: $filename'),
+              content: Text('파일이 저장되었습니다: $filename'),
               duration: const Duration(seconds: 3),
               behavior: SnackBarBehavior.floating,
               backgroundColor: AppColors.primary,

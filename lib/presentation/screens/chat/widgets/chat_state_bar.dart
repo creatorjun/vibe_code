@@ -1,5 +1,3 @@
-// lib/presentation/screens/chat/widgets/chat_state_bar.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -12,14 +10,15 @@ import 'package:vibe_code/domain/providers/session_stats_provider.dart';
 import '../../settings/settings_screen.dart';
 import 'export_dialog.dart';
 
-/// ChatStateBar - SliverAppBar의 flexibleSpace에 사용되는 UI
 class ChatStateBar extends ConsumerWidget {
   final int? sessionId;
 
-  const ChatStateBar({super.key, this.sessionId});
+  const ChatStateBar({
+    super.key,
+    this.sessionId,
+  });
 
-  // ✅ 상수 추출
-  static const _padding = EdgeInsets.symmetric(
+  static const padding = EdgeInsets.symmetric(
     vertical: UIConstants.spacingSm,
     horizontal: UIConstants.spacingMd,
   );
@@ -27,14 +26,14 @@ class ChatStateBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
-      padding: _padding,
+      padding: padding,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: UIConstants.spacingMd),
         decoration: _buildDecoration(),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Expanded(child: _TitleSection(sessionId: sessionId)),
+            Expanded(child: TitleSection(sessionId: sessionId)),
             if (sessionId != null) ..._buildActionButtons(sessionId!),
             const SettingsButton(),
           ],
@@ -52,7 +51,7 @@ class ChatStateBar extends ConsumerWidget {
 
   List<Widget> _buildActionButtons(int sessionId) {
     return [
-      _SessionStatsWidget(sessionId: sessionId),
+      SessionStatsWidget(sessionId: sessionId),
       const SizedBox(width: UIConstants.spacingXs),
       ExportButton(sessionId: sessionId),
       const SizedBox(width: UIConstants.spacingXs),
@@ -61,11 +60,13 @@ class ChatStateBar extends ConsumerWidget {
   }
 }
 
-/// 타이틀 섹션 위젯 (분리)
-class _TitleSection extends ConsumerWidget {
+class TitleSection extends ConsumerWidget {
   final int? sessionId;
 
-  const _TitleSection({required this.sessionId});
+  const TitleSection({
+    super.key,
+    required this.sessionId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -79,7 +80,7 @@ class _TitleSection extends ConsumerWidget {
       data: (sessions) {
         final session = sessions.findSessionById(sessionId!);
         return session != null
-            ? _SessionTitle(session: session)
+            ? SessionTitle(session: session)
             : const TitleLabel(title: 'Vibe Code');
       },
       loading: () => const TitleLabel(title: 'Vibe Code'),
@@ -88,11 +89,13 @@ class _TitleSection extends ConsumerWidget {
   }
 }
 
-/// 세션 타이틀 위젯
-class _SessionTitle extends StatelessWidget {
+class SessionTitle extends StatelessWidget {
   final dynamic session;
 
-  const _SessionTitle({required this.session});
+  const SessionTitle({
+    super.key,
+    required this.session,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -126,10 +129,13 @@ class _SessionTitle extends StatelessWidget {
   }
 }
 
-/// 기본 타이틀 위젯
 class TitleLabel extends StatelessWidget {
   final String title;
-  const TitleLabel({super.key, required this.title});
+
+  const TitleLabel({
+    super.key,
+    required this.title,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +146,7 @@ class TitleLabel extends StatelessWidget {
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
           color: Colors.white,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
+          letterSpacing: -0.5,
         ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -149,10 +155,13 @@ class TitleLabel extends StatelessWidget {
   }
 }
 
-/// 세션 통계 위젯
-class _SessionStatsWidget extends ConsumerWidget {
+class SessionStatsWidget extends ConsumerWidget {
   final int sessionId;
-  const _SessionStatsWidget({required this.sessionId});
+
+  const SessionStatsWidget({
+    super.key,
+    required this.sessionId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -170,12 +179,12 @@ class _SessionStatsWidget extends ConsumerWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _StatItem(
+            StatItem(
               icon: FontAwesomeIcons.message,
               value: '${stats.messageCount}',
             ),
             const SizedBox(width: UIConstants.spacingMd),
-            _StatItem(
+            StatItem(
               icon: FontAwesomeIcons.coins,
               value: stats.tokenDisplay,
             ),
@@ -188,17 +197,17 @@ class _SessionStatsWidget extends ConsumerWidget {
   }
 }
 
-/// 통계 아이템 위젯
-class _StatItem extends StatelessWidget {
+class StatItem extends StatelessWidget {
   final IconData icon;
   final String value;
 
-  const _StatItem({
+  const StatItem({
+    super.key,
     required this.icon,
     required this.value,
   });
 
-  static const _textStyle = TextStyle(
+  static const textStyle = TextStyle(
     color: Colors.white,
     fontWeight: FontWeight.w600,
     fontSize: 13,
@@ -215,21 +224,25 @@ class _StatItem extends StatelessWidget {
           color: Colors.white.withAlpha(UIConstants.alpha90),
         ),
         const SizedBox(width: UIConstants.spacingXs),
-        Text(value, style: _textStyle),
+        Text(value, style: textStyle),
       ],
     );
   }
 }
 
-/// 내보내기 버튼 위젯
 class ExportButton extends ConsumerWidget {
   final int sessionId;
-  const ExportButton({super.key, required this.sessionId});
+
+  const ExportButton({
+    super.key,
+    required this.sessionId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return IconButton(
-      icon: const FaIcon(FontAwesomeIcons.download, color: Colors.white),
+      icon: const FaIcon(FontAwesomeIcons.download),
+      color: Colors.white,
       iconSize: UIConstants.iconSm,
       tooltip: '대화 내보내기',
       padding: const EdgeInsets.all(UIConstants.spacingXs),
@@ -268,7 +281,6 @@ class ExportButton extends ConsumerWidget {
   }
 }
 
-/// 새로고침 버튼 위젯
 class RefreshButton extends ConsumerWidget {
   const RefreshButton({super.key});
 
@@ -278,7 +290,8 @@ class RefreshButton extends ConsumerWidget {
     if (sessionId == null) return const SizedBox.shrink();
 
     return IconButton(
-      icon: const FaIcon(FontAwesomeIcons.arrowsRotate, color: Colors.white),
+      icon: const FaIcon(FontAwesomeIcons.arrowsRotate),
+      color: Colors.white,
       iconSize: UIConstants.iconSm,
       tooltip: '새로고침',
       padding: const EdgeInsets.all(UIConstants.spacingXs),
@@ -290,14 +303,14 @@ class RefreshButton extends ConsumerWidget {
   }
 }
 
-/// 설정 버튼 위젯
 class SettingsButton extends StatelessWidget {
   const SettingsButton({super.key});
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: const FaIcon(FontAwesomeIcons.gear, color: Colors.white),
+      icon: const FaIcon(FontAwesomeIcons.gear),
+      color: Colors.white,
       iconSize: UIConstants.iconSm,
       tooltip: '설정',
       padding: const EdgeInsets.all(UIConstants.spacingXs),
@@ -310,8 +323,7 @@ class SettingsButton extends StatelessWidget {
   }
 }
 
-/// Extension: 세션 찾기 헬퍼
-extension SessionListExtension on List {
+extension SessionListExtension on List<dynamic> {
   dynamic findSessionById(int id) {
     try {
       return cast<dynamic>().firstWhere(

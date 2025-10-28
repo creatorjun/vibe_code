@@ -1,15 +1,13 @@
-// lib/presentation/screens/settings/widgets/settings_card.dart
-
 import 'package:flutter/material.dart';
 import '../../../../core/constants/ui_constants.dart';
 
 class SettingsCard extends StatelessWidget {
+  final Widget child;
+
   const SettingsCard({
     super.key,
     required this.child,
   });
-
-  final Widget child;
 
   @override
   Widget build(BuildContext context) {
