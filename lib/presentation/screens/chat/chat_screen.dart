@@ -91,6 +91,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  // 기존 코드의 setupListeners 메서드를 수정
+
   void setupListeners(int? activeSessionId, ScrollController controller) {
     if (activeSessionId != previousSessionId) {
       previousSessionId = activeSessionId;
@@ -112,6 +114,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
     }
 
+    // ✅ 개선: 전체 상태 대신 status만 구독
     ref.listen(
       sendMessageMutationProvider.select((state) => state.status),
           (previous, next) {

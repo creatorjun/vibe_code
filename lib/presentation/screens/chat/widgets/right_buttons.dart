@@ -1,7 +1,8 @@
+// 파일 전체를 다음과 같이 수정
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
 import 'package:vibe_code/data/models/settings_state.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
 import 'package:vibe_code/core/constants/app_constants.dart';
@@ -37,137 +38,123 @@ class RightButtons extends ConsumerWidget {
   }
 
   Widget _buildPipelineDepthSelector(BuildContext context, WidgetRef ref) {
-    final settingsAsync = ref.watch(settingsProvider);
+    // ✅ 개선: 필요한 필드만 구독
+    final enabledModelsLength = ref.watch(
+      settingsProvider.select((async) => async.whenOrNull(
+        data: (settings) => settings.enabledModels.length,
+      ) ??
+          0),
+    );
     final selectedDepth = ref.watch(selectedPipelineDepthProvider);
 
-    return settingsAsync.when(
-      data: (settings) {
-        final availableModels = settings.enabledModels.length;
-        final maxDepth = availableModels < AppConstants.maxPipelineModels
-            ? availableModels
-            : AppConstants.maxPipelineModels;
+    final maxDepth = enabledModelsLength < AppConstants.maxPipelineModels
+        ? enabledModelsLength
+        : AppConstants.maxPipelineModels;
 
-        if (maxDepth <= 1) {
-          return const SizedBox(height: 40);
-        }
+    if (maxDepth <= 1) {
+      return const SizedBox(height: 40);
+    }
 
-        final minDepth = AppConstants.minPipelineModels;
-        final currentValidDepth = selectedDepth.clamp(minDepth, maxDepth);
+    final minDepth = AppConstants.minPipelineModels;
+    final currentValidDepth = selectedDepth.clamp(minDepth, maxDepth);
 
-        return Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(
-            horizontal: UIConstants.spacingXs,
-            vertical: 2,
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .surfaceContainerHighest
-                .withAlpha(UIConstants.alpha30),
-            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
-            border: Border.all(
-              color: Theme.of(context)
-                  .colorScheme
-                  .outline
-                  .withAlpha(UIConstants.alpha20),
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(
+        horizontal: UIConstants.spacingXs,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withAlpha(UIConstants.alpha30),
+        borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+        border: Border.all(
+          color: Theme.of(context)
+              .colorScheme
+              .outline
+              .withAlpha(UIConstants.alpha20),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(maxDepth, (index) {
+          final depth = index + 1;
+          final isSelected = depth == currentValidDepth;
+          return Padding(
+            padding: EdgeInsets.only(
+              right: index < maxDepth - 1 ? 4.0 : 0,
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(maxDepth, (index) {
-              final depth = index + 1;
-              final isSelected = depth == currentValidDepth;
-              return Padding(
-                padding: EdgeInsets.only(
-                  right: index < maxDepth - 1 ? 4.0 : 0,
-                ),
-                child: InkWell(
-                  onTap: () => ref
-                      .read(selectedPipelineDepthProvider.notifier)
-                      .setDepth(depth),
+            child: InkWell(
+              onTap: () => ref
+                  .read(selectedPipelineDepthProvider.notifier)
+                  .setDepth(depth),
+              borderRadius: BorderRadius.circular(UIConstants.radiusXs),
+              child: Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(UIConstants.radiusXs),
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(UIConstants.radiusXs),
-                    ),
-                    child: Text(
-                      '$depth',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.onPrimary
-                            : Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                    ),
+                ),
+                child: Text(
+                  '$depth',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withAlpha(UIConstants.alpha70),
                   ),
                 ),
-              );
-            }),
-          ),
-        );
-      },
-      loading: () => const SizedBox(height: 40),
-      error: (_, __) => const SizedBox(height: 40),
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 
   Widget _buildPresetSelector(BuildContext context, WidgetRef ref) {
-    final settingsAsync = ref.watch(settingsProvider);
+    // ✅ 개선: presets와 selectedPresetId만 구독
+    final presets = ref.watch(
+      settingsProvider.select((async) => async.whenOrNull(
+        data: (settings) => settings.promptPresets,
+      ) ??
+          []),
+    );
 
-    return settingsAsync.when(
-      data: (settings) {
-        final presets = settings.promptPresets;
-        final selectedPresetId = settings.selectedPresetId;
+    final selectedPresetId = ref.watch(
+      settingsProvider.select((async) => async.whenOrNull(
+        data: (settings) => settings.selectedPresetId,
+      )),
+    );
 
-        if (presets.isEmpty) {
-          return const SizedBox.shrink();
-        }
+    if (presets.isEmpty) return const SizedBox.shrink();
 
-        return ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 300),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: presets.map((preset) {
-                final isSelected = preset.id == selectedPresetId;
-                return Padding(
-                  padding: const EdgeInsets.only(
-                    right: UIConstants.spacingSm,
-                  ),
-                  child: _buildPresetButton(
-                    context,
-                    ref,
-                    preset: preset,
-                    isSelected: isSelected,
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        );
-      },
-      loading: () => const SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
-      error: (err, stack) => Tooltip(
-        message: err.toString(),
-        child: Icon(
-          Icons.error_outline,
-          color: Theme.of(context).colorScheme.error,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 300),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: presets.map((preset) {
+            final isSelected = preset.id == selectedPresetId;
+            return Padding(
+              padding: const EdgeInsets.only(right: UIConstants.spacingSm),
+              child: _buildPresetButton(
+                context,
+                ref,
+                preset: preset,
+                isSelected: isSelected,
+              ),
+            );
+          }).toList(),
         ),
       ),
     );
@@ -180,7 +167,7 @@ class RightButtons extends ConsumerWidget {
         required bool isSelected,
       }) {
     final String label = preset.name;
-    final IconData icon = Icons.auto_awesome;
+    const IconData icon = Icons.auto_awesome;
 
     return FilterChip(
       label: Text(label),
@@ -221,7 +208,7 @@ class RightButtons extends ConsumerWidget {
   Widget _buildSendButton(BuildContext context) {
     if (isSending) {
       return IconButton(
-        icon: const FaIcon(FontAwesomeIcons.circleStop),  // ✅ 변경
+        icon: const FaIcon(FontAwesomeIcons.circleStop),
         onPressed: onCancel,
         tooltip: '중지',
         color: Theme.of(context).colorScheme.error,
@@ -229,7 +216,7 @@ class RightButtons extends ConsumerWidget {
     }
 
     return IconButton(
-      icon: const FaIcon(FontAwesomeIcons.paperPlane),  // ✅ 변경
+      icon: const FaIcon(FontAwesomeIcons.paperPlane),
       onPressed: canSend && !isSending ? onSend : null,
       tooltip: '전송',
       color: canSend ? Theme.of(context).colorScheme.primary : null,
