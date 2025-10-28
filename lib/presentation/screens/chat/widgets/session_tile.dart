@@ -46,8 +46,12 @@ class SessionTile extends ConsumerWidget {
           tooltip: session.title,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          onPressed: () =>
-              ref.read(activeSessionProvider.notifier).select(session.id),
+          onPressed: () {
+            // ✅ Future.microtask로 감싸서 build 사이클 이후 실행
+            Future.microtask(() {
+              ref.read(activeSessionProvider.notifier).select(session.id);
+            });
+          },
         ),
       );
     }
@@ -70,8 +74,12 @@ class SessionTile extends ConsumerWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-          onTap: () =>
-              ref.read(activeSessionProvider.notifier).select(session.id),
+          onTap: () {
+            // ✅ Future.microtask로 감싸서 build 사이클 이후 실행
+            Future.microtask(() {
+              ref.read(activeSessionProvider.notifier).select(session.id);
+            });
+          },
           child: Padding(
             padding: const EdgeInsets.all(UIConstants.spacingSm),
             child: Row(
@@ -127,11 +135,14 @@ class SessionTile extends ConsumerWidget {
                     minHeight: 28,
                   ),
                   onPressed: () {
-                    final activeSession = ref.read(activeSessionProvider);
-                    if (activeSession == session.id) {
-                      ref.read(activeSessionProvider.notifier).clear();
-                    }
-                    ref.read(chatRepositoryProvider).deleteSession(session.id);
+                    // ✅ 삭제도 Future.microtask로 감싸기
+                    Future.microtask(() {
+                      final activeSession = ref.read(activeSessionProvider);
+                      if (activeSession == session.id) {
+                        ref.read(activeSessionProvider.notifier).clear();
+                      }
+                      ref.read(chatRepositoryProvider).deleteSession(session.id);
+                    });
                   },
                 ),
               ],

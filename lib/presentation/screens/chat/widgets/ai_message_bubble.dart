@@ -6,6 +6,7 @@ import 'package:vibe_code/core/utils/logger.dart';
 import 'package:vibe_code/core/utils/markdown_parser.dart';
 import 'package:vibe_code/data/database/app_database.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
+import 'package:vibe_code/presentation/shared/widgets/loading_indicator.dart';
 import 'code_snippet_widget.dart';
 
 class AiMessageBubble {
@@ -127,15 +128,9 @@ class AiMessageBubbleSliver extends StatelessWidget {
           padding: const EdgeInsets.all(UIConstants.spacingLg),
           child: Row(
             children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    isDark ? Colors.white70 : Colors.black54,
-                  ),
-                ),
+              const LoadingIndicator(
+                size: 20,
+                useGradient: true,
               ),
               const SizedBox(width: UIConstants.spacingMd),
               Text(
