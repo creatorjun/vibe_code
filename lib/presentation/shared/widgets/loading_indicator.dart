@@ -134,14 +134,17 @@ class _GradientCircularProgressPainter extends CustomPainter {
 
     // 그라디언트 원 (회전)
     final rect = Rect.fromCircle(center: center, radius: radius);
+
+    // ✅ 더 부드러운 그라디언트 (5개 색상 사용)
     final gradient = SweepGradient(
       colors: [
         AppColors.gradientStart,
         AppColors.gradientEnd,
-        AppColors.gradientStart.withAlpha(UIConstants.alpha50),
+        AppColors.gradientStart.withAlpha(UIConstants.alpha70),
+        AppColors.gradientStart.withAlpha(UIConstants.alpha30),
         Colors.transparent,
       ],
-      stops: const [0.0, 0.5, 0.75, 1.0],
+      stops: const [0.0, 0.3, 0.6, 0.8, 1.0],
       transform: GradientRotation(progress * 2 * math.pi),
     );
 
@@ -161,21 +164,6 @@ class _GradientCircularProgressPainter extends CustomPainter {
       false,
       gradientPaint,
     );
-
-    // 끝부분 강조 (그라디언트 시작점)
-    final endAngle = startAngle + sweepAngle;
-    final endPoint = Offset(
-      center.dx + radius * math.cos(endAngle),
-      center.dy + radius * math.sin(endAngle),
-    );
-
-    final endPaint = Paint()
-      ..color = AppColors.gradientEnd
-      ..strokeWidth = strokeWidth * 1.2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(endPoint, strokeWidth / 3, endPaint);
   }
 
   @override
