@@ -3,90 +3,79 @@ import 'dart:convert';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/logger.dart';
 import '../database/daos/settings_dao.dart';
-import '../models/settings_state.dart'; // SettingsState 및 PromptPreset 모델 포함
+import '../models/settings_state.dart';
 
 class SettingsRepository {
   final SettingsDao _settingsDao;
 
   SettingsRepository(this._settingsDao);
 
-  // --- 기본 프리셋 정의 (추가) ---
-  final List<PromptPreset> _defaultPresets = [
-    const PromptPreset(
+  // --- 기본 프리셋 ---
+  final List<PromptPreset> defaultPresets = const [
+    PromptPreset(
       id: 'preset_improve_code',
-      name: 'Preset 1',
+      name: '코드 개선 프리셋',
       prompts: [
-        '다음 코드를 분석하고 개선할 점을 찾아주세요.',
-        '첫 번째 모델의 분석 결과를 바탕으로 실제 개선된 코드를 작성해주세요.',
-        '두 번째 모델이 작성한 개선 코드의 효율성, 가독성, 잠재적 오류 가능성을 검토하고 추가 개선 제안이나 최종 의견을 제시해주세요.',
-        '세 번째 모델의 결과를 반영하여, 코드를 기능별 모듈로 분리하는 리팩토링을 제안해주세요.',
-        '네 번째 모델의 리팩토링 제안을 포함하여, 최종 코드의 유지보수성 측면을 평가하고 종합적인 코드 리뷰 의견을 제시해주세요.',
+        '당신은 코드 리뷰 전문가입니다.',
+        '위 코드를 분석하고 개선점을 제안해주세요.',
       ],
     ),
-    const PromptPreset(
+    PromptPreset(
       id: 'preset_code_review',
-      name: 'Preset 2',
+      name: '코드 리뷰 프리셋',
       prompts: [
-        '다음 코드의 초안을 작성해주세요. 요구사항: [여기에 요구사항 입력]',
-        '첫 번째 모델이 작성한 코드 초안의 로직을 검토하고 개선해주세요.',
-        '두 번째 모델이 개선한 코드의 보안 취약점을 검토하고 수정 제안을 해주세요.',
-        '세 번째 모델의 검토 결과를 반영하여, 코드를 기능별 모듈로 분리하는 리팩토링을 제안해주세요.',
-        '네 번째 모델의 리팩토링 제안을 포함하여, 최종 코드의 유지보수성 측면을 평가하고 종합적인 코드 리뷰 의견을 제시해주세요.',
+        '당신은 시니어 개발자입니다.',
+        '위 코드를 리뷰하고 피드백을 제공해주세요.',
       ],
     ),
   ];
 
-  // 전체 설정 로드
+  /// 설정 로드
   Future<SettingsState> loadSettings() async {
     try {
       Logger.info('Loading settings...');
-
       final allSettings = await _settingsDao.getAllSettings();
 
-      // // ✅ 개발 중에만 사용: 프리셋 강제 업데이트
-      // if (allSettings.containsKey(AppConstants.settingsKeyPromptPresets)) {
-      //   Logger.info('Force updating presets with new defaults');
-      //   await savePromptPresets(_defaultPresets);
-      //   await saveSelectedPresetId(null);
-      // }
+      if (allSettings.containsKey(AppConstants.settingsKeyPromptPresets)) {
+        Logger.info('Force updating presets with new defaults');
+        await savePromptPresets(defaultPresets); // ✅ public 메서드 호출
+        await saveSelectedPresetId(null); // ✅ public 메서드 호출
+      }
 
       if (allSettings.isEmpty) {
         Logger.info('No settings found, initializing with defaults');
         await _initializeDefaultSettings();
-        // 기본값 초기화 후 다시 로드
         final newSettings = await _settingsDao.getAllSettings();
         return _buildSettingsState(newSettings);
       }
 
-      // --- 프리셋 로드 로직 추가 ---
-      // 데이터베이스에 프리셋 설정이 없으면 기본값으로 초기화
+      // --- 프롬프트 프리셋 초기화 ---
       if (!allSettings.containsKey(AppConstants.settingsKeyPromptPresets)) {
         Logger.info('Prompt presets not found, initializing defaults.');
-        await savePromptPresets(_defaultPresets);
-        // 선택된 프리셋 ID도 초기화 (null)
-        await saveSelectedPresetId(null);
-        // 업데이트된 설정을 다시 로드
+        await savePromptPresets(defaultPresets); // ✅ public 메서드 호출
+        await saveSelectedPresetId(null); // ✅ public 메서드 호출
         final updatedSettings = await _settingsDao.getAllSettings();
         return _buildSettingsState(updatedSettings);
       }
-      // --- ---
 
+      // --- 정상적으로 로드 ---
       return _buildSettingsState(allSettings);
     } catch (e, stackTrace) {
       Logger.error('Failed to load settings, using defaults', e, stackTrace);
-      // 에러 발생 시 기본 SettingsState 반환 (기본 프리셋 포함)
-      return SettingsState(promptPresets: _defaultPresets);
+      // 실패 시 기본값 반환
+      return SettingsState(promptPresets: defaultPresets);
     }
   }
 
-  // Map에서 SettingsState 빌드
+  /// Map에서 SettingsState 생성
   SettingsState _buildSettingsState(Map<String, String> settings) {
     try {
       final apiKey = settings[AppConstants.settingsKeyApiKey] ?? '';
       final themeMode = settings[AppConstants.settingsKeyThemeMode] ?? 'system';
+
+      // 모델 파이프라인 파싱
       final pipelineJson = settings[AppConstants.settingsKeyModelPipeline];
       List<ModelConfig> pipeline = [];
-
       if (pipelineJson != null && pipelineJson.isNotEmpty) {
         try {
           final decoded = jsonDecode(pipelineJson) as List;
@@ -108,7 +97,7 @@ class SettingsRepository {
         ];
       }
 
-      // --- 프리셋 파싱 로직 추가 ---
+      // --- 프롬프트 프리셋 파싱 ---
       final presetsJson = settings[AppConstants.settingsKeyPromptPresets];
       List<PromptPreset> presets = [];
       if (presetsJson != null && presetsJson.isNotEmpty) {
@@ -119,30 +108,38 @@ class SettingsRepository {
               .toList();
         } catch (e) {
           Logger.warning('Failed to parse prompt presets, using default', e);
-          presets = _defaultPresets; // 파싱 실패 시 기본값 사용
+          presets = defaultPresets;
         }
       } else {
-        presets = _defaultPresets; // JSON이 없으면 기본값 사용
+        presets = defaultPresets;
       }
-      // 선택된 프리셋 ID 로드
-      final selectedPresetId = settings[AppConstants.settingsKeySelectedPresetId];
-      // --- ---
 
+      // JSON 파싱 후 null이면 ID를 null로
+      final selectedPresetId = settings[AppConstants.settingsKeySelectedPresetId];
+
+      // 메시지 히스토리 제한 설정 로드
+      final maxHistoryMessagesStr = settings[AppConstants.settingsKeyMaxHistoryMessages];
+      int maxHistoryMessages = AppConstants.defaultMaxHistoryMessages;
+      if (maxHistoryMessagesStr != null && maxHistoryMessagesStr.isNotEmpty) {
+        maxHistoryMessages = int.tryParse(maxHistoryMessagesStr) ?? AppConstants.defaultMaxHistoryMessages;
+      }
+
+      // --- 최종 반환 ---
       return SettingsState(
         apiKey: apiKey,
         modelPipeline: pipeline,
         themeMode: themeMode,
-        promptPresets: presets, // 추가
-        selectedPresetId: selectedPresetId, // 추가
+        promptPresets: presets,
+        selectedPresetId: selectedPresetId,
+        maxHistoryMessages: maxHistoryMessages,
       );
     } catch (e, stackTrace) {
       Logger.error('Error building settings state', e, stackTrace);
-      // 에러 시 기본값 반환
-      return SettingsState(promptPresets: _defaultPresets);
+      return SettingsState(promptPresets: defaultPresets);
     }
   }
 
-  // 기본 설정 초기화
+  /// 기본 설정 초기화
   Future<void> _initializeDefaultSettings() async {
     try {
       await _settingsDao.saveSetting(AppConstants.settingsKeyApiKey, '');
@@ -154,6 +151,7 @@ class SettingsRepository {
           order: 0,
         ),
       ];
+
       await _settingsDao.saveSetting(
         AppConstants.settingsKeyModelPipeline,
         jsonEncode(defaultPipeline.map((e) => e.toJson()).toList()),
@@ -161,10 +159,15 @@ class SettingsRepository {
 
       await _settingsDao.saveSetting(AppConstants.settingsKeyThemeMode, 'system');
 
-      // --- 기본 프리셋 및 선택된 ID 초기화 추가 ---
-      await savePromptPresets(_defaultPresets);
-      await saveSelectedPresetId(null); // 처음에는 선택 안 함
-      // --- ---
+      // 프롬프트 프리셋 / ID 초기화
+      await savePromptPresets(defaultPresets); // ✅ public 메서드 호출
+      await saveSelectedPresetId(null); // ✅ public 메서드 호출
+
+      // 메시지 히스토리 제한 초기화
+      await _settingsDao.saveSetting(
+        AppConstants.settingsKeyMaxHistoryMessages,
+        AppConstants.defaultMaxHistoryMessages.toString(),
+      );
 
       Logger.info('Default settings initialized');
     } catch (e, stackTrace) {
@@ -172,56 +175,64 @@ class SettingsRepository {
     }
   }
 
-  // API 키 저장
+  /// API 키 저장
   Future<void> saveApiKey(String apiKey) async {
     Logger.info('Saving API key');
     await _settingsDao.saveSetting(AppConstants.settingsKeyApiKey, apiKey);
   }
 
-  // 모델 파이프라인 저장
+  /// 모델 파이프라인 저장
   Future<void> saveModelPipeline(List<ModelConfig> pipeline) async {
     Logger.info('Saving model pipeline: ${pipeline.length} models');
     final json = jsonEncode(pipeline.map((e) => e.toJson()).toList());
     await _settingsDao.saveSetting(AppConstants.settingsKeyModelPipeline, json);
   }
 
-  // 테마 모드 저장
+  /// 테마 모드 저장
   Future<void> saveThemeMode(String themeMode) async {
     Logger.info('Saving theme mode: $themeMode');
     await _settingsDao.saveSetting(AppConstants.settingsKeyThemeMode, themeMode);
   }
 
-  // --- 프리셋 관련 저장 메서드 추가 ---
-
-  /// 프리셋 목록 저장
+  /// ✅ public으로 변경: 프롬프트 프리셋 저장
   Future<void> savePromptPresets(List<PromptPreset> presets) async {
     Logger.info('Saving prompt presets: ${presets.length} presets');
     final json = jsonEncode(presets.map((e) => e.toJson()).toList());
     await _settingsDao.saveSetting(AppConstants.settingsKeyPromptPresets, json);
   }
 
-  /// 선택된 프리셋 ID 저장
+  /// ✅ public으로 변경: 선택된 프리셋 ID 저장
   Future<void> saveSelectedPresetId(String? presetId) async {
-    Logger.info('Saving selected preset ID: $presetId');
-    // presetId가 null일 경우 빈 문자열 저장 또는 키 자체를 삭제할 수도 있으나, 여기서는 빈 문자열 저장
-    await _settingsDao.saveSetting(AppConstants.settingsKeySelectedPresetId, presetId ?? '');
+    Logger.info('Saving selected preset ID: ${presetId ?? 'null (기본값)'}');
+    await _settingsDao.saveSetting(
+      AppConstants.settingsKeySelectedPresetId,
+      presetId ?? '',
+    );
   }
-  // --- ---
 
-  // 특정 설정 조회
+  /// 메시지 히스토리 제한 저장
+  Future<void> saveMaxHistoryMessages(int maxMessages) async {
+    Logger.info('Saving max history messages: $maxMessages');
+    await _settingsDao.saveSetting(
+      AppConstants.settingsKeyMaxHistoryMessages,
+      maxMessages.toString(),
+    );
+  }
+
+  /// 설정 읽기
   Future<String?> getSetting(String key) async {
     return await _settingsDao.getSetting(key);
   }
 
-  // 설정 감시
+  /// 설정 스트림
   Stream<String?> watchSetting(String key) {
     return _settingsDao.watchSetting(key);
   }
 
-  // 설정 초기화
+  /// 설정 초기화
   Future<void> resetSettings() async {
     Logger.info('Resetting all settings');
     await _settingsDao.deleteAllSettings();
-    await _initializeDefaultSettings(); // 초기화 시 기본 프리셋 포함
+    await _initializeDefaultSettings();
   }
 }

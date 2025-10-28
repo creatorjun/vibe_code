@@ -9,6 +9,7 @@ import '../../core/utils/logger.dart';
 import '../../core/utils/validators.dart';
 
 class FileService {
+  /// 파일 해시 계산 (SHA256)
   Future<String> calculateHash(File file) async {
     try {
       final bytes = await file.readAsBytes();
@@ -16,10 +17,11 @@ class FileService {
       return digest.toString();
     } catch (e, stackTrace) {
       Logger.error('Failed to calculate file hash', e, stackTrace);
-      throw FileException('파일 해시 계산 실패: $e');
+      throw FileException(e.toString()); // ✅ 수정
     }
   }
 
+  /// 파일을 앱 디렉토리에 저장
   Future<String> saveToAppDirectory(File file) async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
@@ -29,35 +31,37 @@ class FileService {
         await attachmentsDir.create(recursive: true);
       }
 
+      // 타임스탬프 + 원본 파일명으로 고유한 이름 생성
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = path.basename(file.path);
       final newFileName = '${timestamp}_$fileName';
       final newPath = path.join(attachmentsDir.path, newFileName);
 
       final newFile = await file.copy(newPath);
-      Logger.info('File saved to app directory: $newPath');
 
+      Logger.info('File saved to app directory: $newPath');
       return newFile.path;
     } catch (e, stackTrace) {
       Logger.error('Failed to save file', e, stackTrace);
-      throw FileException('파일 저장 실패: $e');
+      throw FileException(e.toString()); // ✅ 수정
     }
   }
 
+  /// 파일 내용 읽기
   Future<String> readFile(String filePath) async {
     try {
       final file = File(filePath);
       if (!await file.exists()) {
-        throw FileException('파일이 존재하지 않습니다: $filePath');
+        throw FileException('파일을 찾을 수 없습니다: $filePath');
       }
-
       return await file.readAsString();
     } catch (e, stackTrace) {
       Logger.error('Failed to read file', e, stackTrace);
-      throw FileException('파일 읽기 실패: $e');
+      throw FileException(e.toString()); // ✅ 수정
     }
   }
 
+  /// 파일 유효성 검사
   Future<void> validateFile(File file) async {
     if (!await file.exists()) {
       throw const FileException('파일이 존재하지 않습니다.');
@@ -66,17 +70,21 @@ class FileService {
     final fileSize = await file.length();
     if (!Validators.isValidFileSize(fileSize)) {
       throw FileSizeException(
-        '파일 크기가 너무 큽니다. 최대 ${AppConstants.maxFileSize ~/ (1024 * 1024)}MB까지 지원됩니다.',
+        '파일 크기가 너무 큽니다. (최대 ${AppConstants.maxFileSize ~/ 1024 ~/ 1024}MB).',
       );
     }
 
-    Logger.info('File validation passed: ${path.basename(file.path)}, ${fileSize ~/ 1024}KB');
+    Logger.info(
+      'File validation passed: ${path.basename(file.path)}, ${fileSize ~/ 1024}KB',
+    );
   }
 
+  /// MIME 타입 가져오기
   String? getMimeType(String filePath) {
     return lookupMimeType(filePath) ?? 'application/octet-stream';
   }
 
+  /// 파일 삭제
   Future<void> deleteFile(String filePath) async {
     try {
       final file = File(filePath);
@@ -89,6 +97,7 @@ class FileService {
     }
   }
 
+  /// 미사용 파일 정리
   Future<void> cleanupUnusedFiles(List<String> usedFilePaths) async {
     try {
       final appDir = await getApplicationDocumentsDirectory();

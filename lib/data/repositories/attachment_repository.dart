@@ -8,29 +8,36 @@ import '../services/file_service.dart';
 class AttachmentRepository {
   final AttachmentDao _attachmentDao;
   final FileService _fileService;
-  final Uuid _uuid = const Uuid();
+  final _uuid = const Uuid();
 
   AttachmentRepository(this._attachmentDao, this._fileService);
 
-  /// 파일 업로드 및 첨부파일 생성
+  /// ✅ 파일 업로드 (중복 제거 로직 추가)
   Future<String> uploadFile(String filePath) async {
     final file = File(filePath);
-
-    // 파일 검증
     await _fileService.validateFile(file);
 
-    // 파일 정보 추출
-    final fileName = filePath.split('/').last;
+    // 1️⃣ 먼저 해시 계산
+    final fileHash = await _fileService.calculateHash(file);
+    Logger.info('Calculated file hash: $fileHash');
+
+    // 2️⃣ 기존 파일 존재 여부 확인
+    final existing = await _attachmentDao.findByHash(fileHash);
+    if (existing != null) {
+      Logger.info('File already exists, reusing: ${existing.id}');
+      return existing.id; // ✅ 기존 ID 반환 (중복 저장 안 함)
+    }
+
+    // 3️⃣ 새 파일인 경우에만 저장
+    final fileName = filePath.split(Platform.pathSeparator).last;
     final mimeType = _fileService.getMimeType(filePath) ?? 'application/octet-stream';
     final fileSize = await file.length();
-    final fileHash = await _fileService.calculateHash(file);
 
-    Logger.info('Uploading file: $fileName, ${fileSize ~/ 1024}KB');
+    Logger.info('Uploading new file: $fileName, ${fileSize ~/ 1024}KB');
 
-    // 앱 디렉토리로 복사
     final savedPath = await _fileService.saveToAppDirectory(file);
 
-    // DB에 저장
+    // 4️⃣ DB에 저장
     final id = _uuid.v4();
     final attachmentId = await _attachmentDao.createAttachment(
       id: id,
@@ -55,8 +62,7 @@ class AttachmentRepository {
     required int messageId,
     required List<String> attachmentIds,
   }) async {
-    Logger.info('Linking ${attachmentIds.length} attachments to message: $messageId');
-
+    Logger.info('Linking ${attachmentIds.length} attachments to message $messageId');
     for (var i = 0; i < attachmentIds.length; i++) {
       await _attachmentDao.linkAttachmentToMessage(
         messageId: messageId,
@@ -66,37 +72,33 @@ class AttachmentRepository {
     }
   }
 
-  /// 메시지의 첨부파일 목록 조회
+  /// 메시지의 첨부파일 조회
   Future<List<Attachment>> getMessageAttachments(int messageId) async {
     return await _attachmentDao.getAttachmentsForMessage(messageId);
   }
 
-  /// 첨부파일 읽기
+  /// 첨부파일 내용 읽기
   Future<String> readAttachment(String attachmentId) async {
     final attachment = await _attachmentDao.getAttachment(attachmentId);
     if (attachment == null) {
       throw Exception('첨부파일을 찾을 수 없습니다.');
     }
-
     return await _fileService.readFile(attachment.filePath);
   }
 
   /// 첨부파일 삭제
   Future<void> deleteAttachment(String attachmentId) async {
     Logger.info('Deleting attachment: $attachmentId');
-
     final attachment = await _attachmentDao.getAttachment(attachmentId);
     if (attachment != null) {
       await _fileService.deleteFile(attachment.filePath);
     }
-
     await _attachmentDao.deleteAttachment(attachmentId);
   }
 
   /// 미사용 첨부파일 정리
   Future<void> cleanupUnusedAttachments() async {
-    Logger.info('Cleaning up unused attachments');
-
+    Logger.info('Cleaning up unused attachments...');
     final unused = await _attachmentDao.getUnusedAttachments();
 
     for (final attachment in unused) {
@@ -110,10 +112,8 @@ class AttachmentRepository {
   /// 모든 첨부파일 삭제
   Future<void> deleteAllAttachments() async {
     try {
-      // 모든 첨부파일 목록 가져오기
       final allAttachments = await _attachmentDao.getAllAttachments();
 
-      // 파일 시스템에서 삭제
       for (final attachment in allAttachments) {
         final file = File(attachment.filePath);
         if (await file.exists()) {

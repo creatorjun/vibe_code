@@ -10,7 +10,13 @@ class AttachmentDao extends DatabaseAccessor<AppDatabase>
     with _$AttachmentDaoMixin {
   AttachmentDao(super.db);
 
-  // 첨부파일 생성 (중복 체크 포함)
+  // ✅ 신규: 해시로 기존 파일 찾기
+  Future<Attachment?> findByHash(String fileHash) async {
+    return (select(attachments)..where((t) => t.fileHash.equals(fileHash)))
+        .getSingleOrNull();
+  }
+
+  // 첨부파일 생성
   Future<String> createAttachment({
     required String id,
     required String fileName,
@@ -19,16 +25,7 @@ class AttachmentDao extends DatabaseAccessor<AppDatabase>
     required int fileSize,
     required String fileHash,
   }) async {
-    // 동일한 해시를 가진 파일이 있는지 확인
-    final existing = await (select(attachments)
-      ..where((t) => t.fileHash.equals(fileHash)))
-        .getSingleOrNull();
-
-    if (existing != null) {
-      return existing.id;
-    }
-
-    // 새 첨부파일 생성
+    // ✅ 중복 체크는 repository에서 수행하므로 여기서는 단순 삽입만
     await into(attachments).insert(
       AttachmentsCompanion.insert(
         id: id,
@@ -43,7 +40,7 @@ class AttachmentDao extends DatabaseAccessor<AppDatabase>
     return id;
   }
 
-  // 첨부파일 조회
+  // 특정 첨부파일 조회
   Future<Attachment?> getAttachment(String attachmentId) async {
     return (select(attachments)..where((t) => t.id.equals(attachmentId)))
         .getSingleOrNull();
@@ -116,7 +113,7 @@ class AttachmentDao extends DatabaseAccessor<AppDatabase>
     return select(attachments).get();
   }
 
-// 모든 첨부파일 삭제
+  // 모든 첨부파일 삭제
   Future<void> deleteAllAttachments() async {
     await delete(messageAttachments).go();
     await delete(attachments).go();

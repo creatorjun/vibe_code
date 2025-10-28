@@ -15,11 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PromptPreset {
 
- String get id;// 프리셋 고유 ID (예: 'preset_code_improve')
- String get name;// 프리셋 이름 (예: '코드 점진 개선')
-// 각 파이프라인 단계별 시스템 프롬프트 리스트
-// 길이는 최대 AppConstants.maxPipelineModels 와 같거나 작아야 함
- List<String> get prompts;
+ String get id; String get name; List<String> get prompts;
 /// Create a copy of PromptPreset
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -213,15 +209,8 @@ class _PromptPreset implements PromptPreset {
   factory _PromptPreset.fromJson(Map<String, dynamic> json) => _$PromptPresetFromJson(json);
 
 @override final  String id;
-// 프리셋 고유 ID (예: 'preset_code_improve')
 @override final  String name;
-// 프리셋 이름 (예: '코드 점진 개선')
-// 각 파이프라인 단계별 시스템 프롬프트 리스트
-// 길이는 최대 AppConstants.maxPipelineModels 와 같거나 작아야 함
  final  List<String> _prompts;
-// 프리셋 이름 (예: '코드 점진 개선')
-// 각 파이프라인 단계별 시스템 프롬프트 리스트
-// 길이는 최대 AppConstants.maxPipelineModels 와 같거나 작아야 함
 @override List<String> get prompts {
   if (_prompts is EqualUnmodifiableListView) return _prompts;
   // ignore: implicit_dynamic_type
@@ -561,9 +550,8 @@ as int,
 /// @nodoc
 mixin _$SettingsState {
 
- String get apiKey; List<ModelConfig> get modelPipeline; String get selectedModel; String get themeMode;// 프리셋 목록 추가
- List<PromptPreset> get promptPresets;// 현재 선택된 프리셋 ID 추가 (null이면 선택 안됨)
- String? get selectedPresetId;
+ String get apiKey; List<ModelConfig> get modelPipeline; String get selectedModel; String get themeMode; List<PromptPreset> get promptPresets; String? get selectedPresetId;// ✅ 신규: 메시지 히스토리 제한 설정
+ int get maxHistoryMessages;
 /// Create a copy of SettingsState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -576,16 +564,16 @@ $SettingsStateCopyWith<SettingsState> get copyWith => _$SettingsStateCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsState&&(identical(other.apiKey, apiKey) || other.apiKey == apiKey)&&const DeepCollectionEquality().equals(other.modelPipeline, modelPipeline)&&(identical(other.selectedModel, selectedModel) || other.selectedModel == selectedModel)&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&const DeepCollectionEquality().equals(other.promptPresets, promptPresets)&&(identical(other.selectedPresetId, selectedPresetId) || other.selectedPresetId == selectedPresetId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsState&&(identical(other.apiKey, apiKey) || other.apiKey == apiKey)&&const DeepCollectionEquality().equals(other.modelPipeline, modelPipeline)&&(identical(other.selectedModel, selectedModel) || other.selectedModel == selectedModel)&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&const DeepCollectionEquality().equals(other.promptPresets, promptPresets)&&(identical(other.selectedPresetId, selectedPresetId) || other.selectedPresetId == selectedPresetId)&&(identical(other.maxHistoryMessages, maxHistoryMessages) || other.maxHistoryMessages == maxHistoryMessages));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,apiKey,const DeepCollectionEquality().hash(modelPipeline),selectedModel,themeMode,const DeepCollectionEquality().hash(promptPresets),selectedPresetId);
+int get hashCode => Object.hash(runtimeType,apiKey,const DeepCollectionEquality().hash(modelPipeline),selectedModel,themeMode,const DeepCollectionEquality().hash(promptPresets),selectedPresetId,maxHistoryMessages);
 
 @override
 String toString() {
-  return 'SettingsState(apiKey: $apiKey, modelPipeline: $modelPipeline, selectedModel: $selectedModel, themeMode: $themeMode, promptPresets: $promptPresets, selectedPresetId: $selectedPresetId)';
+  return 'SettingsState(apiKey: $apiKey, modelPipeline: $modelPipeline, selectedModel: $selectedModel, themeMode: $themeMode, promptPresets: $promptPresets, selectedPresetId: $selectedPresetId, maxHistoryMessages: $maxHistoryMessages)';
 }
 
 
@@ -596,7 +584,7 @@ abstract mixin class $SettingsStateCopyWith<$Res>  {
   factory $SettingsStateCopyWith(SettingsState value, $Res Function(SettingsState) _then) = _$SettingsStateCopyWithImpl;
 @useResult
 $Res call({
- String apiKey, List<ModelConfig> modelPipeline, String selectedModel, String themeMode, List<PromptPreset> promptPresets, String? selectedPresetId
+ String apiKey, List<ModelConfig> modelPipeline, String selectedModel, String themeMode, List<PromptPreset> promptPresets, String? selectedPresetId, int maxHistoryMessages
 });
 
 
@@ -613,7 +601,7 @@ class _$SettingsStateCopyWithImpl<$Res>
 
 /// Create a copy of SettingsState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? apiKey = null,Object? modelPipeline = null,Object? selectedModel = null,Object? themeMode = null,Object? promptPresets = null,Object? selectedPresetId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? apiKey = null,Object? modelPipeline = null,Object? selectedModel = null,Object? themeMode = null,Object? promptPresets = null,Object? selectedPresetId = freezed,Object? maxHistoryMessages = null,}) {
   return _then(_self.copyWith(
 apiKey: null == apiKey ? _self.apiKey : apiKey // ignore: cast_nullable_to_non_nullable
 as String,modelPipeline: null == modelPipeline ? _self.modelPipeline : modelPipeline // ignore: cast_nullable_to_non_nullable
@@ -621,7 +609,8 @@ as List<ModelConfig>,selectedModel: null == selectedModel ? _self.selectedModel 
 as String,themeMode: null == themeMode ? _self.themeMode : themeMode // ignore: cast_nullable_to_non_nullable
 as String,promptPresets: null == promptPresets ? _self.promptPresets : promptPresets // ignore: cast_nullable_to_non_nullable
 as List<PromptPreset>,selectedPresetId: freezed == selectedPresetId ? _self.selectedPresetId : selectedPresetId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,maxHistoryMessages: null == maxHistoryMessages ? _self.maxHistoryMessages : maxHistoryMessages // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
@@ -703,10 +692,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String apiKey,  List<ModelConfig> modelPipeline,  String selectedModel,  String themeMode,  List<PromptPreset> promptPresets,  String? selectedPresetId)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String apiKey,  List<ModelConfig> modelPipeline,  String selectedModel,  String themeMode,  List<PromptPreset> promptPresets,  String? selectedPresetId,  int maxHistoryMessages)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SettingsState() when $default != null:
-return $default(_that.apiKey,_that.modelPipeline,_that.selectedModel,_that.themeMode,_that.promptPresets,_that.selectedPresetId);case _:
+return $default(_that.apiKey,_that.modelPipeline,_that.selectedModel,_that.themeMode,_that.promptPresets,_that.selectedPresetId,_that.maxHistoryMessages);case _:
   return orElse();
 
 }
@@ -724,10 +713,10 @@ return $default(_that.apiKey,_that.modelPipeline,_that.selectedModel,_that.theme
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String apiKey,  List<ModelConfig> modelPipeline,  String selectedModel,  String themeMode,  List<PromptPreset> promptPresets,  String? selectedPresetId)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String apiKey,  List<ModelConfig> modelPipeline,  String selectedModel,  String themeMode,  List<PromptPreset> promptPresets,  String? selectedPresetId,  int maxHistoryMessages)  $default,) {final _that = this;
 switch (_that) {
 case _SettingsState():
-return $default(_that.apiKey,_that.modelPipeline,_that.selectedModel,_that.themeMode,_that.promptPresets,_that.selectedPresetId);}
+return $default(_that.apiKey,_that.modelPipeline,_that.selectedModel,_that.themeMode,_that.promptPresets,_that.selectedPresetId,_that.maxHistoryMessages);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -741,10 +730,10 @@ return $default(_that.apiKey,_that.modelPipeline,_that.selectedModel,_that.theme
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String apiKey,  List<ModelConfig> modelPipeline,  String selectedModel,  String themeMode,  List<PromptPreset> promptPresets,  String? selectedPresetId)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String apiKey,  List<ModelConfig> modelPipeline,  String selectedModel,  String themeMode,  List<PromptPreset> promptPresets,  String? selectedPresetId,  int maxHistoryMessages)?  $default,) {final _that = this;
 switch (_that) {
 case _SettingsState() when $default != null:
-return $default(_that.apiKey,_that.modelPipeline,_that.selectedModel,_that.themeMode,_that.promptPresets,_that.selectedPresetId);case _:
+return $default(_that.apiKey,_that.modelPipeline,_that.selectedModel,_that.themeMode,_that.promptPresets,_that.selectedPresetId,_that.maxHistoryMessages);case _:
   return null;
 
 }
@@ -756,7 +745,7 @@ return $default(_that.apiKey,_that.modelPipeline,_that.selectedModel,_that.theme
 @JsonSerializable()
 
 class _SettingsState extends SettingsState {
-  const _SettingsState({this.apiKey = '', final  List<ModelConfig> modelPipeline = const [], this.selectedModel = 'anthropic/claude-3.5-sonnet', this.themeMode = 'system', final  List<PromptPreset> promptPresets = const [], this.selectedPresetId}): _modelPipeline = modelPipeline,_promptPresets = promptPresets,super._();
+  const _SettingsState({this.apiKey = '', final  List<ModelConfig> modelPipeline = const [], this.selectedModel = 'anthropic/claude-3.5-sonnet', this.themeMode = 'system', final  List<PromptPreset> promptPresets = const [], this.selectedPresetId, this.maxHistoryMessages = AppConstants.defaultMaxHistoryMessages}): _modelPipeline = modelPipeline,_promptPresets = promptPresets,super._();
   factory _SettingsState.fromJson(Map<String, dynamic> json) => _$SettingsStateFromJson(json);
 
 @override@JsonKey() final  String apiKey;
@@ -769,17 +758,16 @@ class _SettingsState extends SettingsState {
 
 @override@JsonKey() final  String selectedModel;
 @override@JsonKey() final  String themeMode;
-// 프리셋 목록 추가
  final  List<PromptPreset> _promptPresets;
-// 프리셋 목록 추가
 @override@JsonKey() List<PromptPreset> get promptPresets {
   if (_promptPresets is EqualUnmodifiableListView) return _promptPresets;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_promptPresets);
 }
 
-// 현재 선택된 프리셋 ID 추가 (null이면 선택 안됨)
 @override final  String? selectedPresetId;
+// ✅ 신규: 메시지 히스토리 제한 설정
+@override@JsonKey() final  int maxHistoryMessages;
 
 /// Create a copy of SettingsState
 /// with the given fields replaced by the non-null parameter values.
@@ -794,16 +782,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SettingsState&&(identical(other.apiKey, apiKey) || other.apiKey == apiKey)&&const DeepCollectionEquality().equals(other._modelPipeline, _modelPipeline)&&(identical(other.selectedModel, selectedModel) || other.selectedModel == selectedModel)&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&const DeepCollectionEquality().equals(other._promptPresets, _promptPresets)&&(identical(other.selectedPresetId, selectedPresetId) || other.selectedPresetId == selectedPresetId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SettingsState&&(identical(other.apiKey, apiKey) || other.apiKey == apiKey)&&const DeepCollectionEquality().equals(other._modelPipeline, _modelPipeline)&&(identical(other.selectedModel, selectedModel) || other.selectedModel == selectedModel)&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&const DeepCollectionEquality().equals(other._promptPresets, _promptPresets)&&(identical(other.selectedPresetId, selectedPresetId) || other.selectedPresetId == selectedPresetId)&&(identical(other.maxHistoryMessages, maxHistoryMessages) || other.maxHistoryMessages == maxHistoryMessages));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,apiKey,const DeepCollectionEquality().hash(_modelPipeline),selectedModel,themeMode,const DeepCollectionEquality().hash(_promptPresets),selectedPresetId);
+int get hashCode => Object.hash(runtimeType,apiKey,const DeepCollectionEquality().hash(_modelPipeline),selectedModel,themeMode,const DeepCollectionEquality().hash(_promptPresets),selectedPresetId,maxHistoryMessages);
 
 @override
 String toString() {
-  return 'SettingsState(apiKey: $apiKey, modelPipeline: $modelPipeline, selectedModel: $selectedModel, themeMode: $themeMode, promptPresets: $promptPresets, selectedPresetId: $selectedPresetId)';
+  return 'SettingsState(apiKey: $apiKey, modelPipeline: $modelPipeline, selectedModel: $selectedModel, themeMode: $themeMode, promptPresets: $promptPresets, selectedPresetId: $selectedPresetId, maxHistoryMessages: $maxHistoryMessages)';
 }
 
 
@@ -814,7 +802,7 @@ abstract mixin class _$SettingsStateCopyWith<$Res> implements $SettingsStateCopy
   factory _$SettingsStateCopyWith(_SettingsState value, $Res Function(_SettingsState) _then) = __$SettingsStateCopyWithImpl;
 @override @useResult
 $Res call({
- String apiKey, List<ModelConfig> modelPipeline, String selectedModel, String themeMode, List<PromptPreset> promptPresets, String? selectedPresetId
+ String apiKey, List<ModelConfig> modelPipeline, String selectedModel, String themeMode, List<PromptPreset> promptPresets, String? selectedPresetId, int maxHistoryMessages
 });
 
 
@@ -831,7 +819,7 @@ class __$SettingsStateCopyWithImpl<$Res>
 
 /// Create a copy of SettingsState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? apiKey = null,Object? modelPipeline = null,Object? selectedModel = null,Object? themeMode = null,Object? promptPresets = null,Object? selectedPresetId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? apiKey = null,Object? modelPipeline = null,Object? selectedModel = null,Object? themeMode = null,Object? promptPresets = null,Object? selectedPresetId = freezed,Object? maxHistoryMessages = null,}) {
   return _then(_SettingsState(
 apiKey: null == apiKey ? _self.apiKey : apiKey // ignore: cast_nullable_to_non_nullable
 as String,modelPipeline: null == modelPipeline ? _self._modelPipeline : modelPipeline // ignore: cast_nullable_to_non_nullable
@@ -839,7 +827,8 @@ as List<ModelConfig>,selectedModel: null == selectedModel ? _self.selectedModel 
 as String,themeMode: null == themeMode ? _self.themeMode : themeMode // ignore: cast_nullable_to_non_nullable
 as String,promptPresets: null == promptPresets ? _self._promptPresets : promptPresets // ignore: cast_nullable_to_non_nullable
 as List<PromptPreset>,selectedPresetId: freezed == selectedPresetId ? _self.selectedPresetId : selectedPresetId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,maxHistoryMessages: null == maxHistoryMessages ? _self.maxHistoryMessages : maxHistoryMessages // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 

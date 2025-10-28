@@ -54,6 +54,9 @@ _SettingsState _$SettingsStateFromJson(Map<String, dynamic> json) =>
               .toList() ??
           const [],
       selectedPresetId: json['selectedPresetId'] as String?,
+      maxHistoryMessages:
+          (json['maxHistoryMessages'] as num?)?.toInt() ??
+          AppConstants.defaultMaxHistoryMessages,
     );
 
 Map<String, dynamic> _$SettingsStateToJson(_SettingsState instance) =>
@@ -64,4 +67,5 @@ Map<String, dynamic> _$SettingsStateToJson(_SettingsState instance) =>
       'themeMode': instance.themeMode,
       'promptPresets': instance.promptPresets,
       'selectedPresetId': instance.selectedPresetId,
+      'maxHistoryMessages': instance.maxHistoryMessages,
     };

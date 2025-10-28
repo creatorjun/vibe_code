@@ -7,6 +7,10 @@ class AppConstants {
   // 파일 제한
   static const int maxFileSize = 100 * 1024 * 1024; // 100MB
 
+  // ✅ 신규: 메시지 히스토리 제한
+  static const int defaultMaxHistoryMessages = 20; // 기본값: 최근 20개 메시지
+  static const int maxHistoryTokens = 8000; // 최대 토큰 수 (컨텍스트 제한)
+
   // 데이터베이스
   static const String cacheDbName = 'cache.db';
 
@@ -16,6 +20,8 @@ class AppConstants {
   static const String settingsKeyThemeMode = 'theme_mode';
   static const String settingsKeyPromptPresets = 'prompt_presets';
   static const String settingsKeySelectedPresetId = 'selected_preset_id';
+  // ✅ 신규: 히스토리 설정 키
+  static const String settingsKeyMaxHistoryMessages = 'max_history_messages';
 
   // 모델 파이프라인 제한
   static const int maxPipelineModels = 5;
