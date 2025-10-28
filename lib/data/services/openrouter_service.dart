@@ -63,9 +63,18 @@ class OpenRouterService implements AIService {
         dynamic errorJson;
         try {
           errorJson = jsonDecode(errorData);
-        } catch (_) {
-          errorJson = null;
-        }
+        } catch (e) {
+      if (e is DioException) {
+        // 추가: 상세 에러 정보 출력
+        Logger.error('DioException Details:', e);
+        Logger.error('Status Code: ${e.response?.statusCode}');
+        Logger.error('Response Data: ${e.response?.data}');
+        Logger.error('Error Message: ${e.message}');
+        Logger.error('Error Type: ${e.type}');
+      }
+      Logger.error('Dio error during streaming', e);
+      rethrow;
+    }
 
         Logger.error('API error: ${response.statusCode} - $errorData');
 
