@@ -2,7 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_highlight/flutter_highlight.dart';
+import 'package:flutter_highlight/themes/monokai-sublime.dart';
+import 'package:flutter_highlight/themes/github.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/ui_constants.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 
 /// 코드 스니펫 Sliver 위젯
@@ -22,7 +27,7 @@ class CodeSnippetSliver {
     return [
       SliverMainAxisGroup(
         slivers: [
-          // Sticky 헤더
+          // Sticky 헤더 (디바이더 포함)
           SliverPersistentHeader(
             pinned: true,
             delegate: _CodeHeaderDelegate(
@@ -32,7 +37,8 @@ class CodeSnippetSliver {
               horizontalPadding: UIConstants.spacingLg,
             ),
           ),
-          // 코드 본문
+
+          // 코드 본문 (하이라이팅 + JetBrains Mono 폰트 적용)
           SliverToBoxAdapter(
             child: Container(
               color: colors.bubbleColor,
@@ -41,8 +47,9 @@ class CodeSnippetSliver {
               ),
               child: _CodeBody(
                 code: code,
+                language: language,
                 backgroundColor: colors.codeBackground,
-                textColor: colors.textColor,
+                isDark: colors.isDark,
               ),
             ),
           ),
@@ -58,7 +65,6 @@ class CodeSnippetSliver {
       isDark: isDark,
       bubbleColor: isDark ? AppColors.aiBubbleDark : AppColors.aiBubbleLight,
       codeBackground: isDark ? AppColors.codeBackgroundDark : AppColors.codeBackgroundLight,
-      headerBackground: isDark ? AppColors.glassDark : AppColors.glassLight,
       textColor: isDark ? Colors.white.withAlpha(230) : Colors.black87,
     );
   }
@@ -69,41 +75,75 @@ class _CodeColorScheme {
   final bool isDark;
   final Color bubbleColor;
   final Color codeBackground;
-  final Color headerBackground;
   final Color textColor;
 
   const _CodeColorScheme({
     required this.isDark,
     required this.bubbleColor,
     required this.codeBackground,
-    required this.headerBackground,
     required this.textColor,
   });
 }
 
-/// 코드 본문 위젯
+/// 테마 캐시 - 성능 최적화
+class CodeSnippetThemeCache {
+  static Map<String, TextStyle>? _cachedDarkTheme;
+  static Map<String, TextStyle>? _cachedLightTheme;
+
+  static Map<String, TextStyle> getTheme(bool isDark) {
+    if (isDark) {
+      return _cachedDarkTheme ??= _createCustomTheme(monokaiSublimeTheme);
+    } else {
+      return _cachedLightTheme ??= _createCustomTheme(githubTheme);
+    }
+  }
+
+  static Map<String, TextStyle> _createCustomTheme(Map<String, TextStyle> baseTheme) {
+    final customTheme = Map<String, TextStyle>.from(baseTheme);
+
+    // 배경색 제거
+    if (customTheme.containsKey('root')) {
+      customTheme['root'] = customTheme['root']!.copyWith(
+        backgroundColor: Colors.transparent,
+      );
+    } else {
+      customTheme['root'] = const TextStyle(backgroundColor: Colors.transparent);
+    }
+
+    return customTheme;
+  }
+
+  /// 앱 테마 변경 시 캐시 초기화
+  static void clearCache() {
+    _cachedDarkTheme = null;
+    _cachedLightTheme = null;
+  }
+}
+
+/// 코드 본문 위젯 (하이라이팅 + JetBrains Mono 적용)
 class _CodeBody extends StatelessWidget {
   final String code;
+  final String language;
   final Color backgroundColor;
-  final Color textColor;
+  final bool isDark;
 
   const _CodeBody({
     required this.code,
+    required this.language,
     required this.backgroundColor,
-    required this.textColor,
+    required this.isDark,
   });
-
-  static const _codeStyle = TextStyle(
-    fontFamily: 'monospace',
-    fontSize: 13,
-    height: 1.5,
-  );
 
   @override
   Widget build(BuildContext context) {
+    // AppConstants에서 언어 매핑 조회
+    final highlightLanguage = AppConstants.languageMap[language.toLowerCase()] ?? 'plaintext';
+
+    // 캐시된 테마 사용
+    final theme = CodeSnippetThemeCache.getTheme(isDark);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(UIConstants.spacingMd),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: const BorderRadius.only(
@@ -113,23 +153,35 @@ class _CodeBody extends StatelessWidget {
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: SelectableText(
-          code,
-          style: _codeStyle.copyWith(color: textColor),
+        physics: const ClampingScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.all(UIConstants.spacingMd),
+          child: HighlightView(
+            code,
+            language: highlightLanguage,
+            theme: theme,
+            padding: EdgeInsets.zero,
+            textStyle: GoogleFonts.jetBrainsMono(
+              fontSize: 14,
+              height: 1.6,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-/// 코드 헤더 Delegate
+/// 코드 헤더 Delegate (디바이더 포함)
 class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String language;
   final String code;
   final _CodeColorScheme colors;
   final double horizontalPadding;
-
   static const double _headerHeight = 44.0;
+  static const double _dividerHeight = 1.0;
 
   const _CodeHeaderDelegate({
     required this.language,
@@ -139,10 +191,10 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
   });
 
   @override
-  double get minExtent => _headerHeight;
+  double get minExtent => _headerHeight + _dividerHeight;
 
   @override
-  double get maxExtent => _headerHeight;
+  double get maxExtent => _headerHeight + _dividerHeight;
 
   @override
   Widget build(
@@ -158,18 +210,35 @@ class _CodeHeaderDelegate extends SliverPersistentHeaderDelegate {
         : BorderRadius.zero;
 
     return Container(
-      height: _headerHeight,
       color: colors.bubbleColor,
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      child: Container(
-        decoration: BoxDecoration(
-          color: colors.headerBackground,
-          borderRadius: borderRadius,
-        ),
-        child: _CodeHeader(
-          language: language,
-          code: code,
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 헤더
+          Container(
+            height: _headerHeight,
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            child: Container(
+              decoration: BoxDecoration(
+                color: colors.codeBackground,
+                borderRadius: borderRadius,
+              ),
+              child: _CodeHeader(
+                language: language,
+                code: code,
+              ),
+            ),
+          ),
+
+          // 디바이더
+          Container(
+            height: _dividerHeight,
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            child: Container(
+              color: Theme.of(context).scaffoldBackgroundColor,
+            ),
+          ),
+        ],
       ),
     );
   }

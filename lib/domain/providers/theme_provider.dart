@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/logger.dart';
+import '../../presentation/screens/chat/widgets/code_snippet_widget.dart';
 import 'settings_provider.dart';
 
 /// Provider (Riverpod 3.0 - NotifierProvider)
@@ -38,11 +39,15 @@ class AppThemeModeNotifier extends Notifier<ThemeMode> {
     Logger.info('Setting theme mode: $mode');
 
     try {
-      // 1. DB에 먼저 저장
+      // 1. 코드 스니펫 테마 캐시 초기화
+      CodeSnippetThemeCache.clearCache();
+      Logger.debug('Code snippet theme cache cleared');
+
+      // 2. DB에 저장
       final modeString = _themeModeToString(mode);
       await ref.read(settingsProvider.notifier).updateThemeMode(modeString);
 
-      // 2. DB 저장 완료 후 UI 업데이트
+      // 3. DB 저장 완료 후 UI 업데이트
       state = mode;
 
       Logger.info('Theme mode updated successfully: $mode');
