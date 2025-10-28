@@ -1,34 +1,65 @@
 // lib/core/utils/token_counter.dart
 
 /// 토큰 수 추정 유틸리티
-///
-/// 정확한 토큰 계산은 tiktoken 등의 라이브러리가 필요하지만,
-/// 대략적인 추정을 위해 간단한 규칙 사용:
-/// - 영어: 평균 4글자 = 1토큰
-/// - 한글: 평균 2글자 = 1토큰
-/// - 코드: 평균 3글자 = 1토큰
 class TokenCounter {
   TokenCounter._();
 
-  /// 텍스트의 대략적인 토큰 수 계산
-  static int estimateTokens(String text) {
+  // ✅ 모델별 토큰 비율 매핑
+  static const Map<String, double> modelTokenRatios = {
+    'gpt': 4.0,
+    'claude': 3.8,
+    'gemini': 4.2,
+    'llama': 4.0,
+    'mistral': 4.0,
+    'deepseek': 3.5,
+    'qwen': 3.8,
+  };
+
+  /// ✅ 개선: 모델별 토큰 추정
+  static int estimateTokensForModel(String text, String modelId) {
     if (text.isEmpty) return 0;
 
-    // 간단한 추정 로직
-    // GPT 계열: 평균 1토큰 ≈ 4글자 (영어 기준)
-    // 한글/일본어: 평균 1토큰 ≈ 2글자
+    final charCount = text.length;
+    final koreanCount = _countKoreanChars(text);
+    final codeCount = _countCodeChars(text);
+
+    // 모델별 기본 비율 찾기
+    var ratio = 4.0; // 기본값
+    for (var entry in modelTokenRatios.entries) {
+      if (modelId.toLowerCase().contains(entry.key)) {
+        ratio = entry.value;
+        break;
+      }
+    }
+
+    // 한글이 많으면 비율 조정 (한글은 토큰을 더 많이 소모)
+    if (koreanCount / charCount > 0.3) {
+      ratio *= 0.6; // 한글: 약 2.4자 = 1토큰
+    }
+
+    // 코드가 많으면 비율 조정
+    if (codeCount / charCount > 0.3) {
+      ratio *= 0.8; // 코드: 약 3.2자 = 1토큰
+    }
+
+    return (charCount / ratio).ceil();
+  }
+
+  /// 기본 토큰 추정 (모델 무관)
+  static int estimateTokens(String text) {
+    if (text.isEmpty) return 0;
 
     final charCount = text.length;
     final koreanCount = _countKoreanChars(text);
     final codeCount = _countCodeChars(text);
 
     // 한글이 많으면 2글자당 1토큰
-    if (koreanCount > charCount * 0.3) {
+    if (koreanCount / charCount > 0.3) {
       return (charCount / 2).ceil();
     }
 
     // 코드가 많으면 3글자당 1토큰
-    if (codeCount > charCount * 0.3) {
+    if (codeCount / charCount > 0.3) {
       return (charCount / 3).ceil();
     }
 
@@ -38,10 +69,20 @@ class TokenCounter {
 
   /// 파일 크기에서 토큰 수 추정 (바이트 단위)
   static int estimateTokensFromBytes(int bytes) {
-    // 1바이트 ≈ 1글자로 가정
-    // UTF-8 기준 영어 1글자 = 1바이트, 한글 1글자 = 3바이트
-    // 평균 2바이트 = 1글자, 4글자 = 1토큰
     return (bytes / 2 / 4).ceil();
+  }
+
+  /// ✅ 신규: 메시지 리스트의 총 토큰 수 계산 (모델별)
+  static int estimateMessagesTokensForModel(
+      List<String> messages,
+      String modelId,
+      ) {
+    int total = 0;
+    for (final message in messages) {
+      total += estimateTokensForModel(message, modelId);
+      total += 4; // 메시지당 오버헤드 (role, formatting 등)
+    }
+    return total;
   }
 
   /// 메시지 리스트의 총 토큰 수 계산
@@ -49,7 +90,7 @@ class TokenCounter {
     int total = 0;
     for (final message in messages) {
       total += estimateTokens(message);
-      total += 4; // 메시지당 오버헤드 (role, formatting 등)
+      total += 4; // 메시지당 오버헤드
     }
     return total;
   }
@@ -90,12 +131,10 @@ class TokenCounter {
     return count;
   }
 
+  /// 코드 문자 개수
   static int _countCodeChars(String text) {
-    int count = 0;
     final codeChars = RegExp(r'[{}()\[\];=<>]');
-    // ✅ match 변수 제거
-    count = codeChars.allMatches(text).length;
-    return count;
+    return codeChars.allMatches(text).length;
   }
 
   /// 토큰 수를 읽기 쉬운 형식으로 포맷
@@ -132,7 +171,6 @@ class SessionTokenUsage {
     required this.totalTokens,
   });
 
-  /// 읽기 쉬운 형식으로 출력
   @override
   String toString() {
     return 'Total: ${TokenCounter.formatTokenCount(totalTokens)} '

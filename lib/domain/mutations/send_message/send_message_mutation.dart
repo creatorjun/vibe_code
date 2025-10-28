@@ -1,20 +1,18 @@
-// lib/domain/mutations/send_message_mutation.dart
+// lib/domain/mutations/send_message/send_message_mutation.dart
 
 import 'dart:async';
 import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:vibe_code/core/errors/app_exception.dart';
-import 'package:vibe_code/core/errors/error_handler.dart';
-import 'package:vibe_code/core/utils/logger.dart';
-import 'package:vibe_code/core/utils/token_counter.dart';
-import 'package:vibe_code/core/utils/validators.dart';
-import 'package:vibe_code/domain/providers/ai_service_provider.dart';
-import 'package:vibe_code/domain/providers/chat_provider.dart';
-import 'package:vibe_code/domain/providers/settings_provider.dart';
-import 'package:vibe_code/domain/providers/streaming_state_provider.dart';
-import 'package:vibe_code/domain/providers/selected_model_count_provider.dart';
+import '../../../core/errors/app_exception.dart';
+import '../../../core/errors/error_handler.dart';
+import '../../../core/utils/logger.dart';
+import '../../../core/utils/token_counter.dart';
+import '../../../core/utils/validators.dart';
+import '../../providers/chat_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../providers/streaming_state_provider.dart';
+import '../../providers/selected_model_count_provider.dart';
+import '../../providers/ai_service_provider.dart';
 import 'send_message_state.dart';
 import 'attachment_processor.dart';
 import 'message_history_builder.dart';
@@ -38,8 +36,10 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
     state = const SendMessageState.sending();
     int? userMessageId;
     int? aiMessageId;
-    int totalInputTokens = 0;
-    int totalOutputTokens = 0;
+
+    // ✅ 실제 API 토큰 수 저장용
+    int? actualInputTokens;
+    int? actualOutputTokens;
 
     try {
       // 1. 리포지토리 및 설정 초기화
@@ -50,7 +50,7 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       // 2. API 키 검증
       _validateApiKey(settingsAsync.apiKey);
 
-      // 3. 사용자 메시지 추가
+      // 3. 사용자 메시지 저장
       final userMessageTokens = TokenCounter.estimateTokens(content);
       userMessageId = await chatRepo.addUserMessage(
         sessionId: sessionId,
@@ -58,7 +58,7 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         inputTokens: userMessageTokens,
       );
 
-      // 4. 첨부파일 링크
+      // 4. 첨부 파일 연결
       if (attachmentIds.isNotEmpty) {
         await attachmentRepo.linkToMessage(
           messageId: userMessageId,
@@ -66,7 +66,7 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         );
       }
 
-      // 5. 첨부파일 처리
+      // 5. 첨부 파일 처리
       final attachmentProcessor = AttachmentProcessor(attachmentRepo);
       final attachmentResult = await attachmentProcessor.processAttachments(attachmentIds);
       final fullContent = attachmentProcessor.buildFullContent(
@@ -75,7 +75,10 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       );
 
       // 6. 메시지 히스토리 구성
-      final messageHistoryBuilder = MessageHistoryBuilder(chatRepo);
+      final messageHistoryBuilder = MessageHistoryBuilder(
+        chatRepo,
+        maxHistoryMessages: settingsAsync.maxHistoryMessages,
+      );
       final apiMessages = await messageHistoryBuilder.buildMessageHistory(sessionId);
       messageHistoryBuilder.addCurrentUserMessage(
         apiMessages: apiMessages,
@@ -92,7 +95,7 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         selectedPreset: settingsAsync.selectedPreset,
       );
 
-      // 8. AI 응답 메시지 생성
+      // 8. AI 메시지 생성
       final modelId = pipelineConfigurator.getFirstModelId(activePipelineConfigs);
       aiMessageId = await chatRepo.addAiMessage(
         sessionId: sessionId,
@@ -100,64 +103,88 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         isStreaming: true,
       );
 
-      // 9. 스트리밍 상태 시작
+      // 9. 스트리밍 시작
       ref.read(streamingStateProvider.notifier).start();
       ref.read(currentStreamingMessageProvider.notifier).set(aiMessageId);
       state = const SendMessageState.streaming(progress: 0.0);
 
-      // 10. 파이프라인 실행
-      final responseBuffer = StringBuffer();
-      final pipelineService = ref.read(pipelineServiceProvider);
+      try {
+        // 10. 파이프라인 실행
+        final responseBuffer = StringBuffer();
+        final pipelineService = ref.read(pipelineServiceProvider);
 
-      await for (final _ in pipelineService.executePipeline(
-        pipeline: activePipelineConfigs,
-        initialInput: fullContent,
-        messageHistory: apiMessages.sublist(0, apiMessages.length - 1),
-        onStepStart: (step, config) {
-          Logger.info(
-              'Pipeline step ${step + 1}/${activePipelineConfigs.length}: ${config.modelId}');
-          state = SendMessageState.streaming(
-              progress: step / activePipelineConfigs.length);
-        },
-        onChunk: (step, chunk) async {
-          responseBuffer.write(chunk);
-          await chatRepo.updateMessageContent(
-            aiMessageId!,
-            responseBuffer.toString(),
-          );
-        },
-        aiServiceFactory: ref.read(aiServiceFactoryProvider),
-        apiKey: settingsAsync.apiKey,
-      )) {
-        // Progress tracking
+        await for (final _ in pipelineService.executePipeline(
+          pipeline: activePipelineConfigs,
+          initialInput: fullContent,
+          messageHistory: apiMessages.sublist(0, apiMessages.length - 1),
+          onStepStart: (step, config) {
+            Logger.info('📍 Pipeline step ${step + 1}/${activePipelineConfigs.length}: ${config.modelId}');
+            state = SendMessageState.streaming(
+              progress: (step / activePipelineConfigs.length),
+            );
+          },
+          onChunk: (step, chunk) async {
+            responseBuffer.write(chunk);
+            await chatRepo.updateMessageContent(
+              aiMessageId!,
+              responseBuffer.toString(),
+            );
+          },
+          aiServiceFactory: ref.read(aiServiceFactoryProvider),
+          apiKey: settingsAsync.apiKey,
+          // ✅ 토큰 사용량 콜백
+          onTokenUsage: (inputTokens, outputTokens) {
+            actualInputTokens = inputTokens;
+            actualOutputTokens = outputTokens;
+            Logger.info('💰 Actual API tokens: input=$inputTokens, output=$outputTokens');
+          },
+        )) {}
+
+        // 11. 최종 응답 처리
+        final finalResponse = responseBuffer.toString();
+
+        // ✅ 실제 API 토큰 수가 있으면 사용, 없으면 추정값 사용
+        final totalInputTokens = actualInputTokens ?? TokenCounter.estimateTokens(fullContent);
+        final totalOutputTokens = actualOutputTokens ?? TokenCounter.estimateTokens(finalResponse);
+
+        // ✅ 로그만 조건부로 출력
+        if (actualInputTokens != null) {
+          Logger.info('✅ Using actual API tokens: input=$totalInputTokens, output=$totalOutputTokens');
+        } else {
+          Logger.info('📊 Using estimated tokens: input=$totalInputTokens, output=$totalOutputTokens');
+        }
+
+        await chatRepo.completeStreaming(
+          aiMessageId,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+        );
+
+        ref.read(streamingStateProvider.notifier).stop();
+        ref.read(currentStreamingMessageProvider.notifier).clear();
+
+        // 12. 세션 제목 업데이트
+        final sessionManager = SessionManager(chatRepo);
+        await sessionManager.updateSessionTitleIfNeeded(sessionId, content);
+
+        state = const SendMessageState.success();
+        Logger.info('✅ Message sent successfully');
+      } catch (e, stackTrace) {
+        Logger.error('Error during streaming', e, stackTrace);
+        final errorMessage = ErrorHandler.getErrorMessage(e);
+        state = SendMessageState.error(errorMessage);
+
+        // ✅ chatRepo 다시 읽기
+        final chatRepo = ref.read(chatRepositoryProvider);
+        final errorHandler = SendMessageErrorHandler(chatRepo);
+        await errorHandler.appendErrorToMessage(sessionId, aiMessageId, errorMessage);
+            } finally {
+        ref.read(streamingStateProvider.notifier).stop();
+        ref.read(currentStreamingMessageProvider.notifier).clear();
       }
-
-      // 11. 토큰 추정 및 스트리밍 완료
-      final finalResponse = responseBuffer.toString();
-      totalInputTokens = TokenCounter.estimateTokens(fullContent);
-      totalOutputTokens = TokenCounter.estimateTokens(finalResponse);
-      Logger.info(
-          'Estimated tokens - Input: $totalInputTokens, Output: $totalOutputTokens');
-
-      await chatRepo.completeStreaming(
-        aiMessageId,
-        inputTokens: totalInputTokens,
-        outputTokens: totalOutputTokens,
-      );
-
-      ref.read(streamingStateProvider.notifier).stop();
-      ref.read(currentStreamingMessageProvider.notifier).clear();
-
-      // 12. 세션 제목 업데이트
-      final sessionManager = SessionManager(chatRepo);
-      await sessionManager.updateSessionTitleIfNeeded(sessionId, content);
-
-      state = const SendMessageState.success();
-      Logger.info(
-          'Message sent successfully with tokens: input=$totalInputTokens, output=$totalOutputTokens');
     } on SocketException catch (e) {
       Logger.error('Network error', e);
-      state = const SendMessageState.error('네트워크 연결 오류: 인터넷 연결을 확인해주세요');
+      state = const SendMessageState.error('네트워크 연결을 확인해주세요');
       await _handleError(sessionId, userMessageId, aiMessageId);
     } on HttpException catch (e) {
       Logger.error('HTTP error', e);
@@ -165,7 +192,7 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       await _handleError(sessionId, userMessageId, aiMessageId);
     } on TimeoutException catch (e) {
       Logger.error('Timeout error', e);
-      state = const SendMessageState.error('요청 시간 초과: 다시 시도해주세요');
+      state = const SendMessageState.error('요청 시간이 초과되었습니다');
       await _handleError(sessionId, userMessageId, aiMessageId);
     } on ValidationException catch (e) {
       Logger.error('Validation error', e);
@@ -176,13 +203,14 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       state = SendMessageState.error(e.message);
       await _handleError(sessionId, userMessageId, aiMessageId);
     } catch (e, stackTrace) {
-      Logger.error('Unexpected error during message send', e, stackTrace);
+      Logger.error('Unexpected error', e, stackTrace);
       ErrorHandler.logError(e, stackTrace);
       final errorMessage = ErrorHandler.getErrorMessage(e);
       state = SendMessageState.error(errorMessage);
 
+      // ✅ chatRepo 다시 읽기
+      final chatRepo = ref.read(chatRepositoryProvider);
       if (aiMessageId != null) {
-        final chatRepo = ref.read(chatRepositoryProvider);
         final errorHandler = SendMessageErrorHandler(chatRepo);
         await errorHandler.appendErrorToMessage(sessionId, aiMessageId, errorMessage);
       }
@@ -193,13 +221,10 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
   }
 
   void _validateApiKey(String apiKey) {
-    if (apiKey.isEmpty) {
-      throw const ValidationException(
-        'API 키를 설정해주세요. 설정 화면에서 API 키를 입력해주세요.',
-      );
-    }
     if (!Validators.isValidApiKey(apiKey)) {
-      throw const ValidationException('올바르지 않은 API 키 형식입니다.');
+      throw const ValidationException(
+        'API 키가 설정되지 않았습니다.\n설정 화면에서 API 키를 입력해주세요.',
+      );
     }
   }
 
@@ -214,10 +239,7 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
   }
 
   void cancel() {
-    Logger.info('Cancelling message send');
-    ref.read(streamingStateProvider.notifier).stop();
-    ref.read(currentStreamingMessageProvider.notifier).clear();
-    state = const SendMessageState.idle();
+    Logger.info('Streaming cancellation requested');
   }
 }
 

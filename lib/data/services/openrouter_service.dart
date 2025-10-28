@@ -1,4 +1,5 @@
 // lib/data/services/openrouter_service.dart
+
 import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
@@ -64,17 +65,10 @@ class OpenRouterService implements AIService {
         try {
           errorJson = jsonDecode(errorData);
         } catch (e) {
-          if (e is DioException) {
-            Logger.error('DioException Details:', e);
-            Logger.error('Status Code: ${e.response?.statusCode}');
-            Logger.error('Response Data: ${e.response?.data}');
-            Logger.error('Error Message: ${e.message}');
-            Logger.error('Error Type: ${e.type}');
-          }
-          Logger.error('Dio error during streaming', e);
-          rethrow;
+          // JSON 파싱 실패 시 원본 사용
         }
 
+        // Dio 에러 로깅
         Logger.error('API error: ${response.statusCode} - $errorData');
 
         throw DioException(
@@ -88,48 +82,41 @@ class OpenRouterService implements AIService {
         );
       }
 
-      // ✅ 불완전한 JSON 라인 버퍼링
+      // JSON 라인 버퍼
       String lineBuffer = '';
 
       await for (final chunk in response.data!.stream) {
         final text = utf8.decode(chunk);
-
-        // 버퍼에 추가
         lineBuffer += text;
 
-        // 완전한 라인들만 처리
         final lines = lineBuffer.split('\n');
-
-        // 마지막 라인은 불완전할 수 있으므로 버퍼에 보관
         lineBuffer = lines.isNotEmpty ? lines.last : '';
 
-        // 완전한 라인들만 처리
         for (var i = 0; i < lines.length - 1; i++) {
           final line = lines[i].trim();
-
           if (line.isEmpty) continue;
 
-          if (line.startsWith('data: ')) {
+          if (line.startsWith('data:')) {
             final data = line.substring(6);
             if (data == '[DONE]') continue;
 
             try {
               final json = jsonDecode(data);
               final content = json['choices']?[0]?['delta']?['content'];
-
               if (content != null && content is String) {
                 yield content;
               }
 
-              // 토큰 사용량 추출
+              // ✅ 토큰 사용량 추출
               final usage = json['usage'];
               if (usage != null && onTokenUsage != null) {
                 final inputTokens = usage['prompt_tokens'] ?? 0;
                 final outputTokens = usage['completion_tokens'] ?? 0;
                 onTokenUsage(inputTokens, outputTokens);
+                Logger.info('💰 Actual tokens: input=$inputTokens, output=$outputTokens');
               }
             } catch (e) {
-              // 불완전한 JSON 라인은 경고만 출력하고 건너뜀
+              // JSON 파싱 실패 시 무시
               Logger.debug('Skipping incomplete chunk: ${data.length > 100 ? data.substring(0, 100) : data}...');
               continue;
             }
@@ -137,10 +124,10 @@ class OpenRouterService implements AIService {
         }
       }
 
-      // 남은 버퍼 처리
+      // 버퍼에 남은 데이터 처리
       if (lineBuffer.isNotEmpty) {
         final line = lineBuffer.trim();
-        if (line.startsWith('data: ')) {
+        if (line.startsWith('data:')) {
           final data = line.substring(6);
           if (data != '[DONE]') {
             try {
@@ -150,11 +137,13 @@ class OpenRouterService implements AIService {
                 yield content;
               }
 
+              // ✅ 토큰 사용량 추출
               final usage = json['usage'];
               if (usage != null && onTokenUsage != null) {
                 final inputTokens = usage['prompt_tokens'] ?? 0;
                 final outputTokens = usage['completion_tokens'] ?? 0;
                 onTokenUsage(inputTokens, outputTokens);
+                Logger.info('💰 Actual tokens: input=$inputTokens, output=$outputTokens');
               }
             } catch (e) {
               Logger.debug('Skipping final incomplete chunk');
