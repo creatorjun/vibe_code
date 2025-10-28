@@ -1,28 +1,25 @@
-// lib/domain/providers/session_stats_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/logger.dart';
 import 'chat_provider.dart';
 
-/// 세션 통계
 class SessionStats {
   final int messageCount;
-  final int inputTokens;      // ===== 추가 =====
-  final int outputTokens;     // ===== 추가 =====
-  final int totalTokens;      // ===== 추가 =====
+  final int inputTokens;
+  final int outputTokens;
+  final int totalTokens;
 
   const SessionStats({
     required this.messageCount,
-    required this.inputTokens,      // ===== 추가 =====
-    required this.outputTokens,     // ===== 추가 =====
-    required this.totalTokens,      // ===== 추가 =====
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.totalTokens,
   });
 
   const SessionStats.empty()
       : messageCount = 0,
-        inputTokens = 0,      // ===== 추가 =====
-        outputTokens = 0,     // ===== 추가 =====
-        totalTokens = 0;      // ===== 추가 =====
+        inputTokens = 0,
+        outputTokens = 0,
+        totalTokens = 0;
 
   String get tokenDisplay {
     if (totalTokens < 1000) {
@@ -37,7 +34,7 @@ class SessionStats {
   }
 }
 
-/// 활성 세션의 통계를 스트림으로 제공
+// ✅ 최적화 5: DB 집계 쿼리 사용 (메시지 전체 로드하지 않음)
 final activeSessionStatsProvider = StreamProvider<SessionStats>((ref) async* {
   final activeSessionId = ref.watch(activeSessionProvider);
 
@@ -48,14 +45,16 @@ final activeSessionStatsProvider = StreamProvider<SessionStats>((ref) async* {
 
   final chatRepo = ref.watch(chatRepositoryProvider);
 
-  // ===== 변경: DB에서 토큰 합계를 직접 조회 =====
-  await for (final messages in chatRepo.watchCompletedMessagesForSession(activeSessionId)) {
+  // ✅ DB 레벨에서 집계된 결과만 가져오기
+  await for (final _ in chatRepo.watchCompletedMessagesForSession(activeSessionId)) {
     try {
-      // 메시지 개수
-      final messageCount = messages.length;
+      // 메시지 개수만 카운트
+      final messageCount = await chatRepo.database.chatDao
+          .getSessionMessageCount(activeSessionId);
 
-      // DB에서 토큰 사용량 조회
-      final tokenUsage = await chatRepo.database.chatDao.getSessionTokenUsage(activeSessionId);
+      // 토큰 사용량만 집계
+      final tokenUsage = await chatRepo.database.chatDao
+          .getSessionTokenUsage(activeSessionId);
 
       yield SessionStats(
         messageCount: messageCount,
@@ -64,17 +63,14 @@ final activeSessionStatsProvider = StreamProvider<SessionStats>((ref) async* {
         totalTokens: tokenUsage.totalTokens,
       );
 
-      Logger.debug(
-        '[SessionStats] Session $activeSessionId - '
-            'Messages: $messageCount, '
-            'Input: ${tokenUsage.inputTokens}, '
-            'Output: ${tokenUsage.outputTokens}, '
-            'Total: ${tokenUsage.totalTokens}',
-      );
+      Logger.debug('SessionStats - Session: $activeSessionId - '
+          'Messages: $messageCount, '
+          'Input: ${tokenUsage.inputTokens}, '
+          'Output: ${tokenUsage.outputTokens}, '
+          'Total: ${tokenUsage.totalTokens}');
     } catch (e) {
-      Logger.error('[SessionStats] Failed to load stats', e);
+      Logger.error('SessionStats: Failed to load stats', e);
       yield const SessionStats.empty();
     }
   }
-  // ==============================================
 });

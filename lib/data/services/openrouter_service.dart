@@ -29,7 +29,7 @@ class OpenRouterService implements AIService {
   Stream<String> streamChat({
     required List<ChatMessage> messages,
     required String model,
-    Function(int inputTokens, int outputTokens)? onTokenUsage, // ===== 추가 =====
+    Function(int inputTokens, int outputTokens)? onTokenUsage,
   }) async* {
     _cancelToken = CancelToken();
 
@@ -64,21 +64,19 @@ class OpenRouterService implements AIService {
         try {
           errorJson = jsonDecode(errorData);
         } catch (e) {
-      if (e is DioException) {
-        // 추가: 상세 에러 정보 출력
-        Logger.error('DioException Details:', e);
-        Logger.error('Status Code: ${e.response?.statusCode}');
-        Logger.error('Response Data: ${e.response?.data}');
-        Logger.error('Error Message: ${e.message}');
-        Logger.error('Error Type: ${e.type}');
-      }
-      Logger.error('Dio error during streaming', e);
-      rethrow;
-    }
+          if (e is DioException) {
+            Logger.error('DioException Details:', e);
+            Logger.error('Status Code: ${e.response?.statusCode}');
+            Logger.error('Response Data: ${e.response?.data}');
+            Logger.error('Error Message: ${e.message}');
+            Logger.error('Error Type: ${e.type}');
+          }
+          Logger.error('Dio error during streaming', e);
+          rethrow;
+        }
 
         Logger.error('API error: ${response.statusCode} - $errorData');
 
-        // DioException으로 던지기 (ErrorHandler가 처리하도록)
         throw DioException(
           requestOptions: response.requestOptions,
           response: Response(
@@ -90,11 +88,27 @@ class OpenRouterService implements AIService {
         );
       }
 
+      // ✅ 불완전한 JSON 라인 버퍼링
+      String lineBuffer = '';
+
       await for (final chunk in response.data!.stream) {
         final text = utf8.decode(chunk);
-        final lines = text.split('\n').where((line) => line.isNotEmpty);
 
-        for (final line in lines) {
+        // 버퍼에 추가
+        lineBuffer += text;
+
+        // 완전한 라인들만 처리
+        final lines = lineBuffer.split('\n');
+
+        // 마지막 라인은 불완전할 수 있으므로 버퍼에 보관
+        lineBuffer = lines.isNotEmpty ? lines.last : '';
+
+        // 완전한 라인들만 처리
+        for (var i = 0; i < lines.length - 1; i++) {
+          final line = lines[i].trim();
+
+          if (line.isEmpty) continue;
+
           if (line.startsWith('data: ')) {
             final data = line.substring(6);
             if (data == '[DONE]') continue;
@@ -102,20 +116,48 @@ class OpenRouterService implements AIService {
             try {
               final json = jsonDecode(data);
               final content = json['choices']?[0]?['delta']?['content'];
+
               if (content != null && content is String) {
                 yield content;
               }
 
-              // ===== 추가: 토큰 사용량 추출 =====
+              // 토큰 사용량 추출
               final usage = json['usage'];
               if (usage != null && onTokenUsage != null) {
                 final inputTokens = usage['prompt_tokens'] ?? 0;
                 final outputTokens = usage['completion_tokens'] ?? 0;
                 onTokenUsage(inputTokens, outputTokens);
               }
-              // ====================================
             } catch (e) {
-              Logger.warning('Failed to parse chunk: $data');
+              // 불완전한 JSON 라인은 경고만 출력하고 건너뜀
+              Logger.debug('Skipping incomplete chunk: ${data.length > 100 ? data.substring(0, 100) : data}...');
+              continue;
+            }
+          }
+        }
+      }
+
+      // 남은 버퍼 처리
+      if (lineBuffer.isNotEmpty) {
+        final line = lineBuffer.trim();
+        if (line.startsWith('data: ')) {
+          final data = line.substring(6);
+          if (data != '[DONE]') {
+            try {
+              final json = jsonDecode(data);
+              final content = json['choices']?[0]?['delta']?['content'];
+              if (content != null && content is String) {
+                yield content;
+              }
+
+              final usage = json['usage'];
+              if (usage != null && onTokenUsage != null) {
+                final inputTokens = usage['prompt_tokens'] ?? 0;
+                final outputTokens = usage['completion_tokens'] ?? 0;
+                onTokenUsage(inputTokens, outputTokens);
+              }
+            } catch (e) {
+              Logger.debug('Skipping final incomplete chunk');
             }
           }
         }
@@ -124,7 +166,7 @@ class OpenRouterService implements AIService {
       Logger.info('Streaming completed successfully');
     } on DioException catch (e) {
       Logger.error('Dio error during streaming', e);
-      rethrow; // ErrorHandler가 처리하도록
+      rethrow;
     } catch (e, stackTrace) {
       Logger.error('Unexpected error during streaming', e, stackTrace);
       rethrow;

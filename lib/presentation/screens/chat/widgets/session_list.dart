@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:vibe_code/presentation/shared/widgets/loading_indicator.dart';
-import 'package:vibe_code/core/constants/ui_constants.dart';
-import 'package:vibe_code/core/theme/app_colors.dart';
-import 'package:vibe_code/domain/mutations/create_session_mutation.dart';
-import 'package:vibe_code/domain/providers/database_provider.dart';
+import '../../../../core/constants/ui_constants.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../domain/mutations/create_session_mutation.dart';
+import '../../../../domain/providers/database_provider.dart';
+import '../../../shared/widgets/loading_indicator.dart';
 import 'session_tile.dart';
 
 class SessionList extends ConsumerWidget {
@@ -29,11 +29,23 @@ class SessionList extends ConsumerWidget {
               if (sessions.isEmpty) {
                 return EmptyState(isExpanded: isExpanded);
               }
+
+              // ✅ 최적화 1: itemExtent 추가 (고정 높이)
+              // ✅ 최적화 2: cacheExtent 추가
+              // ✅ 최적화 3: addAutomaticKeepAlives 비활성화
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(
                   horizontal: UIConstants.spacingSm,
                   vertical: UIConstants.spacingXs,
                 ),
+                // ✅ itemExtent: 모든 항목의 높이가 일정하므로 성능 향상
+                itemExtent: isExpanded ? 60.0 : 48.0,
+                // ✅ cacheExtent: 스크롤 성능 향상 (기본값 250에서 500으로)
+                cacheExtent: 500,
+                // ✅ addAutomaticKeepAlives: 불필요한 상태 유지 비활성화
+                addAutomaticKeepAlives: false,
+                // ✅ addRepaintBoundaries: 리페인트 경계 유지 (기본값 true)
+                addRepaintBoundaries: true,
                 itemCount: sessions.length,
                 itemBuilder: (context, index) {
                   return SessionTile(

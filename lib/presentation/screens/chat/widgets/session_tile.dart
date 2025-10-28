@@ -47,7 +47,6 @@ class SessionTile extends ConsumerWidget {
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           onPressed: () {
-            // ✅ Future.microtask로 감싸서 build 사이클 이후 실행
             Future.microtask(() {
               ref.read(activeSessionProvider.notifier).select(session.id);
             });
@@ -75,7 +74,6 @@ class SessionTile extends ConsumerWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(UIConstants.radiusMd),
           onTap: () {
-            // ✅ Future.microtask로 감싸서 build 사이클 이후 실행
             Future.microtask(() {
               ref.read(activeSessionProvider.notifier).select(session.id);
             });
@@ -135,7 +133,6 @@ class SessionTile extends ConsumerWidget {
                     minHeight: 28,
                   ),
                   onPressed: () {
-                    // ✅ 삭제도 Future.microtask로 감싸기
                     Future.microtask(() {
                       final activeSession = ref.read(activeSessionProvider);
                       if (activeSession == session.id) {
@@ -153,10 +150,17 @@ class SessionTile extends ConsumerWidget {
     );
   }
 
-  void _showRenameDialog(BuildContext context, WidgetRef ref) {
+  // ✅ async로 변경하고 mounted 체크 추가
+  Future<void> _showRenameDialog(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController(text: session.title);
 
-    showDialog(
+    // ✅ context 사용 전 mounted 체크
+    if (!context.mounted) {
+      controller.dispose();
+      return;
+    }
+
+    await showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('세션 이름 변경'),
@@ -195,6 +199,8 @@ class SessionTile extends ConsumerWidget {
           ),
         ],
       ),
-    ).then((_) => controller.dispose());
+    );
+
+    controller.dispose();
   }
 }
