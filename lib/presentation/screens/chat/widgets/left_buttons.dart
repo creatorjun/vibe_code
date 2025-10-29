@@ -53,9 +53,11 @@ class LeftButtons extends ConsumerWidget {
     }
   }
 
-  Future<void> _analyzeProject(BuildContext context,
-      WidgetRef ref,
-      TextEditingController controller,) async {
+  Future<void> _analyzeProject(
+    BuildContext context,
+    WidgetRef ref,
+    TextEditingController controller,
+  ) async {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => const GitHubAnalysisDialog(),
@@ -93,6 +95,31 @@ class LeftButtons extends ConsumerWidget {
     }
   }
 
+  Future<void> _pickProjectFolder(BuildContext context) async {
+    try {
+      final folderPath = await FilePicker.platform.getDirectoryPath();
+      if (folderPath == null) return; // 취소 시 동작 없음
+
+      Logger.info('Selected project folder: $folderPath');
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('프로젝트 폴더 지정됨:\n$folderPath')));
+      }
+
+      // 필요하면 상태 저장 로직 추가 가능
+    } catch (e) {
+      if (context.mounted) {
+        await ErrorDialog.show(
+          context: context,
+          title: '폴더 선택 실패',
+          message: '폴더 선택 중 오류가 발생했습니다: ${e.toString()}',
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(
@@ -101,10 +128,7 @@ class LeftButtons extends ConsumerWidget {
         // 파일 첨부 버튼
         Container(
           decoration: BoxDecoration(
-            color: Theme
-                .of(context)
-                .colorScheme
-                .surfaceContainerHighest
+            color: Theme.of(context).colorScheme.surfaceContainerHighest
                 .withAlpha(UIConstants.alpha20),
             borderRadius: BorderRadius.circular(UIConstants.radiusSm),
           ),
@@ -124,10 +148,7 @@ class LeftButtons extends ConsumerWidget {
         // GitHub 분석 버튼
         Container(
           decoration: BoxDecoration(
-            color: Theme
-                .of(context)
-                .colorScheme
-                .surfaceContainerHighest
+            color: Theme.of(context).colorScheme.surfaceContainerHighest
                 .withAlpha(UIConstants.alpha20),
             borderRadius: BorderRadius.circular(UIConstants.radiusSm),
           ),
@@ -145,8 +166,27 @@ class LeftButtons extends ConsumerWidget {
             ),
           ),
         ),
+        const SizedBox(width: UIConstants.spacingSm),
+        // 프로젝트 폴더 지정 버튼
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest
+                .withAlpha(UIConstants.alpha20),
+            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+          ),
+          child: IconButton(
+            icon: const FaIcon(FontAwesomeIcons.folderOpen),
+            iconSize: UIConstants.iconSm,
+            onPressed: () => _pickProjectFolder(context),
+            tooltip: '프로젝트 폴더 지정',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: UIConstants.iconLg + UIConstants.spacingSm,
+              minHeight: UIConstants.iconLg + UIConstants.spacingSm,
+            ),
+          ),
+        ),
       ],
     );
   }
 }
-

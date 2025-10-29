@@ -9,8 +9,9 @@ import '../../data/models/settings_state.dart';
 import '../../data/repositories/settings_repository.dart';
 import 'database_provider.dart';
 
-final settingsProvider =
-AsyncNotifierProvider<SettingsNotifier, SettingsState>(SettingsNotifier.new);
+final settingsProvider = AsyncNotifierProvider<SettingsNotifier, SettingsState>(
+  SettingsNotifier.new,
+);
 
 class SettingsNotifier extends AsyncNotifier<SettingsState> {
   late final SettingsRepository _repository;
@@ -18,8 +19,8 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
 
   @override
   Future<SettingsState> build() async {
-    final database = ref.read(databaseProvider);  // ✅ read로 직접 접근
-    _repository = SettingsRepository(database.settingsDao);  // ✅ SettingsDao 전달
+    final database = ref.read(databaseProvider); // ✅ read로 직접 접근
+    _repository = SettingsRepository(database.settingsDao); // ✅ SettingsDao 전달
     return await _repository.loadSettings();
   }
 
@@ -61,8 +62,9 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
         Logger.info('Deselecting preset (Off)');
         await _repository.saveSelectedPresetId(null);
 
-        final savedPipelineJson =
-        await _repository.getSetting(AppConstants.settingsKeyModelPipeline);
+        final savedPipelineJson = await _repository.getSetting(
+          AppConstants.settingsKeyModelPipeline,
+        );
         if (savedPipelineJson != null) {
           try {
             final decoded = jsonDecode(savedPipelineJson) as List;
@@ -72,10 +74,13 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
             final restoredPipeline = [...current.modelPipeline];
             for (int i = 0; i < restoredPipeline.length; i++) {
               if (i < savedPipeline.length) {
-                restoredPipeline[i] =
-                    restoredPipeline[i].copyWith(systemPrompt: savedPipeline[i].systemPrompt);
+                restoredPipeline[i] = restoredPipeline[i].copyWith(
+                  systemPrompt: savedPipeline[i].systemPrompt,
+                );
               } else {
-                restoredPipeline[i] = restoredPipeline[i].copyWith(systemPrompt: '');
+                restoredPipeline[i] = restoredPipeline[i].copyWith(
+                  systemPrompt: '',
+                );
               }
             }
             return current.copyWith(
@@ -89,10 +94,12 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
         return current.copyWith(selectedPresetId: null);
       }
 
-      final preset =
-      current.promptPresets.firstWhere((p) => p.id == presetId, orElse: () {
-        throw Exception('Preset not found: $presetId');
-      });
+      final preset = current.promptPresets.firstWhere(
+        (p) => p.id == presetId,
+        orElse: () {
+          throw Exception('Preset not found: $presetId');
+        },
+      );
 
       Logger.info('Selecting preset: ${preset.name}');
       await _repository.saveSelectedPresetId(presetId);
@@ -100,7 +107,9 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
       final updatedPipeline = [...current.modelPipeline];
       for (int i = 0; i < updatedPipeline.length; i++) {
         if (i < preset.prompts.length) {
-          updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: preset.prompts[i]);
+          updatedPipeline[i] = updatedPipeline[i].copyWith(
+            systemPrompt: preset.prompts[i],
+          );
         } else {
           updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: '');
         }
@@ -151,7 +160,9 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
   Future<void> removePreset(String id) async {
     state = await AsyncValue.guard(() async {
       final current = state.requireValue;
-      final updatedPresets = current.promptPresets.where((p) => p.id != id).toList();
+      final updatedPresets = current.promptPresets
+          .where((p) => p.id != id)
+          .toList();
 
       String? newSelectedPresetId = current.selectedPresetId;
       List<ModelConfig> updatedPipeline = current.modelPipeline;
@@ -161,8 +172,9 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
         newSelectedPresetId = null;
         await _repository.saveSelectedPresetId(null);
 
-        final savedPipelineJson =
-        await _repository.getSetting(AppConstants.settingsKeyModelPipeline);
+        final savedPipelineJson = await _repository.getSetting(
+          AppConstants.settingsKeyModelPipeline,
+        );
         if (savedPipelineJson != null) {
           try {
             final decoded = jsonDecode(savedPipelineJson) as List;
@@ -172,14 +184,20 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
             updatedPipeline = [...current.modelPipeline];
             for (int i = 0; i < updatedPipeline.length; i++) {
               if (i < savedPipeline.length) {
-                updatedPipeline[i] =
-                    updatedPipeline[i].copyWith(systemPrompt: savedPipeline[i].systemPrompt);
+                updatedPipeline[i] = updatedPipeline[i].copyWith(
+                  systemPrompt: savedPipeline[i].systemPrompt,
+                );
               } else {
-                updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: '');
+                updatedPipeline[i] = updatedPipeline[i].copyWith(
+                  systemPrompt: '',
+                );
               }
             }
           } catch (e) {
-            Logger.error('Failed to restore original prompts on preset removal.', e);
+            Logger.error(
+              'Failed to restore original prompts on preset removal.',
+              e,
+            );
           }
         }
       }
@@ -207,7 +225,9 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
       if (currentPreset != null) {
         for (int i = 0; i < pipeline.length; i++) {
           if (i < currentPreset.prompts.length) {
-            pipeline[i] = pipeline[i].copyWith(systemPrompt: currentPreset.prompts[i]);
+            pipeline[i] = pipeline[i].copyWith(
+              systemPrompt: currentPreset.prompts[i],
+            );
           } else {
             pipeline[i] = pipeline[i].copyWith(systemPrompt: '');
           }
@@ -284,11 +304,11 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
   }
 
   Future<void> updateModelConfig(
-      int index, {
-        String? modelId,
-        String? systemPrompt,
-        bool? isEnabled,
-      }) async {
+    int index, {
+    String? modelId,
+    String? systemPrompt,
+    bool? isEnabled,
+  }) async {
     state = await AsyncValue.guard(() async {
       final current = state.requireValue;
       final currentPipeline = [...current.modelPipeline];
@@ -306,7 +326,9 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
         Logger.info('Updating system prompt at index $index');
 
         if (selectedPresetId != null) {
-          final presetIndex = currentPresets.indexWhere((p) => p.id == selectedPresetId);
+          final presetIndex = currentPresets.indexWhere(
+            (p) => p.id == selectedPresetId,
+          );
           if (presetIndex != -1) {
             final presetToUpdate = currentPresets[presetIndex];
             final updatedPrompts = List<String>.from(presetToUpdate.prompts);
@@ -314,17 +336,22 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
               updatedPrompts[index] = systemPrompt;
             } else {
               Logger.warning(
-                  'Attempted to update prompt outside preset bounds. Index: $index, Preset prompts length: ${updatedPrompts.length}');
+                'Attempted to update prompt outside preset bounds. Index: $index, Preset prompts length: ${updatedPrompts.length}',
+              );
               while (updatedPrompts.length <= index) {
                 updatedPrompts.add('');
               }
               updatedPrompts[index] = systemPrompt;
             }
 
-            currentPresets[presetIndex] = presetToUpdate.copyWith(prompts: updatedPrompts);
+            currentPresets[presetIndex] = presetToUpdate.copyWith(
+              prompts: updatedPrompts,
+            );
 
             await _repository.savePromptPresets(currentPresets);
-            Logger.info('Updated preset "${presetToUpdate.name}" prompt at index $index.');
+            Logger.info(
+              'Updated preset "${presetToUpdate.name}" prompt at index $index.',
+            );
 
             newConfig = newConfig.copyWith(systemPrompt: systemPrompt);
             currentPipeline[index] = newConfig;
@@ -334,7 +361,9 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
               modelPipeline: currentPipeline,
             );
           } else {
-            Logger.error('Selected preset ID $selectedPresetId not found in presets list.');
+            Logger.error(
+              'Selected preset ID $selectedPresetId not found in presets list.',
+            );
             await _repository.saveSelectedPresetId(null);
             newConfig = newConfig.copyWith(systemPrompt: systemPrompt);
             currentPipeline[index] = newConfig;
@@ -348,7 +377,9 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
           newConfig = newConfig.copyWith(systemPrompt: systemPrompt);
           currentPipeline[index] = newConfig;
           await _repository.saveModelPipeline(currentPipeline);
-          Logger.info('Updated model pipeline system prompt at index $index (no preset).');
+          Logger.info(
+            'Updated model pipeline system prompt at index $index (no preset).',
+          );
 
           return current.copyWith(modelPipeline: currentPipeline);
         }
@@ -366,7 +397,9 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
 
       if (configChanged) {
         currentPipeline[index] = newConfig;
-        Logger.info('Updating model config (modelId/isEnabled) at index $index');
+        Logger.info(
+          'Updating model config (modelId/isEnabled) at index $index',
+        );
         await _repository.saveModelPipeline(currentPipeline);
         return current.copyWith(modelPipeline: currentPipeline);
       }
