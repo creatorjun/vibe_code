@@ -12,7 +12,7 @@ class AppConstants {
   static const int maxHistoryTokens = 8000;
 
   // ✅ 신규: 첨부 파일 제한
-  static const int maxCharsPerTextFile = 3000; // 약 750 토큰 (텍스트 파일 요약)
+  static const int maxCharsPerTextFile = 9999999;
   static const int maxCachedAttachments = 10; // 이미지 캐시 최대 개수
 
   // 데이터베이스
