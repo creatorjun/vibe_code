@@ -36,6 +36,7 @@ class GitHubAnalysisService {
           tempCopyDir.path,
           outputDir: Directory.systemTemp.path,
           maxFiles: 200,
+          useCache: false
         );
 
         final content = await File(outputPath).readAsString();

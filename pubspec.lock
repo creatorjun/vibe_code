@@ -468,10 +468,10 @@ packages:
     dependency: "direct main"
     description:
       name: github_analyzer
-      sha256: "7e39806de434c74e91967e33a0bd4dc2229d64a401ee61eb418766f0c93f8ca2"
+      sha256: "1e20bffbf73f8af7b714cdf746a269f062467362c2dde9e423ccfd84b0db1e09"
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.7"
+    version: "0.0.8"
   glob:
     dependency: transitive
     description:
