@@ -1,9 +1,8 @@
-// 파일 전체를 다음과 같이 수정
+// lib/presentation/screens/chat/widgets/right_buttons.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:vibe_code/data/models/settings_state.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
 import 'package:vibe_code/core/constants/app_constants.dart';
 import 'package:vibe_code/domain/providers/settings_provider.dart';
@@ -38,7 +37,6 @@ class RightButtons extends ConsumerWidget {
   }
 
   Widget _buildPipelineDepthSelector(BuildContext context, WidgetRef ref) {
-    // ✅ 개선: 필요한 필드만 구독
     final enabledModelsLength = ref.watch(
       settingsProvider.select((async) => async.whenOrNull(
         data: (settings) => settings.enabledModels.length,
@@ -46,7 +44,6 @@ class RightButtons extends ConsumerWidget {
           0),
     );
     final selectedDepth = ref.watch(selectedPipelineDepthProvider);
-
     final maxDepth = enabledModelsLength < AppConstants.maxPipelineModels
         ? enabledModelsLength
         : AppConstants.maxPipelineModels;
@@ -58,77 +55,99 @@ class RightButtons extends ConsumerWidget {
     final minDepth = AppConstants.minPipelineModels;
     final currentValidDepth = selectedDepth.clamp(minDepth, maxDepth);
 
-    return Container(
-      height: 32,
-      padding: const EdgeInsets.symmetric(
-        horizontal: UIConstants.spacingXs,
-        vertical: 2,
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerHighest
-            .withAlpha(UIConstants.alpha30),
-        borderRadius: BorderRadius.circular(UIConstants.radiusSm),
-        border: Border.all(
-          color: Theme.of(context)
-              .colorScheme
-              .outline
-              .withAlpha(UIConstants.alpha20),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(maxDepth, (index) {
-          final depth = index + 1;
-          final isSelected = depth == currentValidDepth;
-          return Padding(
-            padding: EdgeInsets.only(
-              right: index < maxDepth - 1 ? 4.0 : 0,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 라벨 추가
+        Padding(
+          padding: const EdgeInsets.only(
+            left: UIConstants.spacingXs,
+            bottom: 4,
+          ),
+          child: Text(
+            '파이프라인',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withAlpha(UIConstants.alpha60),
+              fontWeight: FontWeight.w600,
             ),
-            child: InkWell(
-              onTap: () => ref
-                  .read(selectedPipelineDepthProvider.notifier)
-                  .setDepth(depth),
-              borderRadius: BorderRadius.circular(UIConstants.radiusXs),
-              child: Container(
-                width: 28,
-                height: 28,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(UIConstants.radiusXs),
+          ),
+        ),
+        // 기존 버튼
+        Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(
+            horizontal: UIConstants.spacingXs,
+            vertical: 2,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withAlpha(UIConstants.alpha30),
+            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+            border: Border.all(
+              color: Theme.of(context)
+                  .colorScheme
+                  .outline
+                  .withAlpha(UIConstants.alpha20),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(maxDepth, (index) {
+              final depth = index + 1;
+              final isSelected = depth == currentValidDepth;
+              return Padding(
+                padding: EdgeInsets.only(
+                  right: index < maxDepth - 1 ? 4.0 : 0,
                 ),
-                child: Text(
-                  '$depth',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withAlpha(UIConstants.alpha70),
+                child: InkWell(
+                  onTap: () => ref
+                      .read(selectedPipelineDepthProvider.notifier)
+                      .setDepth(depth),
+                  borderRadius: BorderRadius.circular(UIConstants.radiusXs),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(UIConstants.radiusXs),
+                    ),
+                    child: Text(
+                      '$depth',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withAlpha(UIConstants.alpha70),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          );
-        }),
-      ),
+              );
+            }),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildPresetSelector(BuildContext context, WidgetRef ref) {
-    // ✅ 개선: presets와 selectedPresetId만 구독
     final presets = ref.watch(
       settingsProvider.select((async) => async.whenOrNull(
         data: (settings) => settings.promptPresets,
       ) ??
           []),
     );
-
     final selectedPresetId = ref.watch(
       settingsProvider.select((async) => async.whenOrNull(
         data: (settings) => settings.selectedPresetId,
@@ -137,71 +156,94 @@ class RightButtons extends ConsumerWidget {
 
     if (presets.isEmpty) return const SizedBox.shrink();
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 300),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: presets.map((preset) {
-            final isSelected = preset.id == selectedPresetId;
-            return Padding(
-              padding: const EdgeInsets.only(right: UIConstants.spacingSm),
-              child: _buildPresetButton(
-                context,
-                ref,
-                preset: preset,
-                isSelected: isSelected,
-              ),
-            );
-          }).toList(),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 라벨 추가
+        Padding(
+          padding: const EdgeInsets.only(
+            left: UIConstants.spacingXs,
+            bottom: 4,
+          ),
+          child: Text(
+            '프리셋',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withAlpha(UIConstants.alpha60),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-      ),
-    );
-  }
+        // 파이프라인과 동일한 스타일
+        Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(
+            horizontal: UIConstants.spacingXs,
+            vertical: 2,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withAlpha(UIConstants.alpha30),
+            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+            border: Border.all(
+              color: Theme.of(context)
+                  .colorScheme
+                  .outline
+                  .withAlpha(UIConstants.alpha20),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(presets.length, (index) {
+              final preset = presets[index];
+              final isSelected = preset.id == selectedPresetId;
 
-  Widget _buildPresetButton(
-      BuildContext context,
-      WidgetRef ref, {
-        required PromptPreset preset,
-        required bool isSelected,
-      }) {
-    final String label = preset.name;
-    const IconData icon = Icons.auto_awesome;
-
-    return FilterChip(
-      label: Text(label),
-      avatar: Icon(
-        icon,
-        size: 16,
-        color: isSelected
-            ? Theme.of(context).colorScheme.onPrimary
-            : Theme.of(context).colorScheme.secondary,
-      ),
-      selected: isSelected,
-      onSelected: (_) {
-        if (isSelected) {
-          ref.read(settingsProvider.notifier).selectPreset(null);
-        } else {
-          ref.read(settingsProvider.notifier).selectPreset(preset.id);
-        }
-      },
-      showCheckmark: false,
-      selectedColor: Theme.of(context).colorScheme.primary,
-      checkmarkColor: Theme.of(context).colorScheme.onPrimary,
-      labelStyle: TextStyle(
-        color: isSelected
-            ? Theme.of(context).colorScheme.onPrimary
-            : Theme.of(context).colorScheme.onSurfaceVariant,
-      ),
-      side: isSelected
-          ? BorderSide.none
-          : BorderSide(
-        color: Theme.of(context)
-            .colorScheme
-            .outline
-            .withAlpha(UIConstants.alpha90),
-      ),
+              return Padding(
+                padding: EdgeInsets.only(
+                  right: index < presets.length - 1 ? 4.0 : 0,
+                ),
+                child: InkWell(
+                  onTap: () {
+                    if (isSelected) {
+                      ref.read(settingsProvider.notifier).selectPreset(null);
+                    } else {
+                      ref.read(settingsProvider.notifier).selectPreset(preset.id);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(UIConstants.radiusXs),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(UIConstants.radiusXs),
+                    ),
+                    child: Text(
+                      '${index + 1}',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withAlpha(UIConstants.alpha70),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
     );
   }
 

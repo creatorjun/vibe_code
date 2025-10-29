@@ -36,11 +36,12 @@ class SettingsRepository {
       Logger.info('Loading settings...');
       final allSettings = await _settingsDao.getAllSettings();
 
-      if (allSettings.containsKey(AppConstants.settingsKeyPromptPresets)) {
-        Logger.info('Force updating presets with new defaults');
-        await savePromptPresets(defaultPresets); // ✅ public 메서드 호출
-        await saveSelectedPresetId(null); // ✅ public 메서드 호출
-      }
+      // ❌ 이 부분 삭제 - 매번 기본값으로 덮어쓰는 문제 코드
+      // if (allSettings.containsKey(AppConstants.settingsKeyPromptPresets)) {
+      //   Logger.info('Force updating presets with new defaults');
+      //   await savePromptPresets(defaultPresets);
+      //   await saveSelectedPresetId(null);
+      // }
 
       if (allSettings.isEmpty) {
         Logger.info('No settings found, initializing with defaults');
@@ -52,8 +53,8 @@ class SettingsRepository {
       // --- 프롬프트 프리셋 초기화 ---
       if (!allSettings.containsKey(AppConstants.settingsKeyPromptPresets)) {
         Logger.info('Prompt presets not found, initializing defaults.');
-        await savePromptPresets(defaultPresets); // ✅ public 메서드 호출
-        await saveSelectedPresetId(null); // ✅ public 메서드 호출
+        await savePromptPresets(defaultPresets);
+        await saveSelectedPresetId(null);
         final updatedSettings = await _settingsDao.getAllSettings();
         return _buildSettingsState(updatedSettings);
       }
@@ -160,8 +161,8 @@ class SettingsRepository {
       await _settingsDao.saveSetting(AppConstants.settingsKeyThemeMode, 'system');
 
       // 프롬프트 프리셋 / ID 초기화
-      await savePromptPresets(defaultPresets); // ✅ public 메서드 호출
-      await saveSelectedPresetId(null); // ✅ public 메서드 호출
+      await savePromptPresets(defaultPresets);
+      await saveSelectedPresetId(null);
 
       // 메시지 히스토리 제한 초기화
       await _settingsDao.saveSetting(

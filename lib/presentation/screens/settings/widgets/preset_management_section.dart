@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../domain/providers/settings_provider.dart';
 import '../../../../data/models/settings_state.dart';
@@ -35,17 +36,38 @@ class PresetManagementSection extends ConsumerWidget {
             const SizedBox(width: UIConstants.spacingSm),
             Expanded(
               child: Text(
-                '프리셋 관리',
+                '프롬프트 프리셋',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
+            // 프리셋 개수 표시 (파이프라인 스타일)
+            settingsAsync.when(
+              data: (settings) => Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: UIConstants.spacingSm,
+                  vertical: UIConstants.spacingXs,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(UIConstants.radiusLg),
+                ),
+                child: Text(
+                  '${settings.promptPresets.length}/5',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: colorScheme.onSecondaryContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
           ],
         ),
         const SizedBox(height: UIConstants.spacingSm),
-
-        // 설명
+        // 안내 문구
         Row(
           children: [
             Icon(
@@ -56,7 +78,7 @@ class PresetManagementSection extends ConsumerWidget {
             const SizedBox(width: UIConstants.spacingXs),
             Expanded(
               child: Text(
-                '프리셋을 더블클릭하여 이름을 변경하거나 삭제할 수 있습니다',
+                '프리셋은 최대 5개까지 생성할 수 있습니다',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurface.withAlpha(UIConstants.alpha60),
                 ),
@@ -65,100 +87,131 @@ class PresetManagementSection extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: UIConstants.spacingMd),
-
-        // 프리셋 목록
-        settingsAsync.when(
-          data: (settings) {
-            if (settings.promptPresets.isEmpty) {
-              return _buildEmptyState(context);
-            }
-
-            return Column(
-              children: settings.promptPresets.map((preset) {
-                return _PresetCard(
-                  preset: preset,
-                  isSelected: settings.selectedPresetId == preset.id,
-                );
-              }).toList(),
-            );
-          },
-          loading: () => const Center(
-            child: Padding(
-              padding: EdgeInsets.all(UIConstants.spacingMd),
-              child: CircularProgressIndicator(),
+        // 프리셋 카드 (파이프라인 스타일)
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(UIConstants.radiusLg),
+            side: BorderSide(
+              color: colorScheme.outlineVariant.withAlpha(UIConstants.alpha60),
             ),
           ),
-          error: (error, stack) => _buildErrorState(context, error),
+          child: Padding(
+            padding: const EdgeInsets.all(UIConstants.spacingMd),
+            child: settingsAsync.when(
+              data: (settings) => _buildPresetList(context, ref, settings),
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(UIConstants.spacingLg),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (error, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(UIConstants.spacingLg),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline),
+                      const SizedBox(width: UIConstants.spacingSm),
+                      Expanded(
+                        child: Text(
+                          '$error',
+                          style: TextStyle(color: colorScheme.error),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-        side: BorderSide(
-          color: Theme.of(context)
-              .colorScheme
-              .outlineVariant
-              .withAlpha(UIConstants.alpha60),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(UIConstants.spacingLg),
-        child: Center(
-          child: Column(
-            children: [
-              Icon(
-                Icons.bookmark_border,
-                size: 48,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withAlpha(UIConstants.alpha30),
-              ),
-              const SizedBox(height: UIConstants.spacingSm),
-              Text(
-                '저장된 프리셋이 없습니다',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withAlpha(UIConstants.alpha60),
+  Widget _buildPresetList(BuildContext context, WidgetRef ref, SettingsState settings) {
+    return Column(
+      children: [
+        // 프리셋 목록
+        ...settings.promptPresets.asMap().entries.map((entry) {
+          final index = entry.key;
+          final preset = entry.value;
+          final isSelected = settings.selectedPresetId == preset.id;
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: index < settings.promptPresets.length - 1
+                  ? UIConstants.spacingMd
+                  : 0,
+            ),
+            child: _PresetCard(
+              preset: preset,
+              index: index,
+              isSelected: isSelected,
+            ),
+          );
+        }),
+
+        // 프리셋 추가 버튼 (파이프라인 스타일)
+        if (settings.promptPresets.length < 5) ...[
+          const SizedBox(height: UIConstants.spacingMd),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _showAddPresetDialog(context, ref),
+              icon: const Icon(Icons.add),
+              label: const Text('프리셋 추가'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  vertical: UIConstants.spacingMd,
+                  horizontal: UIConstants.spacingLg,
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        ],
+      ],
     );
   }
 
-  Widget _buildErrorState(BuildContext context, Object error) {
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.errorContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(UIConstants.spacingMd),
-        child: Row(
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(width: UIConstants.spacingSm),
-            Expanded(
-              child: Text(
-                '프리셋 로드 실패: $error',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onErrorContainer,
-                ),
-              ),
-            ),
-          ],
+  void _showAddPresetDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('새 프리셋 추가'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: '프리셋 이름',
+            hintText: '예: 버그 수정 프리셋',
+          ),
+          onSubmitted: (value) {
+            if (value.trim().isNotEmpty) {
+              ref.read(settingsProvider.notifier).addEmptyPreset(value.trim());
+              Navigator.of(context).pop();
+            }
+          },
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                ref.read(settingsProvider.notifier).addEmptyPreset(name);
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text('추가'),
+          ),
+        ],
       ),
     );
   }
@@ -166,10 +219,12 @@ class PresetManagementSection extends ConsumerWidget {
 
 class _PresetCard extends ConsumerWidget {
   final PromptPreset preset;
+  final int index;
   final bool isSelected;
 
   const _PresetCard({
     required this.preset,
+    required this.index,
     required this.isSelected,
   });
 
@@ -178,43 +233,49 @@ class _PresetCard extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: UIConstants.spacingMd),
+      margin: EdgeInsets.zero,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(UIConstants.radiusMd),
         side: BorderSide(
           color: isSelected
-              ? colorScheme.primary.withAlpha(UIConstants.alpha60)
+              ? colorScheme.primary.withAlpha(UIConstants.alpha30)
               : colorScheme.outlineVariant.withAlpha(UIConstants.alpha60),
           width: isSelected ? 2 : 1,
         ),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-        onDoubleTap: () => _showRenameDialog(context, ref),
+        onTap: () {
+          ref.read(settingsProvider.notifier).selectPreset(preset.id);
+        },
         child: Padding(
           padding: const EdgeInsets.all(UIConstants.spacingMd),
           child: Row(
             children: [
-              // 아이콘
+              // 인덱스 표시 (파이프라인 스타일)
               Container(
-                padding: const EdgeInsets.all(UIConstants.spacingSm),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: UIConstants.spacingSm,
+                  vertical: UIConstants.spacingXs,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? colorScheme.primaryContainer
                       : colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(UIConstants.radiusSm),
                 ),
-                child: Icon(
-                  Icons.bookmark,
-                  size: UIConstants.iconMd,
-                  color: isSelected
-                      ? colorScheme.onPrimaryContainer
-                      : colorScheme.onSurfaceVariant,
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isSelected
+                        ? colorScheme.onPrimaryContainer
+                        : colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
               const SizedBox(width: UIConstants.spacingMd),
-
               // 프리셋 정보
               Expanded(
                 child: Column(
@@ -231,7 +292,7 @@ class _PresetCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: UIConstants.spacingXs),
                     Text(
-                      '${preset.prompts.length}개 모델 프롬프트',
+                      '프롬프트 ${preset.prompts.length}개',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -239,12 +300,10 @@ class _PresetCard extends ConsumerWidget {
                   ],
                 ),
               ),
-
               // 액션 버튼
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 이름 변경 버튼
                   IconButton(
                     icon: const Icon(Icons.edit_outlined),
                     iconSize: 20,
@@ -252,15 +311,13 @@ class _PresetCard extends ConsumerWidget {
                     onPressed: () => _showRenameDialog(context, ref),
                     color: colorScheme.primary,
                   ),
-                  // 삭제 버튼 (기본 프리셋이 아닐 경우만)
-                  if (preset.id != 'default')
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      iconSize: 20,
-                      tooltip: '삭제',
-                      onPressed: () => _confirmDelete(context, ref),
-                      color: colorScheme.error,
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    iconSize: 20,
+                    tooltip: '삭제',
+                    onPressed: () => _confirmDelete(context, ref),
+                    color: colorScheme.error,
+                  ),
                 ],
               ),
             ],
@@ -270,22 +327,18 @@ class _PresetCard extends ConsumerWidget {
     );
   }
 
-  /// ✅ 이름 변경 다이얼로그
   void _showRenameDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController(text: preset.name);
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('프리셋 이름 변경'),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
-            labelText: '프리셋 이름',
-            hintText: '새로운 이름을 입력하세요',
-            border: OutlineInputBorder(),
-          ),
           autofocus: true,
+          decoration: const InputDecoration(
+            labelText: '새 이름',
+          ),
           onSubmitted: (value) {
             if (value.trim().isNotEmpty) {
               _renamePreset(context, ref, value.trim());
@@ -313,35 +366,22 @@ class _PresetCard extends ConsumerWidget {
     );
   }
 
-  /// ✅ 프리셋 이름 변경 실행
   void _renamePreset(BuildContext context, WidgetRef ref, String newName) {
     ref.read(settingsProvider.notifier).renamePreset(preset.id, newName);
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: UIConstants.spacingSm),
-            Text('프리셋 이름이 "$newName"(으)로 변경되었습니다'),
-          ],
-        ),
+        content: Text('프리셋 이름이 "$newName"(으)로 변경되었습니다'),
         backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-        ),
       ),
     );
   }
 
-  /// 삭제 확인 다이얼로그
   void _confirmDelete(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('프리셋 삭제'),
-        content: Text('프리셋 "${preset.name}"을(를) 삭제하시겠습니까?'),
+        content: Text('"${preset.name}" 프리셋을 삭제하시겠습니까?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -349,24 +389,10 @@ class _PresetCard extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () {
-              ref.read(settingsProvider.notifier).removePreset(preset.id);
+              ref.read(settingsProvider.notifier).deletePreset(preset.id);
               Navigator.of(context).pop();
-
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Row(
-                    children: [
-                      Icon(Icons.delete, color: Colors.white),
-                      SizedBox(width: UIConstants.spacingSm),
-                      Text('프리셋이 삭제되었습니다'),
-                    ],
-                  ),
-                  backgroundColor: Colors.red,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(UIConstants.radiusMd),
-                  ),
-                ),
+                const SnackBar(content: Text('프리셋이 삭제되었습니다')),
               );
             },
             style: FilledButton.styleFrom(
