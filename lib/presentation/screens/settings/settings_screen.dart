@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/ui_constants.dart';
 import 'widgets/api_settings.dart';
 import 'widgets/model_pipeline_settings.dart';
+import 'widgets/preset_management_section.dart';
 import 'widgets/theme_selector.dart';
 import 'widgets/data_management_section.dart';
 import 'widgets/app_info_section.dart';
@@ -32,6 +33,10 @@ class SettingsScreen extends ConsumerWidget {
 
             // 모델 파이프라인 설정
             ModelPipelineSettings(),
+            SizedBox(height: UIConstants.spacingLg),
+
+            // ✅ 프리셋 관리 섹션 추가
+            PresetManagementSection(),
             SizedBox(height: UIConstants.spacingLg),
 
             // 테마 선택

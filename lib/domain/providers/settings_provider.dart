@@ -1,64 +1,200 @@
-// lib/domain/providers/settings_provider.dart (수정)
-import 'dart:convert';
+// lib/domain/providers/settings_provider.dart
 
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/logger.dart';
 import '../../data/models/settings_state.dart';
 import '../../data/repositories/settings_repository.dart';
-import '../../core/utils/logger.dart';
 import 'database_provider.dart';
 
-// Settings Provider
 final settingsProvider =
-AsyncNotifierProvider<SettingsNotifier, SettingsState>(
-  SettingsNotifier.new,
-);
+AsyncNotifierProvider<SettingsNotifier, SettingsState>(SettingsNotifier.new);
 
 class SettingsNotifier extends AsyncNotifier<SettingsState> {
   late final SettingsRepository _repository;
-  final Uuid _uuid = const Uuid();
+  final _uuid = const Uuid();
 
   @override
   Future<SettingsState> build() async {
-    Logger.info('Initializing settings provider');
-    final db = ref.watch(databaseProvider);
-    _repository = SettingsRepository(db.settingsDao);
-
-    final settings = await _repository.loadSettings();
-    Logger.info('Settings loaded: ${settings.modelPipeline.length} models, ${settings.promptPresets.length} presets');
-    return settings;
+    final database = ref.read(databaseProvider);  // ✅ read로 직접 접근
+    _repository = SettingsRepository(database.settingsDao);  // ✅ SettingsDao 전달
+    return await _repository.loadSettings();
   }
 
-  // --- 기존 메서드들 (API 키, 테마 등) ---
+  // ===== API Key =====
   Future<void> updateApiKey(String apiKey) async {
     state = await AsyncValue.guard(() async {
-      final current = state.requireValue;
       Logger.info('Updating API key');
       await _repository.saveApiKey(apiKey);
-      return current.copyWith(apiKey: apiKey);
+      return state.requireValue.copyWith(apiKey: apiKey);
     });
   }
 
+  // ===== Theme Mode =====
   Future<void> updateThemeMode(String themeMode) async {
     state = await AsyncValue.guard(() async {
-      final current = state.requireValue;
       Logger.info('Updating theme mode: $themeMode');
       await _repository.saveThemeMode(themeMode);
-      return current.copyWith(themeMode: themeMode);
+      return state.requireValue.copyWith(themeMode: themeMode);
     });
   }
 
-  Future<void> resetSettings() async {
+  // ===== Max History Messages =====
+  Future<void> updateMaxHistoryMessages(int maxMessages) async {
     state = await AsyncValue.guard(() async {
-      Logger.info('Resetting all settings');
-      await _repository.resetSettings();
-      return await _repository.loadSettings();
+      Logger.info('Updating max history messages: $maxMessages');
+      await _repository.saveMaxHistoryMessages(maxMessages);
+      return state.requireValue.copyWith(maxHistoryMessages: maxMessages);
     });
   }
 
+  // ===== Prompt Presets =====
 
-  // --- 모델 파이프라인 관련 메서드 ---
+  /// 프리셋 선택/해제
+  Future<void> selectPreset(String? presetId) async {
+    state = await AsyncValue.guard(() async {
+      final current = state.requireValue;
+
+      if (presetId == null) {
+        Logger.info('Deselecting preset (Off)');
+        await _repository.saveSelectedPresetId(null);
+
+        final savedPipelineJson =
+        await _repository.getSetting(AppConstants.settingsKeyModelPipeline);
+        if (savedPipelineJson != null) {
+          try {
+            final decoded = jsonDecode(savedPipelineJson) as List;
+            final savedPipeline = decoded
+                .map((e) => ModelConfig.fromJson(e as Map<String, dynamic>))
+                .toList();
+            final restoredPipeline = [...current.modelPipeline];
+            for (int i = 0; i < restoredPipeline.length; i++) {
+              if (i < savedPipeline.length) {
+                restoredPipeline[i] =
+                    restoredPipeline[i].copyWith(systemPrompt: savedPipeline[i].systemPrompt);
+              } else {
+                restoredPipeline[i] = restoredPipeline[i].copyWith(systemPrompt: '');
+              }
+            }
+            return current.copyWith(
+              selectedPresetId: null,
+              modelPipeline: restoredPipeline,
+            );
+          } catch (e) {
+            Logger.error('Failed to restore original prompts.', e);
+          }
+        }
+        return current.copyWith(selectedPresetId: null);
+      }
+
+      final preset =
+      current.promptPresets.firstWhere((p) => p.id == presetId, orElse: () {
+        throw Exception('Preset not found: $presetId');
+      });
+
+      Logger.info('Selecting preset: ${preset.name}');
+      await _repository.saveSelectedPresetId(presetId);
+
+      final updatedPipeline = [...current.modelPipeline];
+      for (int i = 0; i < updatedPipeline.length; i++) {
+        if (i < preset.prompts.length) {
+          updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: preset.prompts[i]);
+        } else {
+          updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: '');
+        }
+      }
+
+      return current.copyWith(
+        selectedPresetId: presetId,
+        modelPipeline: updatedPipeline,
+      );
+    });
+  }
+
+  /// 새 프리셋 추가
+  Future<void> addPreset(String name, List<String> prompts) async {
+    state = await AsyncValue.guard(() async {
+      final current = state.requireValue;
+      final newPreset = PromptPreset(
+        id: _uuid.v4(),
+        name: name,
+        prompts: prompts,
+      );
+
+      final updated = [...current.promptPresets, newPreset];
+      Logger.info('Adding new preset: $name');
+      await _repository.savePromptPresets(updated);
+      return current.copyWith(promptPresets: updated);
+    });
+  }
+
+  /// ✅ 프리셋 이름 변경
+  Future<void> renamePreset(String id, String newName) async {
+    state = await AsyncValue.guard(() async {
+      final current = state.requireValue;
+      final updatedPresets = current.promptPresets.map((preset) {
+        if (preset.id == id) {
+          return preset.copyWith(name: newName);
+        }
+        return preset;
+      }).toList();
+
+      Logger.info('Renaming preset ID: $id to "$newName"');
+      await _repository.savePromptPresets(updatedPresets);
+      return current.copyWith(promptPresets: updatedPresets);
+    });
+  }
+
+  /// 프리셋 삭제
+  Future<void> removePreset(String id) async {
+    state = await AsyncValue.guard(() async {
+      final current = state.requireValue;
+      final updatedPresets = current.promptPresets.where((p) => p.id != id).toList();
+
+      String? newSelectedPresetId = current.selectedPresetId;
+      List<ModelConfig> updatedPipeline = current.modelPipeline;
+
+      if (current.selectedPresetId == id) {
+        Logger.info('Deselecting preset as it is being removed.');
+        newSelectedPresetId = null;
+        await _repository.saveSelectedPresetId(null);
+
+        final savedPipelineJson =
+        await _repository.getSetting(AppConstants.settingsKeyModelPipeline);
+        if (savedPipelineJson != null) {
+          try {
+            final decoded = jsonDecode(savedPipelineJson) as List;
+            final savedPipeline = decoded
+                .map((e) => ModelConfig.fromJson(e as Map<String, dynamic>))
+                .toList();
+            updatedPipeline = [...current.modelPipeline];
+            for (int i = 0; i < updatedPipeline.length; i++) {
+              if (i < savedPipeline.length) {
+                updatedPipeline[i] =
+                    updatedPipeline[i].copyWith(systemPrompt: savedPipeline[i].systemPrompt);
+              } else {
+                updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: '');
+              }
+            }
+          } catch (e) {
+            Logger.error('Failed to restore original prompts on preset removal.', e);
+          }
+        }
+      }
+
+      Logger.info('Removing preset ID: $id');
+      await _repository.savePromptPresets(updatedPresets);
+      return current.copyWith(
+        promptPresets: updatedPresets,
+        selectedPresetId: newSelectedPresetId,
+        modelPipeline: updatedPipeline,
+      );
+    });
+  }
+
+  // ===== Model Pipeline =====
 
   Future<void> updateModelPipeline(List<ModelConfig> pipeline) async {
     if (pipeline.length > 5) {
@@ -69,7 +205,6 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
       Logger.info('Updating model pipeline: ${pipeline.length} models');
       final currentPreset = state.requireValue.selectedPreset;
       if (currentPreset != null) {
-        // 프리셋이 선택된 경우, 시스템 프롬프트를 프리셋 값으로 덮어씀
         for (int i = 0; i < pipeline.length; i++) {
           if (i < currentPreset.prompts.length) {
             pipeline[i] = pipeline[i].copyWith(systemPrompt: currentPreset.prompts[i]);
@@ -119,7 +254,6 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
   }
 
   Future<void> reorderModels(int oldIndex, int newIndex) async {
-    // ... (기존 코드 유지)
     final current = state.requireValue;
     final updated = [...current.modelPipeline];
 
@@ -138,7 +272,6 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
   }
 
   Future<void> toggleModel(int index) async {
-    // ... (기존 코드 유지)
     final current = state.requireValue;
     final model = current.modelPipeline[index];
 
@@ -150,7 +283,6 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
     await updateModelConfig(index, isEnabled: !model.isEnabled);
   }
 
-  /// 특정 모델의 설정 업데이트 (시스템 프롬프트 편집 로직 수정)
   Future<void> updateModelConfig(
       int index, {
         String? modelId,
@@ -168,54 +300,41 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
       }
 
       final oldConfig = currentPipeline[index];
-      ModelConfig newConfig = oldConfig; // 수정될 모델 설정
+      ModelConfig newConfig = oldConfig;
 
-      // --- 시스템 프롬프트 업데이트 로직 ---
       if (systemPrompt != null) {
         Logger.info('Updating system prompt at index $index');
 
         if (selectedPresetId != null) {
-          // **프리셋 선택된 경우: 프리셋 데이터를 직접 수정**
           final presetIndex = currentPresets.indexWhere((p) => p.id == selectedPresetId);
           if (presetIndex != -1) {
             final presetToUpdate = currentPresets[presetIndex];
-            // prompts 리스트 복사 및 수정
             final updatedPrompts = List<String>.from(presetToUpdate.prompts);
             if (index < updatedPrompts.length) {
-              updatedPrompts[index] = systemPrompt; // 해당 인덱스의 프롬프트 변경
+              updatedPrompts[index] = systemPrompt;
             } else {
-              // 파이프라인 인덱스가 프리셋 프롬프트 길이보다 길 경우 (이론상 발생하기 어려움)
-              // 필요하다면 리스트를 확장하고 값을 채우는 로직 추가 가능
-              Logger.warning('Attempted to update prompt outside preset bounds. Index: $index, Preset prompts length: ${updatedPrompts.length}');
-              // 일단 길이에 맞춰서 추가 (선택적)
+              Logger.warning(
+                  'Attempted to update prompt outside preset bounds. Index: $index, Preset prompts length: ${updatedPrompts.length}');
               while (updatedPrompts.length <= index) {
                 updatedPrompts.add('');
               }
               updatedPrompts[index] = systemPrompt;
             }
 
-            // 수정된 prompts로 프리셋 객체 업데이트
             currentPresets[presetIndex] = presetToUpdate.copyWith(prompts: updatedPrompts);
 
-            // 변경된 프리셋 목록 저장
             await _repository.savePromptPresets(currentPresets);
             Logger.info('Updated preset "${presetToUpdate.name}" prompt at index $index.');
 
-            // UI 반영을 위해 modelPipeline의 systemPrompt도 업데이트
             newConfig = newConfig.copyWith(systemPrompt: systemPrompt);
             currentPipeline[index] = newConfig;
-            // modelPipeline 저장 불필요 (프리셋이 원본 데이터)
 
-            // 상태 업데이트 (presets와 pipeline 둘 다 업데이트)
             return current.copyWith(
               promptPresets: currentPresets,
-              modelPipeline: currentPipeline, // UI 즉시 반영 위함
+              modelPipeline: currentPipeline,
             );
-
           } else {
-            // 선택된 ID에 해당하는 프리셋이 없는 비정상 상황
             Logger.error('Selected preset ID $selectedPresetId not found in presets list.');
-            // 이 경우, 프리셋 선택을 해제하고 모델 파이프라인 직접 수정
             await _repository.saveSelectedPresetId(null);
             newConfig = newConfig.copyWith(systemPrompt: systemPrompt);
             currentPipeline[index] = newConfig;
@@ -225,21 +344,16 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
               selectedPresetId: null,
             );
           }
-
         } else {
-          // **프리셋 "끄기" 상태: 모델 파이프라인 직접 수정**
           newConfig = newConfig.copyWith(systemPrompt: systemPrompt);
           currentPipeline[index] = newConfig;
-          await _repository.saveModelPipeline(currentPipeline); // 변경된 파이프라인 저장
+          await _repository.saveModelPipeline(currentPipeline);
           Logger.info('Updated model pipeline system prompt at index $index (no preset).');
 
-          // 상태 업데이트
           return current.copyWith(modelPipeline: currentPipeline);
         }
       }
-      // --- ---
 
-      // 다른 설정(modelId, isEnabled) 업데이트 로직 (기존과 유사)
       bool configChanged = false;
       if (modelId != null && modelId != oldConfig.modelId) {
         newConfig = newConfig.copyWith(modelId: modelId);
@@ -257,184 +371,7 @@ class SettingsNotifier extends AsyncNotifier<SettingsState> {
         return current.copyWith(modelPipeline: currentPipeline);
       }
 
-      // 변경 사항이 없으면 기존 상태 반환
       return current;
     });
   }
-
-
-  // --- 프리셋 관련 메서드 ---
-
-  /// 프리셋 선택 (ID 또는 null 전달)
-  Future<void> selectPreset(String? presetId) async {
-    state = await AsyncValue.guard(() async {
-      // ... (이전과 동일, 수정 없음) ...
-      final current = state.requireValue;
-      PromptPreset? selectedPreset;
-      if (presetId != null) {
-        try {
-          selectedPreset = current.promptPresets.firstWhere((p) => p.id == presetId);
-        } catch (_) {
-          Logger.warning('Preset with ID $presetId not found.');
-          presetId = null;
-        }
-      }
-
-      Logger.info('Selecting preset: $presetId');
-      await _repository.saveSelectedPresetId(presetId);
-
-      List<ModelConfig> updatedPipeline = [...current.modelPipeline];
-      if (selectedPreset != null) {
-        // 파이프라인에 프리셋 프롬프트 적용
-        Logger.info('Applying selected preset prompts to pipeline.');
-        for (int i = 0; i < updatedPipeline.length; i++) {
-          if (i < selectedPreset.prompts.length) {
-            updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: selectedPreset.prompts[i]);
-          } else {
-            updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: '');
-          }
-        }
-        // 프리셋 적용 시에는 ModelPipeline을 저장하지 않음 (UI 반영용 임시 값)
-        // await _repository.saveModelPipeline(updatedPipeline);
-      } else {
-        // 프리셋 해제 시: ModelConfig에 저장된 원래 프롬프트로 복원
-        Logger.info('Deselecting preset, restoring original prompts to pipeline.');
-        // 저장된 ModelPipeline 설정을 다시 로드하여 적용
-        final savedPipelineJson = await _repository.getSetting(AppConstants.settingsKeyModelPipeline);
-        if (savedPipelineJson != null) {
-          try {
-            final decoded = jsonDecode(savedPipelineJson) as List;
-            final savedPipeline = decoded
-                .map((e) => ModelConfig.fromJson(e as Map<String, dynamic>))
-                .toList();
-
-            // 현재 파이프라인 길이에 맞춰서 저장된 프롬프트 적용
-            for (int i = 0; i < updatedPipeline.length; i++) {
-              if (i < savedPipeline.length) {
-                updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: savedPipeline[i].systemPrompt);
-              } else {
-                updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: ''); // 길이를 넘어가는 부분은 초기화
-              }
-            }
-
-          } catch(e) {
-            Logger.error('Failed to restore original prompts on preset deselection.', e);
-            // 복원 실패 시 현재 상태 유지 또는 다른 처리 가능
-          }
-        }
-      }
-
-      return current.copyWith(
-        selectedPresetId: presetId,
-        modelPipeline: updatedPipeline, // UI 반영
-      );
-    });
-  }
-
-  /// 프리셋 추가 (SettingsScreen에서 사용)
-  Future<void> addPreset(String name, List<String> prompts) async {
-    // ... (이전과 동일, 수정 없음) ...
-    state = await AsyncValue.guard(() async {
-      final current = state.requireValue;
-      final newPreset = PromptPreset(
-        id: _uuid.v4(),
-        name: name,
-        prompts: prompts,
-      );
-      final updatedPresets = [...current.promptPresets, newPreset];
-      Logger.info('Adding new preset: ${newPreset.name}');
-      await _repository.savePromptPresets(updatedPresets);
-      return current.copyWith(promptPresets: updatedPresets);
-    });
-  }
-
-  /// 프리셋 수정 (SettingsScreen에서 사용 - prompts 수정 로직 변경됨)
-  Future<void> updatePreset(String id, {String? name, List<String>? prompts}) async {
-    state = await AsyncValue.guard(() async {
-      final current = state.requireValue;
-      final index = current.promptPresets.indexWhere((p) => p.id == id);
-      if (index == -1) throw Exception('Preset not found');
-
-      final updatedPresets = [...current.promptPresets];
-      final oldPreset = updatedPresets[index];
-      // copyWith 사용하여 업데이트
-      updatedPresets[index] = oldPreset.copyWith(
-        name: name ?? oldPreset.name,
-        prompts: prompts ?? oldPreset.prompts,
-      );
-
-      Logger.info('Updating preset: ${updatedPresets[index].name}');
-      await _repository.savePromptPresets(updatedPresets);
-
-      // 수정된 프리셋이 현재 선택된 프리셋이라면 파이프라인 UI도 업데이트
-      List<ModelConfig> updatedPipeline = current.modelPipeline; // 기본값은 현재 파이프라인
-      if (current.selectedPresetId == id) {
-        Logger.info('Updating pipeline UI for the updated selected preset.');
-        updatedPipeline = [...current.modelPipeline]; // 복사본 생성
-        final updatedPreset = updatedPresets[index];
-        for (int i = 0; i < updatedPipeline.length; i++) {
-          if (i < updatedPreset.prompts.length) {
-            updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: updatedPreset.prompts[i]);
-          } else {
-            updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: '');
-          }
-        }
-        // 파이프라인 UI 업데이트 시에는 DB 저장 안 함
-        // await _repository.saveModelPipeline(updatedPipeline);
-      }
-
-      return current.copyWith(
-          promptPresets: updatedPresets,
-          modelPipeline: updatedPipeline // UI 업데이트 반영
-      );
-    });
-  }
-
-
-  /// 프리셋 삭제 (SettingsScreen에서 사용)
-  Future<void> removePreset(String id) async {
-    state = await AsyncValue.guard(() async {
-      final current = state.requireValue;
-      final updatedPresets = current.promptPresets.where((p) => p.id != id).toList();
-
-      String? newSelectedPresetId = current.selectedPresetId;
-      List<ModelConfig> updatedPipeline = current.modelPipeline; // 기본값
-
-      if (current.selectedPresetId == id) {
-        Logger.info('Deselecting preset as it is being removed.');
-        newSelectedPresetId = null;
-        await _repository.saveSelectedPresetId(null);
-
-        // 프리셋 해제 시 모델 파이프라인 복원 로직 추가 (selectPreset과 동일)
-        final savedPipelineJson = await _repository.getSetting(AppConstants.settingsKeyModelPipeline);
-        if (savedPipelineJson != null) {
-          try {
-            final decoded = jsonDecode(savedPipelineJson) as List;
-            final savedPipeline = decoded
-                .map((e) => ModelConfig.fromJson(e as Map<String, dynamic>))
-                .toList();
-            updatedPipeline = [...current.modelPipeline]; // 복사본 생성
-            for (int i = 0; i < updatedPipeline.length; i++) {
-              if (i < savedPipeline.length) {
-                updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: savedPipeline[i].systemPrompt);
-              } else {
-                updatedPipeline[i] = updatedPipeline[i].copyWith(systemPrompt: '');
-              }
-            }
-          } catch(e) {
-            Logger.error('Failed to restore original prompts on preset removal.', e);
-          }
-        }
-      }
-
-      Logger.info('Removing preset ID: $id');
-      await _repository.savePromptPresets(updatedPresets);
-      return current.copyWith(
-          promptPresets: updatedPresets,
-          selectedPresetId: newSelectedPresetId,
-          modelPipeline: updatedPipeline // UI 업데이트 반영
-      );
-    });
-  }
-// --- ---
 }
