@@ -1,4 +1,7 @@
+// lib/presentation/screens/chat/chat_screen.dart
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vibe_code/presentation/screens/chat/widgets/chat_input.dart';
@@ -26,6 +29,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   static const emptyMessagesProvider = AsyncValue<List<Message>>.data([]);
 
   int? previousSessionId;
+  int? previousMessageCount;
   Timer? scrollDebounce;
   double prevKeyboardHeight = 0;
   double prevInputHeight = 0;
@@ -38,7 +42,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void scrollToBottom(ScrollController controller) {
     if (!controller.hasClients) return;
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (controller.hasClients) {
         controller.animateTo(
@@ -68,7 +71,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ? ref.watch(sessionMessagesProvider(activeSessionId))
         : emptyMessagesProvider;
 
-    setupListeners(activeSessionId, scrollController);
+    // ✅ Riverpod 3.0 개선: ref.listen 제거, watch로 변경 감지
+    setupScrollEffects(activeSessionId, messagesAsync, scrollController);
     handleHeightChanges(context, scrollController);
 
     return Scaffold(
@@ -91,41 +95,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  // 기존 코드의 setupListeners 메서드를 수정
-
-  void setupListeners(int? activeSessionId, ScrollController controller) {
+  /// ✅ Riverpod 3.0 개선: ref.listen 대신 watch 기반 상태 감지
+  /// StreamProvider를 직접 listen하면 이중 구독이 발생하므로 watch로 변경
+  void setupScrollEffects(
+      int? activeSessionId,
+      AsyncValue<List<Message>> messagesAsync,
+      ScrollController controller,
+      ) {
+    // 세션 변경 시 스크롤
     if (activeSessionId != previousSessionId) {
       previousSessionId = activeSessionId;
+      previousMessageCount = null; // 메시지 카운트 초기화
       scrollToBottom(controller);
     }
 
-    if (activeSessionId != null) {
-      ref.listen<AsyncValue<List<Message>>>(
-        sessionMessagesProvider(activeSessionId),
-            (previous, next) {
-          if (next.hasValue && previous?.hasValue == true) {
-            final prevLength = previous?.value?.length ?? 0;
-            final nextLength = next.value?.length ?? 0;
-            if (prevLength != nextLength) {
-              scheduleScrollToBottom(controller);
-            }
-          }
-        },
-      );
-    }
+    // ✅ 메시지 개수 변화 감지 (watch로 반응형 처리)
+    messagesAsync.whenData((messages) {
+      final currentCount = messages.length;
+      if (previousMessageCount != null && currentCount != previousMessageCount) {
+        scheduleScrollToBottom(controller);
+      }
+      previousMessageCount = currentCount;
+    });
 
-    // ✅ 개선: 전체 상태 대신 status만 구독
-    ref.listen(
+    // ✅ 스트리밍 상태 변화 감지 (이미 잘 구현되어 있음)
+    final sendMessageStatus = ref.watch(
       sendMessageMutationProvider.select((state) => state.status),
-          (previous, next) {
-        if (previous == SendMessageStatus.streaming &&
-            (next == SendMessageStatus.success ||
-                next == SendMessageStatus.error ||
-                next == SendMessageStatus.idle)) {
-          scrollToBottom(controller);
-        }
-      },
     );
+
+    // 스트리밍 완료 시 스크롤
+    if (sendMessageStatus == SendMessageStatus.success ||
+        sendMessageStatus == SendMessageStatus.error) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        scrollToBottom(controller);
+      });
+    }
   }
 
   void handleHeightChanges(BuildContext context, ScrollController controller) {
