@@ -1,3 +1,5 @@
+// lib/presentation/screens/chat/widgets/left_buttons.dart
+
 import 'dart:io';
 import 'github_analysis_dialog.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +13,7 @@ import 'package:vibe_code/domain/providers/chat_provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vibe_code/presentation/shared/widgets/error_dialog.dart';
 import 'package:vibe_code/domain/providers/chat_input_state_provider.dart';
+import 'package:vibe_code/domain/providers/project_folder_provider.dart';
 
 class LeftButtons extends ConsumerWidget {
   final bool isSending;
@@ -54,10 +57,10 @@ class LeftButtons extends ConsumerWidget {
   }
 
   Future<void> _analyzeProject(
-    BuildContext context,
-    WidgetRef ref,
-    TextEditingController controller,
-  ) async {
+      BuildContext context,
+      WidgetRef ref,
+      TextEditingController controller,
+      ) async {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => const GitHubAnalysisDialog(),
@@ -95,96 +98,82 @@ class LeftButtons extends ConsumerWidget {
     }
   }
 
-  Future<void> _pickProjectFolder(BuildContext context) async {
+  // ✅ 프로젝트 폴더 선택 및 저장
+  Future<void> _pickProjectFolder(BuildContext context, WidgetRef ref) async {
     try {
       final folderPath = await FilePicker.platform.getDirectoryPath();
-      if (folderPath == null) return; // 취소 시 동작 없음
+      if (folderPath == null) return; // 사용자가 취소한 경우
 
       Logger.info('Selected project folder: $folderPath');
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('프로젝트 폴더 지정됨:\n$folderPath')));
-      }
+      // ✅ ProjectFolderNotifier에 저장
+      ref.read(projectFolderProvider.notifier).setFolder(folderPath);
 
-      // 필요하면 상태 저장 로직 추가 가능
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('프로젝트 폴더가 지정되었습니다\n$folderPath'),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } catch (e) {
+      Logger.error('Failed to select project folder', e);
       if (context.mounted) {
         await ErrorDialog.show(
           context: context,
           title: '폴더 선택 실패',
-          message: '폴더 선택 중 오류가 발생했습니다: ${e.toString()}',
+          message: '폴더 선택 중 오류가 발생했습니다:\n${e.toString()}',
         );
       }
+    } finally {
+      onRequestFocus();
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // ✅ 프로젝트 폴더 상태 감시
+    final projectFolder = ref.watch(projectFolderProvider);
+    final hasProjectFolder = projectFolder.hasFolder;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         // 파일 첨부 버튼
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest
-                .withAlpha(UIConstants.alpha20),
-            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
-          ),
-          child: IconButton(
-            icon: const FaIcon(FontAwesomeIcons.file),
-            iconSize: UIConstants.iconSm,
-            onPressed: isSending ? null : () => _pickFile(context, ref),
-            tooltip: '파일 첨부',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: UIConstants.iconLg + UIConstants.spacingSm,
-              minHeight: UIConstants.iconLg + UIConstants.spacingSm,
-            ),
-          ),
+        IconButton(
+          icon: const FaIcon(FontAwesomeIcons.paperclip),
+          iconSize: UIConstants.iconSm,
+          onPressed: isSending ? null : () => _pickFile(context, ref),
+          tooltip: '파일 첨부',
         ),
-        const SizedBox(width: UIConstants.spacingSm),
-        // 프로젝트 폴더 지정 버튼
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest
-                .withAlpha(UIConstants.alpha20),
-            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
-          ),
-          child: IconButton(
-            icon: const FaIcon(FontAwesomeIcons.folderOpen),
-            iconSize: UIConstants.iconSm,
-            onPressed: () => _pickProjectFolder(context),
-            tooltip: '프로젝트 폴더 지정',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: UIConstants.iconLg + UIConstants.spacingSm,
-              minHeight: UIConstants.iconLg + UIConstants.spacingSm,
-            ),
-          ),
-        ),
-        const SizedBox(width: UIConstants.spacingSm),
+        const SizedBox(width: UIConstants.spacingXs),
+
         // GitHub 분석 버튼
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest
-                .withAlpha(UIConstants.alpha20),
-            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+        IconButton(
+          icon: const FaIcon(FontAwesomeIcons.github),
+          iconSize: UIConstants.iconSm,
+          onPressed: isSending
+              ? null
+              : () => _analyzeProject(context, ref, textController),
+          tooltip: 'GitHub 분석',
+        ),
+        const SizedBox(width: UIConstants.spacingXs),
+
+        // ✅ 프로젝트 폴더 선택 버튼 (상태에 따라 색상 변경)
+        IconButton(
+          icon: FaIcon(
+            FontAwesomeIcons.folder,
+            color: hasProjectFolder
+                ? Theme.of(context).colorScheme.primary
+                : null,
           ),
-          child: IconButton(
-            icon: const FaIcon(FontAwesomeIcons.github),
-            iconSize: UIConstants.iconSm,
-            onPressed: isSending
-                ? null
-                : () => _analyzeProject(context, ref, textController),
-            tooltip: 'GitHub 분석',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: UIConstants.iconLg + UIConstants.spacingSm,
-              minHeight: UIConstants.iconLg + UIConstants.spacingSm,
-            ),
-          ),
+          iconSize: UIConstants.iconSm,
+          onPressed: isSending ? null : () => _pickProjectFolder(context, ref),
+          tooltip: hasProjectFolder
+              ? '프로젝트 폴더: ${projectFolder.folderPath}\n(클릭하여 변경)'
+              : '프로젝트 폴더 지정',
         ),
       ],
     );
