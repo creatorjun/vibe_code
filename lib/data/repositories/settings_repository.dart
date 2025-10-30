@@ -36,13 +36,6 @@ class SettingsRepository {
       Logger.info('Loading settings...');
       final allSettings = await _settingsDao.getAllSettings();
 
-      // ❌ 이 부분 삭제 - 매번 기본값으로 덮어쓰는 문제 코드
-      // if (allSettings.containsKey(AppConstants.settingsKeyPromptPresets)) {
-      //   Logger.info('Force updating presets with new defaults');
-      //   await savePromptPresets(defaultPresets);
-      //   await saveSelectedPresetId(null);
-      // }
-
       if (allSettings.isEmpty) {
         Logger.info('No settings found, initializing with defaults');
         await _initializeDefaultSettings();

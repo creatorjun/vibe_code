@@ -145,6 +145,26 @@ class LeftButtons extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: UIConstants.spacingSm),
+        // 프로젝트 폴더 지정 버튼
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest
+                .withAlpha(UIConstants.alpha20),
+            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
+          ),
+          child: IconButton(
+            icon: const FaIcon(FontAwesomeIcons.folderOpen),
+            iconSize: UIConstants.iconSm,
+            onPressed: () => _pickProjectFolder(context),
+            tooltip: '프로젝트 폴더 지정',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: UIConstants.iconLg + UIConstants.spacingSm,
+              minHeight: UIConstants.iconLg + UIConstants.spacingSm,
+            ),
+          ),
+        ),
+        const SizedBox(width: UIConstants.spacingSm),
         // GitHub 분석 버튼
         Container(
           decoration: BoxDecoration(
@@ -159,26 +179,6 @@ class LeftButtons extends ConsumerWidget {
                 ? null
                 : () => _analyzeProject(context, ref, textController),
             tooltip: 'GitHub 분석',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: UIConstants.iconLg + UIConstants.spacingSm,
-              minHeight: UIConstants.iconLg + UIConstants.spacingSm,
-            ),
-          ),
-        ),
-        const SizedBox(width: UIConstants.spacingSm),
-        // 프로젝트 폴더 지정 버튼
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest
-                .withAlpha(UIConstants.alpha20),
-            borderRadius: BorderRadius.circular(UIConstants.radiusSm),
-          ),
-          child: IconButton(
-            icon: const FaIcon(FontAwesomeIcons.folderOpen),
-            iconSize: UIConstants.iconSm,
-            onPressed: () => _pickProjectFolder(context),
-            tooltip: '프로젝트 폴더 지정',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(
               minWidth: UIConstants.iconLg + UIConstants.spacingSm,

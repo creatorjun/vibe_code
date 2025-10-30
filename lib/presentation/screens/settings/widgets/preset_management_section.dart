@@ -28,7 +28,7 @@ class PresetManagementSection extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(UIConstants.radiusSm),
               ),
               child: Icon(
-                Icons.bookmark_outline,
+                Icons.auto_awesome_outlined,
                 size: UIConstants.iconMd,
                 color: colorScheme.onSecondaryContainer,
               ),
@@ -187,7 +187,7 @@ class PresetManagementSection extends ConsumerWidget {
           autofocus: true,
           decoration: const InputDecoration(
             labelText: '프리셋 이름',
-            hintText: '예: 버그 수정 프리셋',
+            hintText: '프리셋 이름을 입력하세요..',
           ),
           onSubmitted: (value) {
             if (value.trim().isNotEmpty) {

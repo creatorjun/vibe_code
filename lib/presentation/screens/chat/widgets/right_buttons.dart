@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
 import 'package:vibe_code/core/constants/app_constants.dart';
 import 'package:vibe_code/domain/providers/settings_provider.dart';
@@ -55,28 +54,20 @@ class RightButtons extends ConsumerWidget {
     final minDepth = AppConstants.minPipelineModels;
     final currentValidDepth = selectedDepth.clamp(minDepth, maxDepth);
 
-    return Column(
+    return Row(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 라벨 추가
-        Padding(
-          padding: const EdgeInsets.only(
-            left: UIConstants.spacingXs,
-            bottom: 4,
-          ),
-          child: Text(
-            '파이프라인',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withAlpha(UIConstants.alpha60),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+        // 아이콘을 좌측에 배치
+        Icon(
+          Icons.list_outlined,
+          size: 16,
+          color: Theme.of(context)
+              .colorScheme
+              .onSurface
+              .withAlpha(UIConstants.alpha60),
         ),
-        // 기존 버튼
+        const SizedBox(width: UIConstants.spacingSm),
+        // 버튼 컨테이너
         Container(
           height: 32,
           padding: const EdgeInsets.symmetric(
@@ -156,28 +147,19 @@ class RightButtons extends ConsumerWidget {
 
     if (presets.isEmpty) return const SizedBox.shrink();
 
-    return Column(
+    return Row(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 라벨 추가
-        Padding(
-          padding: const EdgeInsets.only(
-            left: UIConstants.spacingXs,
-            bottom: 4,
-          ),
-          child: Text(
-            '프리셋',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withAlpha(UIConstants.alpha60),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+        Icon(
+          Icons.auto_awesome_outlined,
+          size: 16,
+          color: Theme.of(context)
+              .colorScheme
+              .onSurface
+              .withAlpha(UIConstants.alpha60),
         ),
-        // 파이프라인과 동일한 스타일
+        const SizedBox(width: UIConstants.spacingSm),
+        // 버튼 컨테이너
         Container(
           height: 32,
           padding: const EdgeInsets.symmetric(
@@ -202,7 +184,6 @@ class RightButtons extends ConsumerWidget {
             children: List.generate(presets.length, (index) {
               final preset = presets[index];
               final isSelected = preset.id == selectedPresetId;
-
               return Padding(
                 padding: EdgeInsets.only(
                   right: index < presets.length - 1 ? 4.0 : 0,
@@ -250,7 +231,7 @@ class RightButtons extends ConsumerWidget {
   Widget _buildSendButton(BuildContext context) {
     if (isSending) {
       return IconButton(
-        icon: const FaIcon(FontAwesomeIcons.circleStop),
+        icon: const Icon(Icons.stop_circle_outlined),
         onPressed: onCancel,
         tooltip: '중지',
         color: Theme.of(context).colorScheme.error,
@@ -258,7 +239,7 @@ class RightButtons extends ConsumerWidget {
     }
 
     return IconButton(
-      icon: const FaIcon(FontAwesomeIcons.paperPlane),
+      icon: const Icon(Icons.arrow_circle_up_outlined),
       onPressed: canSend && !isSending ? onSend : null,
       tooltip: '전송',
       color: canSend ? Theme.of(context).colorScheme.primary : null,
