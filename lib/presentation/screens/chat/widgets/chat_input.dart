@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
+import 'package:vibe_code/presentation/screens/settings/widgets/custom_snack_bar.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../domain/notifiers/chat_input/chat_input_action_notifier.dart';
 import '../../../../domain/notifiers/chat_input/paste_handler_notifier.dart';
@@ -66,10 +67,9 @@ class _ChatInputState extends ConsumerState<ChatInput> {
 
     // ✅ sealed class 패턴 매칭
     switch (result) {
-      case PasteSuccess(:final message):
-        if (message != null) _showSnackBar(message);
       case PasteError(:final message):
         _showSnackBar(message, isError: true);
+      case PasteSuccess():
       case PasteNoContent():
       case PasteCancelled():
         break;
@@ -106,14 +106,8 @@ class _ChatInputState extends ConsumerState<ChatInput> {
 
   /// ✅ SnackBar 표시 (UI 피드백)
   void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: isError ? Colors.red : null,
-      ),
-    );
+    isError ? CustomSnackBar.showError(context, message):
+    CustomSnackBar.showSuccess(context, message);
   }
 
   /// 첨부파일 제거
