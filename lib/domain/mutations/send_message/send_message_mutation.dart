@@ -50,6 +50,10 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       // 2. API 키 검증
       _validateApiKey(settingsAsync.apiKey);
 
+      // ✅ 개선: 첫 메시지인지 확인 (사용자 메시지 저장 전)
+      final messages = await chatRepo.getMessages(sessionId);
+      final isFirstMessage = messages.isEmpty;
+
       // 3. 사용자 메시지 저장
       final userMessageTokens = TokenCounter.estimateTokens(content);
       userMessageId = await chatRepo.addUserMessage(
@@ -57,6 +61,16 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         content: content,
         inputTokens: userMessageTokens,
       );
+
+      // ✅ 개선: 첫 메시지 전송 시 즉시 제목 업데이트
+      if (isFirstMessage) {
+        final sessionManager = SessionManager(chatRepo);
+        await sessionManager.updateSessionTitleIfNeeded(
+          sessionId,
+          _generateTitleFromContent(content),
+        );
+        Logger.info('✨ Session title updated on first message');
+      }
 
       // 4. 첨부 파일 연결
       if (attachmentIds.isNotEmpty) {
@@ -163,10 +177,6 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         ref.read(streamingStateProvider.notifier).stop();
         ref.read(currentStreamingMessageProvider.notifier).clear();
 
-        // 12. 세션 제목 업데이트
-        final sessionManager = SessionManager(chatRepo);
-        await sessionManager.updateSessionTitleIfNeeded(sessionId, content);
-
         state = const SendMessageState.success();
         Logger.info('✅ Message sent successfully');
       } catch (e, stackTrace) {
@@ -178,7 +188,7 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
         final chatRepo = ref.read(chatRepositoryProvider);
         final errorHandler = SendMessageErrorHandler(chatRepo);
         await errorHandler.appendErrorToMessage(sessionId, aiMessageId, errorMessage);
-            } finally {
+      } finally {
         ref.read(streamingStateProvider.notifier).stop();
         ref.read(currentStreamingMessageProvider.notifier).clear();
       }
@@ -218,6 +228,19 @@ class SendMessageMutationNotifier extends Notifier<SendMessageState> {
       ref.read(streamingStateProvider.notifier).stop();
       ref.read(currentStreamingMessageProvider.notifier).clear();
     }
+  }
+
+  /// ✅ 새 메서드: 첫 30자로 제목 생성
+  String _generateTitleFromContent(String content) {
+    // 개행 문자 제거
+    final cleanContent = content.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    // 30자로 제한
+    if (cleanContent.length <= 30) {
+      return cleanContent;
+    }
+
+    return '${cleanContent.substring(0, 30)}...';
   }
 
   void _validateApiKey(String apiKey) {
