@@ -8,6 +8,7 @@ import 'package:vibe_code/data/database/app_database.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
 import 'package:vibe_code/presentation/shared/widgets/loading_indicator.dart';
 import 'code_snippet_widget.dart';
+import 'markdown_text_widget.dart';
 
 class AiMessageBubble {
   final Message message;
@@ -15,15 +16,44 @@ class AiMessageBubble {
   const AiMessageBubble({required this.message});
 
   List<Widget> buildAsSliver(BuildContext context) {
-    Logger.debug('[AiMessageBubble] Building AI message: ${message.id}');
-    Logger.debug('[AiMessageBubble] Content length: ${message.content.length}');
-    Logger.debug('[AiMessageBubble] Is streaming: ${message.isStreaming}');
-
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final bubbleColor = isDark ? AppColors.aiBubbleDark : AppColors.aiBubbleLight;
+    final bubbleColor = isDark
+        ? AppColors.aiBubbleDark
+        : AppColors.aiBubbleLight;
     final isThinking = message.content.trim().isEmpty && message.isStreaming;
-    final parts = isThinking ? <dynamic>[] : MarkdownParser.parseMessage(message.content);
+    final parts = isThinking
+        ? <dynamic>[]
+        : MarkdownParser.parseMessage(message.content);
+
+    Logger.warning('[AiMessageBubble] Building AI message: ${message.id}');
+    Logger.warning(
+      '[AiMessageBubble] Content length: ${message.content.length}',
+    );
+    Logger.warning('[AiMessageBubble] Is streaming: ${message.isStreaming}');
+    Logger.warning(
+      '[AiMessageBubble] Raw content:\n${'=' * 60}\n${message.content}\n${'=' * 60}',
+    );
+    if (!isThinking) {
+      Logger.warning('[AiMessageBubble] Parsed ${parts.length} parts:');
+      for (int i = 0; i < parts.length; i++) {
+        if (parts[i] is TextPart) {
+          final textPart = parts[i] as TextPart;
+          Logger.warning('  [$i] TextPart (${textPart.content.length} chars):');
+          Logger.warning(
+            '    Content: ${textPart.content.substring(0, textPart.content.length > 100 ? 100 : textPart.content.length)}${textPart.content.length > 100 ? "..." : ""}',
+          );
+        } else if (parts[i] is CodePart) {
+          final codePart = parts[i] as CodePart;
+          Logger.warning(
+            '  [$i] CodePart (language: ${codePart.language}, ${codePart.code.length} chars):',
+          );
+          Logger.warning(
+            '    Code:\n${'-' * 40}\n${codePart.code}\n${'-' * 40}',
+          );
+        }
+      }
+    }
 
     return [
       SliverPadding(
@@ -58,7 +88,9 @@ class AiMessageBubble {
       child: Text(
         DateFormatter.formatMessageTime(message.createdAt),
         style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.textTheme.bodySmall?.color?.withAlpha(UIConstants.alpha70),
+          color: theme.textTheme.bodySmall?.color?.withAlpha(
+            UIConstants.alpha70,
+          ),
         ),
       ),
     );
@@ -101,7 +133,9 @@ class AiMessageBubbleSliver extends StatelessWidget {
             ),
           ),
         ),
-        ...(isThinking ? _buildThinkingSlivers(context) : _buildContentSlivers(context)),
+        ...(isThinking
+            ? _buildThinkingSlivers(context)
+            : _buildContentSlivers(context)),
         SliverToBoxAdapter(
           child: Container(
             decoration: BoxDecoration(
@@ -128,10 +162,7 @@ class AiMessageBubbleSliver extends StatelessWidget {
           padding: const EdgeInsets.all(UIConstants.spacingLg),
           child: Row(
             children: [
-              const LoadingIndicator(
-                size: 20,
-                useGradient: true,
-              ),
+              const LoadingIndicator(size: 20, useGradient: true),
               const SizedBox(width: UIConstants.spacingMd),
               Text(
                 '생각 중...',
@@ -216,10 +247,10 @@ class AiMessageBubbleSliver extends StatelessWidget {
   }
 
   List<Widget> _buildContentSlivers(BuildContext context) {
-    if (message.content.trim().isEmpty) return [];
+    if (message.content.trim().isEmpty) return <Widget>[];
 
     if (parts.isEmpty) {
-      return [
+      return <Widget>[
         SliverToBoxAdapter(
           child: Container(
             width: double.infinity,
@@ -228,12 +259,14 @@ class AiMessageBubbleSliver extends StatelessWidget {
               horizontal: UIConstants.spacingMd,
               vertical: UIConstants.spacingSm,
             ),
-            child: SelectableText(
-              message.content,
-              style: theme.textTheme.bodyLarge?.copyWith(
+            child: MarkdownTextWidget(
+              // ⭐ 변경
+              data: message.content,
+              baseStyle: theme.textTheme.bodyLarge?.copyWith(
                 color: isDark ? Colors.white : Colors.black87,
                 height: 1.6,
               ),
+              textColor: isDark ? Colors.white : Colors.black87,
             ),
           ),
         ),
@@ -241,7 +274,6 @@ class AiMessageBubbleSliver extends StatelessWidget {
     }
 
     final slivers = <Widget>[];
-
     for (final part in parts) {
       if (part is TextPart && part.content.trim().isNotEmpty) {
         slivers.add(
@@ -253,12 +285,14 @@ class AiMessageBubbleSliver extends StatelessWidget {
                 horizontal: UIConstants.spacingMd,
                 vertical: UIConstants.spacingSm,
               ),
-              child: SelectableText(
-                part.content,
-                style: theme.textTheme.bodyLarge?.copyWith(
+              child: MarkdownTextWidget(
+                // ⭐ 변경
+                data: part.content,
+                baseStyle: theme.textTheme.bodyLarge?.copyWith(
                   color: isDark ? Colors.white : Colors.black87,
                   height: 1.6,
                 ),
+                textColor: isDark ? Colors.white : Colors.black87,
               ),
             ),
           ),
@@ -274,7 +308,7 @@ class AiMessageBubbleSliver extends StatelessWidget {
     }
 
     if (slivers.isEmpty) {
-      return [
+      return <Widget>[
         SliverToBoxAdapter(
           child: Container(
             width: double.infinity,
@@ -283,18 +317,19 @@ class AiMessageBubbleSliver extends StatelessWidget {
               horizontal: UIConstants.spacingMd,
               vertical: UIConstants.spacingSm,
             ),
-            child: SelectableText(
-              message.content,
-              style: theme.textTheme.bodyLarge?.copyWith(
+            child: MarkdownTextWidget(
+              // ⭐ 변경
+              data: message.content,
+              baseStyle: theme.textTheme.bodyLarge?.copyWith(
                 color: isDark ? Colors.white : Colors.black87,
                 height: 1.6,
               ),
+              textColor: isDark ? Colors.white : Colors.black87,
             ),
           ),
         ),
       ];
     }
-
     return slivers;
   }
 }
