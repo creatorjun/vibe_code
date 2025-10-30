@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:vibe_code/core/theme/app_colors.dart';
+import 'package:vibe_code/core/utils/logger.dart';
 
-/// 마크다운 텍스트를 렌더링하는 위젯
+/// GitHub 스타일 마크다운 텍스트 위젯
 class MarkdownTextWidget extends StatelessWidget {
   final String data;
   final TextStyle? baseStyle;
@@ -16,173 +20,229 @@ class MarkdownTextWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // HTML로 변환
-    final html = md.markdownToHtml(
-      data,
-      extensionSet: md.ExtensionSet.gitHubFlavored,
-    );
-
-    // HTML을 파싱해서 TextSpan으로 변환
-    final spans = _parseHtmlToSpans(html, context);
-
-    return SelectableText.rich(TextSpan(children: spans), style: baseStyle);
-  }
-
-  List<InlineSpan> _parseHtmlToSpans(String html, BuildContext context) {
-    final spans = <InlineSpan>[];
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    // 간단한 HTML 태그 파싱
-    final pattern = RegExp(r'<(/?)(\w+)(?:\s+[^>]*)?>', multiLine: true);
+    return MarkdownBody(
+      data: data,
+      selectable: true,
+      extensionSet: md.ExtensionSet.gitHubFlavored,
+      styleSheet: MarkdownStyleSheet(
+        // 기본 텍스트
+        p: baseStyle?.copyWith(color: textColor),
 
-    int lastIndex = 0;
-    final tagStack = <String>[];
-    final styleStack = <TextStyle>[baseStyle ?? const TextStyle()];
+        // 링크
+        a: TextStyle(
+          color: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
+          decoration: TextDecoration.underline,
+        ),
 
-    for (final match in pattern.allMatches(html)) {
-      // 태그 이전의 텍스트
-      if (match.start > lastIndex) {
-        final text = html.substring(lastIndex, match.start);
-        final decoded = _decodeHtmlEntities(text);
-        if (decoded.isNotEmpty) {
-          spans.add(
-            TextSpan(
-              text: decoded,
-              style: styleStack.last.copyWith(color: textColor),
+        // 강조
+        strong: baseStyle?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
+        em: baseStyle?.copyWith(
+          fontStyle: FontStyle.italic,
+          color: textColor,
+        ),
+        del: baseStyle?.copyWith(
+          decoration: TextDecoration.lineThrough,
+          color: isDark
+              ? AppColors.darkTextSecondary
+              : AppColors.lightTextSecondary,
+        ),
+
+        // 인라인 코드
+        code: baseStyle?.copyWith(
+          fontFamily: 'monospace',
+          fontSize: (baseStyle?.fontSize ?? 14) * 0.9,
+          backgroundColor: isDark
+              ? AppColors.darkText.withAlpha(26)
+              : AppColors.lightText.withAlpha(13),
+          color: isDark
+              ? AppColors.darkPrimary
+              : AppColors.lightPrimary,
+        ),
+        codeblockDecoration: BoxDecoration(
+          color: isDark
+              ? AppColors.codeBackgroundDark
+              : AppColors.codeBackgroundLight,
+          borderRadius: BorderRadius.circular(8),
+        ),
+
+        // 제목
+        h1: baseStyle?.copyWith(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+          height: 1.2,
+        ),
+        h2: baseStyle?.copyWith(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+          height: 1.2,
+        ),
+        h3: baseStyle?.copyWith(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+          height: 1.2,
+        ),
+        h4: baseStyle?.copyWith(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+          height: 1.2,
+        ),
+        h5: baseStyle?.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+          height: 1.2,
+        ),
+        h6: baseStyle?.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: isDark
+              ? AppColors.darkTextSecondary
+              : AppColors.lightTextSecondary,
+          height: 1.2,
+        ),
+
+        // 제목 패딩
+        h1Padding: const EdgeInsets.only(top: 16, bottom: 8),
+        h2Padding: const EdgeInsets.only(top: 16, bottom: 8),
+        h3Padding: const EdgeInsets.only(top: 12, bottom: 6),
+        h4Padding: const EdgeInsets.only(top: 12, bottom: 6),
+        h5Padding: const EdgeInsets.only(top: 8, bottom: 4),
+        h6Padding: const EdgeInsets.only(top: 8, bottom: 4),
+
+        // 리스트
+        listBullet: baseStyle?.copyWith(color: textColor),
+        listIndent: 24,
+
+        // 인용구
+        blockquote: baseStyle?.copyWith(
+          color: isDark
+              ? AppColors.darkTextSecondary
+              : AppColors.lightTextSecondary,
+          fontStyle: FontStyle.italic,
+        ),
+        blockquotePadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 8,
+        ),
+        blockquoteDecoration: BoxDecoration(
+          color: isDark
+              ? AppColors.darkText.withAlpha(13)
+              : AppColors.lightText.withAlpha(13),
+          borderRadius: BorderRadius.circular(4),
+          border: Border(
+            left: BorderSide(
+              color: isDark
+                  ? AppColors.darkBorder
+                  : AppColors.lightBorder,
+              width: 4,
             ),
-          );
-        }
-      }
-
-      final isClosing = match.group(1) == '/';
-      final tagName = match.group(2)!.toLowerCase();
-
-      if (isClosing) {
-        // 닫는 태그
-        if (tagStack.isNotEmpty && tagStack.last == tagName) {
-          tagStack.removeLast();
-          styleStack.removeLast();
-        }
-
-        // 블록 요소 닫을 때 줄바꿈 추가
-        if (_isBlockElement(tagName) && spans.isNotEmpty) {
-          spans.add(const TextSpan(text: '\n'));
-        }
-      } else {
-        // 여는 태그
-        // 블록 요소 시작 전 줄바꿈 (첫 요소가 아닐 때)
-        if (_isBlockElement(tagName) && spans.isNotEmpty) {
-          spans.add(const TextSpan(text: '\n'));
-        }
-
-        tagStack.add(tagName);
-        final currentStyle = styleStack.last;
-
-        switch (tagName) {
-          case 'strong' || 'b':
-            styleStack.add(currentStyle.copyWith(fontWeight: FontWeight.bold));
-            break;
-          case 'em' || 'i':
-            styleStack.add(currentStyle.copyWith(fontStyle: FontStyle.italic));
-            break;
-          case 'code':
-            styleStack.add(
-              currentStyle.copyWith(
-                fontFamily: 'monospace',
-                backgroundColor: theme.brightness == Brightness.dark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.05),
-              ),
-            );
-            break;
-          case 'del' || 's':
-            styleStack.add(
-              currentStyle.copyWith(decoration: TextDecoration.lineThrough),
-            );
-            break;
-          case 'h1':
-            styleStack.add(
-              currentStyle.copyWith(fontSize: 24, fontWeight: FontWeight.bold),
-            );
-            break;
-          case 'h2':
-            styleStack.add(
-              currentStyle.copyWith(fontSize: 20, fontWeight: FontWeight.bold),
-            );
-            break;
-          case 'h3':
-            styleStack.add(
-              currentStyle.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
-            );
-            break;
-          case 'h4':
-            styleStack.add(
-              currentStyle.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
-            );
-            break;
-          case 'li':
-            // 리스트 아이템 시작 시 들여쓰기
-            spans.add(
-              TextSpan(
-                text: '  • ',
-                style: currentStyle.copyWith(color: textColor),
-              ),
-            );
-            styleStack.add(currentStyle);
-            break;
-          default:
-            styleStack.add(currentStyle);
-        }
-      }
-
-      lastIndex = match.end;
-    }
-
-    // 마지막 텍스트
-    if (lastIndex < html.length) {
-      final text = html.substring(lastIndex);
-      final decoded = _decodeHtmlEntities(text);
-      if (decoded.isNotEmpty) {
-        spans.add(
-          TextSpan(
-            text: decoded,
-            style: styleStack.last.copyWith(color: textColor),
           ),
+        ),
+
+        // 수평선
+        horizontalRuleDecoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: isDark
+                  ? AppColors.darkBorder
+                  : AppColors.lightBorder,
+              width: 1,
+            ),
+          ),
+        ),
+
+        // 테이블
+        tableBorder: TableBorder.all(
+          color: isDark
+              ? AppColors.darkBorder
+              : AppColors.lightBorder,
+          width: 1,
+        ),
+        tableHead: baseStyle?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
+        tableBody: baseStyle?.copyWith(color: textColor),
+        tableCellsPadding: const EdgeInsets.all(8),
+
+        // 체크박스
+        checkbox: baseStyle?.copyWith(color: textColor),
+
+        // 여백
+        blockSpacing: 8.0,
+        listBulletPadding: const EdgeInsets.only(right: 8),
+      ),
+
+      // 링크 탭 핸들러
+      onTapLink: (text, href, title) {
+        if (href != null && href.isNotEmpty) {
+          _launchUrl(context, href);
+        }
+      },
+    );
+  }
+
+  /// URL 열기
+  Future<void> _launchUrl(BuildContext context, String url) async {
+    try {
+      Logger.debug('[MarkdownTextWidget] Launching URL: $url');
+
+      final uri = Uri.parse(url);
+
+      // URL 유효성 검사
+      if (!uri.hasScheme) {
+        Logger.warning('[MarkdownTextWidget] Invalid URL (no scheme): $url');
+        if (context.mounted) {
+          _showErrorSnackBar(context, 'URL 형식이 올바르지 않습니다.');
+        }
+        return;
+      }
+
+      // URL 열기 시도
+      final canLaunch = await canLaunchUrl(uri);
+      if (canLaunch) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
         );
+        Logger.debug('[MarkdownTextWidget] URL launched successfully');
+      } else {
+        Logger.warning('[MarkdownTextWidget] Cannot launch URL: $url');
+        if (context.mounted) {
+          _showErrorSnackBar(context, '링크를 열 수 없습니다.');
+        }
+      }
+    } catch (e) {
+      Logger.error('[MarkdownTextWidget] Error launching URL: $e');
+      if (context.mounted) {
+        _showErrorSnackBar(context, '링크를 여는 중 오류가 발생했습니다.');
       }
     }
-
-    return spans;
   }
 
-  bool _isBlockElement(String tagName) {
-    return const [
-      'p',
-      'h1',
-      'h2',
-      'h3',
-      'h4',
-      'h5',
-      'h6',
-      'ul',
-      'ol',
-      'li',
-      'blockquote',
-      'pre',
-      'div',
-    ].contains(tagName);
-  }
-
-  String _decodeHtmlEntities(String text) {
-    return text
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&amp;', '&')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#39;', "'")
-        .replaceAll('<br>', '\n')
-        .replaceAll('<br/>', '\n')
-        .replaceAll('<br />', '\n')
-        .trim();
+  /// 에러 스낵바 표시
+  void _showErrorSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.darkError, // AppColors 사용
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
   }
 }
