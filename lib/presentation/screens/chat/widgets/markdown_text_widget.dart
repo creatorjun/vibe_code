@@ -1,9 +1,12 @@
+// lib/presentation/shared/widgets/markdown_text_widget.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vibe_code/core/theme/app_colors.dart';
 import 'package:vibe_code/core/utils/logger.dart';
+import 'package:vibe_code/presentation/screens/settings/widgets/custom_snack_bar.dart';
 
 /// GitHub 스타일 마크다운 텍스트 위젯
 class MarkdownTextWidget extends StatelessWidget {
@@ -26,31 +29,44 @@ class MarkdownTextWidget extends StatelessWidget {
     return MarkdownBody(
       data: data,
       selectable: true,
+      // ✅ 핵심 1: softLineBreak 활성화 (단일 줄바꿈 허용)
+      softLineBreak: true,
       extensionSet: md.ExtensionSet.gitHubFlavored,
+      // ✅ 핵심 2: 스크롤 비활성화 (부모가 스크롤 처리)
+      shrinkWrap: true,
+      // ✅ 핵심 3: 물리적 스크롤 비활성화
+      fitContent: true,
       styleSheet: MarkdownStyleSheet(
-        // 기본 텍스트
-        p: baseStyle?.copyWith(color: textColor),
+        // ✅ 기본 텍스트 (overflow 추가)
+        p: baseStyle?.copyWith(
+          color: textColor,
+          height: 1.5, // ✅ 줄 간격 추가
+        ),
 
-        // 링크
+        // ✅ 링크 (overflow 추가)
         a: TextStyle(
           color: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
           decoration: TextDecoration.underline,
+          height: 1.5, // ✅ 줄 간격
         ),
 
         // 강조
         strong: baseStyle?.copyWith(
           fontWeight: FontWeight.bold,
           color: textColor,
+          height: 1.5, // ✅ 줄 간격
         ),
         em: baseStyle?.copyWith(
           fontStyle: FontStyle.italic,
           color: textColor,
+          height: 1.5, // ✅ 줄 간격
         ),
         del: baseStyle?.copyWith(
           decoration: TextDecoration.lineThrough,
           color: isDark
               ? AppColors.darkTextSecondary
               : AppColors.lightTextSecondary,
+          height: 1.5, // ✅ 줄 간격
         ),
 
         // 인라인 코드
@@ -63,6 +79,7 @@ class MarkdownTextWidget extends StatelessWidget {
           color: isDark
               ? AppColors.darkPrimary
               : AppColors.lightPrimary,
+          height: 1.5, // ✅ 줄 간격
         ),
         codeblockDecoration: BoxDecoration(
           color: isDark
@@ -120,7 +137,10 @@ class MarkdownTextWidget extends StatelessWidget {
         h6Padding: const EdgeInsets.only(top: 8, bottom: 4),
 
         // 리스트
-        listBullet: baseStyle?.copyWith(color: textColor),
+        listBullet: baseStyle?.copyWith(
+          color: textColor,
+          height: 1.5, // ✅ 줄 간격
+        ),
         listIndent: 24,
 
         // 인용구
@@ -129,6 +149,7 @@ class MarkdownTextWidget extends StatelessWidget {
               ? AppColors.darkTextSecondary
               : AppColors.lightTextSecondary,
           fontStyle: FontStyle.italic,
+          height: 1.5, // ✅ 줄 간격
         ),
         blockquotePadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -181,6 +202,8 @@ class MarkdownTextWidget extends StatelessWidget {
         // 여백
         blockSpacing: 8.0,
         listBulletPadding: const EdgeInsets.only(right: 8),
+        // ✅ 추가: 단락 간격
+        pPadding: const EdgeInsets.only(bottom: 8),
       ),
 
       // 링크 탭 핸들러
@@ -196,7 +219,6 @@ class MarkdownTextWidget extends StatelessWidget {
   Future<void> _launchUrl(BuildContext context, String url) async {
     try {
       Logger.debug('[MarkdownTextWidget] Launching URL: $url');
-
       final uri = Uri.parse(url);
 
       // URL 유효성 검사
@@ -232,17 +254,6 @@ class MarkdownTextWidget extends StatelessWidget {
 
   /// 에러 스낵바 표시
   void _showErrorSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.darkError, // AppColors 사용
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
+    CustomSnackBar.showError(context, message);
   }
 }
