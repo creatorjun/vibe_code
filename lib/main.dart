@@ -26,13 +26,16 @@ void main() async {
     await windowManager.maximize();
   });
 
-  // 환경별 설정 초기화
+  // ✅ 환경별 설정 초기화
   const environment = String.fromEnvironment('ENV', defaultValue: 'development');
   if (environment == 'production') {
     AppConfig.initialize(ProductionConfig());
   } else {
     AppConfig.initialize(DevelopmentConfig());
   }
+
+  // ✅ Logger 초기화 (AppConfig 초기화 후)
+  AppLogger.initialize();
 
   AppLogger.info('App started in ${AppConfig.instance.environment} mode');
 
