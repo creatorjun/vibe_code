@@ -14,7 +14,12 @@ class ChatRepository {
 
   Future<int> createSession(String title) async {
     Logger.info('Creating new session: $title');
-    return await chatDao.createSession(title);
+    try {
+      return await chatDao.createSession(title);
+    } catch (e, stack) {
+      Logger.error('Failed to create session', e, stack);
+      rethrow;
+    }
   }
 
   Stream<List<ChatSession>> watchSessions() {
@@ -22,22 +27,42 @@ class ChatRepository {
   }
 
   Future<ChatSession?> getSession(int sessionId) async {
-    return await chatDao.getSession(sessionId);
+    try {
+      return await chatDao.getSession(sessionId);
+    } catch (e, stack) {
+      Logger.error('Failed to get session: $sessionId', e, stack);
+      return null;
+    }
   }
 
   Future<void> updateSessionTitle(int sessionId, String title) async {
     Logger.info('Updating session title: $sessionId - $title');
-    await chatDao.updateSessionTitle(sessionId, title);
+    try {
+      await chatDao.updateSessionTitle(sessionId, title);
+    } catch (e, stack) {
+      Logger.error('Failed to update session title', e, stack);
+      rethrow;
+    }
   }
 
   Future<void> deleteSession(int sessionId) async {
     Logger.info('Deleting session: $sessionId');
-    await chatDao.deleteSession(sessionId);
+    try {
+      await chatDao.deleteSession(sessionId);
+    } catch (e, stack) {
+      Logger.error('Failed to delete session', e, stack);
+      rethrow;
+    }
   }
 
   Future<void> archiveSession(int sessionId) async {
     Logger.info('Archiving session: $sessionId');
-    await chatDao.archiveSession(sessionId);
+    try {
+      await chatDao.archiveSession(sessionId);
+    } catch (e, stack) {
+      Logger.error('Failed to archive session', e, stack);
+      rethrow;
+    }
   }
 
   // ===== Message Methods =====
@@ -47,124 +72,179 @@ class ChatRepository {
   }
 
   Future<List<Message>> getMessages(int sessionId) async {
-    return await chatDao.getMessagesForSession(sessionId);
+    try {
+      return await chatDao.getMessagesForSession(sessionId);
+    } catch (e, stack) {
+      Logger.error('Failed to get messages for session: $sessionId', e, stack);
+      return [];
+    }
   }
 
-  /// 사용자 메시지 추가 (===== 수정: 토큰 파라미터 추가 =====)
   Future<int> addUserMessage({
     required int sessionId,
     required String content,
-    int inputTokens = 0,  // ===== 추가 =====
+    int inputTokens = 0,
   }) async {
-    Logger.info('Adding user message to session: $sessionId');
-    await chatDao.touchSession(sessionId);
-    return await chatDao.addMessage(
-      sessionId: sessionId,
-      content: content,
-      role: 'user',
-      inputTokens: inputTokens,  // ===== 추가 =====
-    );
+    Logger.info('Adding user message to session: $sessionId (${content.length} chars)');
+    try {
+      await chatDao.touchSession(sessionId);
+      return await chatDao.addMessage(
+        sessionId: sessionId,
+        content: content,
+        role: 'user',
+        inputTokens: inputTokens,
+      );
+    } catch (e, stack) {
+      Logger.error('Failed to add user message', e, stack);
+      rethrow;
+    }
   }
 
-  /// AI 메시지 추가
   Future<int> addAiMessage({
     required int sessionId,
     required String model,
     bool isStreaming = true,
   }) async {
-    Logger.info('Adding AI message to session: $sessionId');
-    return await chatDao.addMessage(
-      sessionId: sessionId,
-      content: '',
-      role: 'assistant',
-      model: model,
-      isStreaming: isStreaming,
-    );
+    Logger.info('Adding AI message to session: $sessionId (model: $model)');
+    try {
+      return await chatDao.addMessage(
+        sessionId: sessionId,
+        content: '',
+        role: 'assistant',
+        model: model,
+        isStreaming: isStreaming,
+      );
+    } catch (e, stack) {
+      Logger.error('Failed to add AI message', e, stack);
+      rethrow;
+    }
   }
 
-  /// 메시지 내용 업데이트
   Future<void> updateMessageContent(int messageId, String content) async {
-    await chatDao.updateMessageContent(messageId, content);
+    try {
+      await chatDao.updateMessageContent(messageId, content);
+    } catch (e, stack) {
+      Logger.error('Failed to update message content: $messageId', e, stack);
+      // 스트리밍 중 에러는 조용히 처리
+    }
   }
 
-  /// 스트리밍 완료 처리 (===== 수정: 토큰 파라미터 추가 =====)
   Future<void> completeStreaming(
       int messageId, {
-        int? inputTokens,   // ===== 추가 =====
-        int? outputTokens,  // ===== 추가 =====
+        int? inputTokens,
+        int? outputTokens,
       }) async {
     Logger.info('Completing streaming for message: $messageId');
+    try {
+      if (inputTokens != null || outputTokens != null) {
+        await chatDao.updateMessageTokens(
+          messageId,
+          inputTokens: inputTokens,
+          outputTokens: outputTokens,
+        );
+        Logger.debug('Tokens updated - input: $inputTokens, output: $outputTokens');
+      }
 
-    if (inputTokens != null || outputTokens != null) {
-      await chatDao.updateMessageTokens(
-        messageId,
-        inputTokens: inputTokens,
-        outputTokens: outputTokens,
-      );
+      await chatDao.completeStreaming(messageId);
+      Logger.info('Streaming completed successfully: $messageId');
+    } catch (e, stack) {
+      Logger.error('Failed to complete streaming', e, stack);
+      rethrow;
     }
-
-    await chatDao.completeStreaming(messageId);
   }
 
-  /// 메시지 삭제
   Future<void> deleteMessage(int messageId) async {
     Logger.info('Deleting message: $messageId');
-    await chatDao.deleteMessage(messageId);
+    try {
+      await chatDao.deleteMessage(messageId);
+    } catch (e, stack) {
+      Logger.error('Failed to delete message', e, stack);
+      rethrow;
+    }
   }
 
   Future<Message?> getLastMessage(int sessionId) async {
-    return await chatDao.getLastMessage(sessionId);
+    try {
+      return await chatDao.getLastMessage(sessionId);
+    } catch (e, stack) {
+      Logger.error('Failed to get last message', e, stack);
+      return null;
+    }
   }
 
   Stream<List<Message>> watchCompletedMessagesForSession(int sessionId) {
     return chatDao.watchCompletedMessagesForSession(sessionId);
   }
 
-  /// 세션 업데이트 시간 갱신
   Future<void> touchSession(int sessionId) async {
-    await chatDao.touchSession(sessionId);
+    try {
+      await chatDao.touchSession(sessionId);
+    } catch (e, stack) {
+      Logger.error('Failed to touch session', e, stack);
+      // 비중요 작업이므로 에러 무시
+    }
   }
 
-  /// 데이터베이스 접근 (DAO를 통한 접근)
   AppDatabase get database => chatDao.attachedDatabase;
 
   // ===== Cleanup Methods =====
 
-  /// 모든 대화 삭제
+  /// ✅ 개선: 모든 대화 삭제 (배치 최적화만 적용)
   Future<void> deleteAllConversations() async {
     Logger.info('Deleting all conversations...');
 
     try {
-      // 1. 첨부파일 파일 삭제
+      // 1. 첨부파일 파일 삭제 (병렬 처리)
       final allAttachments = await chatDao.attachedDatabase.attachmentDao.getAllAttachments();
       Logger.info('Found ${allAttachments.length} attachments to delete');
-      for (final attachment in allAttachments) {
-        try {
-          final file = File(attachment.filePath);
-          if (await file.exists()) {
-            await file.delete();
-            Logger.debug('Deleted file: ${attachment.fileName}');
-          }
-        } catch (e) {
-          Logger.warning('Failed to delete file: ${attachment.filePath}', e);
-        }
-      }
+
+      // ✅ 배치 처리: 병렬 삭제
+      await _deleteAttachmentFilesBatch(allAttachments);
 
       // 2. DB에서 첨부파일 삭제
       await chatDao.attachedDatabase.attachmentDao.deleteAllAttachments();
       Logger.info('Deleted all attachments from database');
-    } catch (e) {
-      Logger.error('Failed to delete attachments', e);
+
+      // 3. 메시지 삭제
+      await chatDao.deleteAllMessages();
+      Logger.info('Deleted all messages');
+
+      // 4. 세션 삭제
+      await chatDao.deleteAllSessions();
+      Logger.info('Deleted all sessions');
+
+      Logger.info('✅ All conversations deleted successfully');
+    } catch (e, stack) {
+      Logger.error('Failed to delete all conversations', e, stack);
+      rethrow;
     }
+  }
 
-    // 3. 메시지 삭제
-    await chatDao.deleteAllMessages();
-    Logger.info('Deleted all messages');
+  // ===== Private Helper Methods =====
 
-    // 4. 세션 삭제
-    await chatDao.deleteAllSessions();
-    Logger.info('Deleted all sessions');
+  /// ✅ 배치 파일 삭제 (병렬 처리)
+  Future<void> _deleteAttachmentFilesBatch(List<Attachment> attachments) async {
+    if (attachments.isEmpty) return;
 
-    Logger.info('✅ All conversations deleted successfully');
+    // 파일 삭제를 병렬로 실행 (최대 10개씩)
+    const batchSize = 10;
+
+    for (var i = 0; i < attachments.length; i += batchSize) {
+      final batch = attachments.skip(i).take(batchSize);
+
+      await Future.wait(
+        batch.map((attachment) async {
+          try {
+            final file = File(attachment.filePath);
+            if (await file.exists()) {
+              await file.delete();
+              Logger.debug('Deleted file: ${attachment.fileName}');
+            }
+          } catch (e) {
+            Logger.warning('Failed to delete file: ${attachment.filePath}', e);
+          }
+        }),
+      );
+    }
   }
 }

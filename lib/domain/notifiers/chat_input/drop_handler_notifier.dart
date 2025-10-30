@@ -8,7 +8,7 @@ import 'package:vibe_code/domain/providers/chat_provider.dart';
 import 'package:vibe_code/domain/providers/chat_input_state_provider.dart';
 import 'package:vibe_code/domain/notifiers/chat_input/chat_input_action_notifier.dart';
 
-/// ✅ Riverpod 3.0 NotifierProvider 패턴
+/// ✅ Riverpod 3.0: NotifierProvider 패턴
 /// 드래그앤드롭 상태 + 로직 통합
 class DropHandlerNotifier extends Notifier<DropHandlerState> {
   @override
@@ -30,18 +30,20 @@ class DropHandlerNotifier extends Notifier<DropHandlerState> {
     state = state.copyWith(isDragging: false);
   }
 
-  /// ✅ 드롭 가능 여부 (DropOverEvent로 수정)
+  /// ✅ 드롭 가능 여부
   DropOperation onDropOver(DropOverEvent event) {
     return DropOperation.copy;
   }
 
   /// 파일 드롭 처리
+  ///
+  /// super_drag_and_drop의 getValue는 콜백 기반이므로
+  /// Completer를 사용하여 Future로 변환합니다.
   Future<DropResult> handleDrop(PerformDropEvent event) async {
     if (!ref.mounted) return const DropResult.cancelled();
 
     // 드래그 상태 해제
     state = state.copyWith(isDragging: false);
-
     Logger.info('[DROP] Processing drop event');
 
     try {
@@ -49,16 +51,18 @@ class DropHandlerNotifier extends Notifier<DropHandlerState> {
       final reader = item.dataReader;
 
       if (reader == null || !reader.canProvide(Formats.fileUri)) {
+        Logger.warning('[DROP] No file URI available');
         return const DropResult.error('지원하지 않는 파일 형식입니다');
       }
 
-      // ✅ Riverpod 3.0: Completer로 비동기 콜백 처리
+      // ✅ Completer로 콜백 기반 API를 Future로 변환
       final completer = Completer<DropResult>();
 
-      reader.getValue<Uri>(
+      reader.getValue(
         Formats.fileUri,
             (uri) async {
           if (uri == null) {
+            Logger.warning('[DROP] URI is null');
             completer.complete(const DropResult.error('파일 경로를 가져올 수 없습니다'));
             return;
           }
@@ -91,8 +95,8 @@ class DropHandlerNotifier extends Notifier<DropHandlerState> {
 
             final fileName = filePath.split('/').last;
             completer.complete(DropResult.success(fileName: fileName));
-          } catch (e) {
-            Logger.error('[DROP] Upload failed', e, null);
+          } catch (e, stack) {
+            Logger.error('[DROP] Upload failed', e, stack);
             completer.complete(DropResult.error(e.toString()));
           }
         },
