@@ -114,7 +114,7 @@ class CustomSnackBar {
         : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd;
 
     // ✅ 스낵바 위치 계산
-    final bottomOffset = bottomOffsetOverride ?? (inputHeight + UIConstants.spacingMd);
+    final bottomOffset = bottomOffsetOverride ?? (inputHeight);
 
     _isShowing = true;
 
@@ -236,7 +236,7 @@ class _SnackBarWidgetState extends State<_SnackBarWidget>
     return Positioned(
       // ✅ 사이드바와 채팅 인풋을 모두 고려한 위치
       bottom: widget.bottomOffset,
-      left: widget.leftOffset + UIConstants.spacingMd, // ✅ 사이드바 크기만큼 오른쪽으로
+      left: widget.leftOffset + UIConstants.spacingMd,
       right: UIConstants.spacingMd,
       child: FadeTransition(
         opacity: _fadeAnimation,

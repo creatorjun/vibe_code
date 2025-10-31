@@ -6,6 +6,8 @@ import 'package:vibe_code/data/database/app_database.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 
+import 'package:vibe_code/presentation/screens/settings/widgets/custom_snack_bar.dart';
+
 class ExportDialog extends StatelessWidget {
   final ChatSession session;
   final List<Message> messages;
@@ -23,10 +25,7 @@ class ExportDialog extends StatelessWidget {
     return AlertDialog(
       title: Row(
         children: [
-          Icon(
-            Icons.download,
-            color: AppColors.primary,
-          ),
+          Icon(Icons.download, color: AppColors.primary),
           const SizedBox(width: 8),
           const Text('대화 내보내기'),
         ],
@@ -89,21 +88,11 @@ class ExportDialog extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: Colors.grey,
-          ),
+          Icon(icon, size: 16, color: Colors.grey),
           const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.grey),
-          ),
+          Text(label, style: const TextStyle(color: Colors.grey)),
           const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -119,20 +108,9 @@ class ExportDialog extends StatelessWidget {
 
     if (context.mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success ? '클립보드에 복사되었습니다 (${markdown.length}자)' : '복사 실패',
-          ),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: success ? AppColors.primary : Colors.red,
-          margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      success
+          ? CustomSnackBar.showSuccess(context, "클립보드에 복사되었습니다.")
+          : CustomSnackBar.showError(context, "복사 실패");
     }
   }
 
@@ -158,28 +136,12 @@ class ExportDialog extends StatelessWidget {
 
         if (context.mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('파일이 저장되었습니다: $filename'),
-              duration: const Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: AppColors.primary,
-              margin: const EdgeInsets.all(16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
+          CustomSnackBar.showSuccess(context, "파일에 저장되었습니다.. $filename");
         }
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('저장 실패: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+          CustomSnackBar.showError(context, '저장 실패: $e');
       }
     }
   }

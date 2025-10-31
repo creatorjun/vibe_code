@@ -6,6 +6,7 @@ import 'package:vibe_code/core/utils/logger.dart';
 import 'package:vibe_code/core/utils/markdown_parser.dart';
 import 'package:vibe_code/data/database/app_database.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
+import 'package:vibe_code/presentation/screens/settings/widgets/custom_snack_bar.dart';
 import 'package:vibe_code/presentation/shared/widgets/loading_indicator.dart';
 import 'code_snippet_widget.dart';
 import 'markdown_text_widget.dart';
@@ -215,18 +216,7 @@ class AiMessageBubbleSliver extends StatelessWidget {
               onTap: () async {
                 await Clipboard.setData(ClipboardData(text: message.content));
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('복사되었습니다'),
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: AppColors.primary,
-                      margin: const EdgeInsets.all(16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
+                  CustomSnackBar.showSuccess(context, '클립보드에 복사되었습니다.');
                 }
               },
               borderRadius: BorderRadius.circular(UIConstants.radiusSm),

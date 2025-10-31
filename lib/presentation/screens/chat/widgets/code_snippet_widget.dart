@@ -6,6 +6,7 @@ import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:vibe_code/presentation/screens/settings/widgets/custom_snack_bar.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -274,21 +275,15 @@ class _CodeHeaderState extends State<_CodeHeader> {
     if (!mounted) return;
 
     setState(() => _isCopied = true);
-    _showCopiedSnackBar();
+    _showCopiedSnackBar(context, "클립보드에 복사되었습니다.");
 
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) setState(() => _isCopied = false);
     });
   }
 
-  void _showCopiedSnackBar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('코드가 복사되었습니다'),
-        duration: Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showCopiedSnackBar(BuildContext context, String message) {
+    CustomSnackBar.showSuccess(context, message);
   }
 
   @override

@@ -7,7 +7,7 @@ Future<int> createNewSession(WidgetRef ref, [String? title]) async {
 
   Logger.info('Creating new session');
 
-  final sessionId = await chatRepo.createSession(title ?? '새 대화');
+  final sessionId = await chatRepo.createSession(title ?? '새로운 대화');
 
   ref.read(activeSessionProvider.notifier).select(sessionId);
 

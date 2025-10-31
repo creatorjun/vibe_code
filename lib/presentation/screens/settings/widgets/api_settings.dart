@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
 import 'package:vibe_code/domain/providers/settings_provider.dart';
+import 'package:vibe_code/presentation/screens/settings/widgets/custom_snack_bar.dart';
 
 class ApiSettings extends ConsumerStatefulWidget {
   const ApiSettings({super.key});
@@ -46,13 +47,7 @@ class _ApiSettingsState extends ConsumerState<ApiSettings> {
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    CustomSnackBar.showError(context, message);
   }
 
   @override

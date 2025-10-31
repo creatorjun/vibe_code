@@ -6,6 +6,7 @@ import 'package:vibe_code/core/theme/app_colors.dart';
 import 'package:vibe_code/core/utils/date_formatter.dart';
 import 'package:vibe_code/data/database/app_database.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
+import 'package:vibe_code/presentation/screens/settings/widgets/custom_snack_bar.dart';
 
 /// 사용자 메시지 버블
 class UserMessageBubble extends StatefulWidget {
@@ -104,18 +105,7 @@ class _UserMessageBubbleState extends State<UserMessageBubble> {
 
                               // ✅ 스낵바 표시
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text('클립보드에 복사되었습니다'),
-                                    duration: const Duration(seconds: 2),
-                                    behavior: SnackBarBehavior.floating,
-                                    backgroundColor: AppColors.primary,
-                                    margin: const EdgeInsets.all(16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                );
+                                CustomSnackBar.showSuccess(context, "클립보드에 복사되었습니다.");
                               }
                             },
                             borderRadius: BorderRadius.circular(UIConstants.radiusSm),
