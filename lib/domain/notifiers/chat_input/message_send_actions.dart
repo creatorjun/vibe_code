@@ -1,5 +1,3 @@
-// lib/domain/notifiers/chat_input/message_send_actions.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vibe_code/core/utils/logger.dart';
 import 'package:vibe_code/domain/mutations/send_message/send_message_mutation.dart';
@@ -7,43 +5,40 @@ import 'package:vibe_code/domain/providers/chat_provider.dart';
 import 'package:vibe_code/domain/providers/chat_input_state_provider.dart';
 import 'package:vibe_code/domain/notifiers/chat_input/chat_input_action_notifier.dart';
 
-/// ✅ NotifierProvider로 변경 (Ref.mounted 사용 가능)
+/// NotifierProvider (Ref.mounted 사용 가능)
 class MessageSendActionsNotifier extends Notifier<void> {
   @override
   void build() {}
 
-  /// 메시지 전송
+  /// 메시지 전송 액션
   Future<SendActionResult> sendMessage() async {
     if (!ref.mounted) return const SendActionResult.cancelled();
 
     final inputState = ref.read(chatInputStateProvider);
-    if (!inputState.canSend) {
-      return const SendActionResult.invalidInput();
-    }
+    if (!inputState.canSend) return const SendActionResult.invalidInput();
 
     Logger.info('[MessageSend] Preparing to send message');
 
-    // 1. 세션 확보
+    // 1. 세션 준비
     final activeSession = ref.read(activeSessionProvider);
     final sessionId = activeSession ?? await _createSession();
-
     if (!ref.mounted) return const SendActionResult.cancelled();
 
-    // 2. 입력 내용 캡처
+    // 2. 메시지 내용 및 첨부파일 준비
     final content = inputState.content.trim();
     final attachmentIds = List<String>.from(inputState.attachmentIds);
 
-    // 3. 입력 초기화 (전송 전에 먼저)
+    // 3. 입력창 초기화
     ref.read(chatInputActionProvider.notifier).clearInput();
 
-    // ✅ Riverpod 3.0: mounted 체크
+    // Riverpod 3.0 mounted 체크
     if (!ref.mounted) return const SendActionResult.cancelled();
 
     try {
-      // 4. ✅ 기존 SendMessageMutation 활용
+      // 4. SendMessageMutation 실행
       await ref.read(sendMessageMutationProvider.notifier).sendMessage(
         sessionId: sessionId,
-        content: content.isEmpty ? '첨부파일' : content,
+        content: content.isEmpty ? '' : content,
         attachmentIds: attachmentIds,
       );
 
@@ -53,40 +48,42 @@ class MessageSendActionsNotifier extends Notifier<void> {
       Logger.error('[MessageSend] Send failed', e, stackTrace);
       return SendActionResult.error(e.toString());
     } finally {
-      // 5. 포커스 복구
+      // ✅ 5. 전송 완료 후 명시적으로 포커스 요청
       if (ref.mounted) {
         ref.read(chatInputActionProvider.notifier).requestFocus();
+        Logger.debug('[MessageSend] Focus requested after send completion');
       }
     }
   }
 
-  /// 세션 생성 (내부 메서드)
+  /// 세션 생성 (✅ title 파라미터 추가)
   Future<int> _createSession() async {
     final chatRepo = ref.read(chatRepositoryProvider);
-    final sessionId = await chatRepo.createSession('새로운 대화');
-
+    final sessionId = await chatRepo.createSession('새로운 대화'); // ✅ title 추가
     if (ref.mounted) {
       ref.read(activeSessionProvider.notifier).select(sessionId);
     }
-
     return sessionId;
   }
 
   /// 스트리밍 취소
   void cancelStreaming() {
     if (!ref.mounted) return;
+
     ref.read(sendMessageMutationProvider.notifier).cancel();
+
+    // ✅ 스트리밍 취소 후 명시적으로 포커스 요청
     ref.read(chatInputActionProvider.notifier).requestFocus();
     Logger.info('[MessageSend] Streaming cancelled');
   }
 }
 
-/// ✅ Provider 정의 (NotifierProvider로 변경)
+/// Provider
 final messageSendActionsProvider = NotifierProvider<MessageSendActionsNotifier, void>(
   MessageSendActionsNotifier.new,
 );
 
-/// ✅ 결과 모델
+/// 전송 결과 sealed class
 sealed class SendActionResult {
   const SendActionResult();
 

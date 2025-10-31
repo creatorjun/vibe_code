@@ -1,5 +1,3 @@
-// lib/presentation/screens/chat/chat_screen.dart
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -13,6 +11,7 @@ import 'package:vibe_code/domain/providers/database_provider.dart';
 import 'package:vibe_code/domain/providers/scroll_controller_provider.dart';
 import 'package:vibe_code/domain/providers/sidebar_state_provider.dart';
 import 'package:vibe_code/domain/providers/chat_provider.dart';
+import 'package:vibe_code/domain/notifiers/chat_input/chat_input_action_notifier.dart';
 import 'package:vibe_code/presentation/screens/chat/widgets/side_bar.dart';
 import 'widgets/chat_state_bar.dart';
 import 'widgets/message_bubble.dart';
@@ -24,24 +23,56 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
-  static const scrollDebounceDuration = Duration(milliseconds: 100);
-  static const emptyMessagesProvider = AsyncValue<List<Message>>.data([]);
+class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObserver {
+  static const _scrollDebounceDuration = Duration(milliseconds: 100);
+  static const _emptyMessagesProvider = AsyncValue<List<Message>>.data([]);
 
-  int? previousSessionId;
-  int? previousMessageCount;
-  Timer? scrollDebounce;
-  double prevKeyboardHeight = 0;
-  double prevInputHeight = 0;
+  int? _previousSessionId;
+  int? _previousMessageCount;
+  Timer? _scrollDebounce;
+  double _prevKeyboardHeight = 0;
+  double _prevInputHeight = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ AppLifecycleState 감지를 위해 Observer 추가
+    WidgetsBinding.instance.addObserver(this);
+
+    // ✅ 화면 로드 시 포커스 요청
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(chatInputActionProvider.notifier).requestFocus();
+      }
+    });
+  }
 
   @override
   void dispose() {
-    scrollDebounce?.cancel();
+    // ✅ Observer 제거
+    WidgetsBinding.instance.removeObserver(this);
+    _scrollDebounce?.cancel();
     super.dispose();
   }
 
-  void scrollToBottom(ScrollController controller) {
+  /// ✅ 앱 라이프사이클 변경 감지
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      // 앱이 포그라운드로 돌아왔을 때 포커스 요청
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          ref.read(chatInputActionProvider.notifier).requestFocus();
+        }
+      });
+    }
+  }
+
+  void _scrollToBottom(ScrollController controller) {
     if (!controller.hasClients) return;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (controller.hasClients) {
         controller.animateTo(
@@ -53,10 +84,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  void scheduleScrollToBottom(ScrollController controller) {
-    scrollDebounce?.cancel();
-    scrollDebounce = Timer(scrollDebounceDuration, () {
-      scrollToBottom(controller);
+  void _scheduleScrollToBottom(ScrollController controller) {
+    _scrollDebounce?.cancel();
+    _scrollDebounce = Timer(_scrollDebounceDuration, () {
+      if (mounted) _scrollToBottom(controller);
     });
   }
 
@@ -65,20 +96,53 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final shouldShowExpanded = ref.watch(
       sidebarStateProvider.select((state) => state.shouldShowExpanded),
     );
+
     final activeSessionId = ref.watch(activeSessionProvider);
     final scrollController = ref.watch(messageScrollProvider);
+
     final messagesAsync = activeSessionId != null
         ? ref.watch(sessionMessagesProvider(activeSessionId))
-        : emptyMessagesProvider;
+        : _emptyMessagesProvider;
 
-    // ✅ Riverpod 3.0 개선: ref.listen 제거, watch로 변경 감지
-    setupScrollEffects(activeSessionId, messagesAsync, scrollController);
-    handleHeightChanges(context, scrollController);
+    // ✅ 세션 변경 시 포커스 요청
+    if (activeSessionId != _previousSessionId) {
+      _previousSessionId = activeSessionId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(chatInputActionProvider.notifier).requestFocus();
+        }
+      });
+    }
+
+    // Setup scroll effects
+    _setupScrollEffects(activeSessionId, messagesAsync, scrollController);
+
+    // Handle height changes (keyboard, input)
+    _handleHeightChanges(context, scrollController);
+
+    // ✅ Watch message count changes
+    messagesAsync.whenData((messages) {
+      final currentCount = messages.length;
+      if (_previousMessageCount != null && currentCount != _previousMessageCount) {
+        _scheduleScrollToBottom(scrollController);
+      }
+      _previousMessageCount = currentCount;
+    });
+
+    final sendMessageStatus = ref.watch(
+      sendMessageMutationProvider.select((state) => state.status),
+    );
+    if (sendMessageStatus == SendMessageStatus.success ||
+        sendMessageStatus == SendMessageStatus.error) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToBottom(scrollController);
+      });
+    }
 
     return Scaffold(
       body: Stack(
         children: [
-          ChatContentPositioned(
+          _ChatContentPositioned(
             shouldShowExpanded: shouldShowExpanded,
             messagesAsync: messagesAsync,
             scrollController: scrollController,
@@ -89,76 +153,62 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             bottom: 0,
             child: SideBar(),
           ),
-          ChatInputPositioned(shouldShowExpanded: shouldShowExpanded),
+          _ChatInputPositioned(shouldShowExpanded: shouldShowExpanded),
         ],
       ),
     );
   }
 
-  /// ✅ Riverpod 3.0 개선: ref.listen 대신 watch 기반 상태 감지
-  /// StreamProvider를 직접 listen하면 이중 구독이 발생하므로 watch로 변경
-  void setupScrollEffects(
+  void _setupScrollEffects(
       int? activeSessionId,
       AsyncValue<List<Message>> messagesAsync,
       ScrollController controller,
       ) {
-    // 세션 변경 시 스크롤
-    if (activeSessionId != previousSessionId) {
-      previousSessionId = activeSessionId;
-      previousMessageCount = null; // 메시지 카운트 초기화
-      scrollToBottom(controller);
+    if (activeSessionId != _previousSessionId) {
+      _previousSessionId = activeSessionId;
+      _previousMessageCount = null;
+      _scrollToBottom(controller);
+      return;
     }
 
-    // ✅ 메시지 개수 변화 감지 (watch로 반응형 처리)
+    // ✅ null-safe 처리
     messagesAsync.whenData((messages) {
       final currentCount = messages.length;
-      if (previousMessageCount != null && currentCount != previousMessageCount) {
-        scheduleScrollToBottom(controller);
+      final prevCount = _previousMessageCount;
+
+      if (prevCount != null && currentCount > prevCount) {
+        _scheduleScrollToBottom(controller);
       }
-      previousMessageCount = currentCount;
     });
-
-    // ✅ 스트리밍 상태 변화 감지 (이미 잘 구현되어 있음)
-    final sendMessageStatus = ref.watch(
-      sendMessageMutationProvider.select((state) => state.status),
-    );
-
-    // 스트리밍 완료 시 스크롤
-    if (sendMessageStatus == SendMessageStatus.success ||
-        sendMessageStatus == SendMessageStatus.error) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        scrollToBottom(controller);
-      });
-    }
   }
 
-  void handleHeightChanges(BuildContext context, ScrollController controller) {
+  void _handleHeightChanges(BuildContext context, ScrollController controller) {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final inputHeight = ref.watch(chatInputStateProvider.select((s) => s.height));
 
-    if (keyboardHeight != prevKeyboardHeight || inputHeight != prevInputHeight) {
-      scrollToBottom(controller);
-      prevKeyboardHeight = keyboardHeight;
-      prevInputHeight = inputHeight;
+    if (keyboardHeight != _prevKeyboardHeight || inputHeight != _prevInputHeight) {
+      _scrollToBottom(controller);
     }
+
+    _prevKeyboardHeight = keyboardHeight;
+    _prevInputHeight = inputHeight;
   }
 }
 
-class ChatContentPositioned extends ConsumerWidget {
+class _ChatContentPositioned extends ConsumerWidget {
   final bool shouldShowExpanded;
   final AsyncValue<List<Message>> messagesAsync;
   final ScrollController scrollController;
   final int? activeSessionId;
 
-  const ChatContentPositioned({
-    super.key,
+  const _ChatContentPositioned({
     required this.shouldShowExpanded,
     required this.messagesAsync,
     required this.scrollController,
     required this.activeSessionId,
   });
 
-  double get leftOffset => shouldShowExpanded
+  double get _leftOffset => shouldShowExpanded
       ? UIConstants.sessionListWidth + UIConstants.spacingMd
       : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd;
 
@@ -167,32 +217,31 @@ class ChatContentPositioned extends ConsumerWidget {
     return AnimatedPositioned(
       duration: UIConstants.animationDuration,
       curve: Curves.easeOut,
-      left: leftOffset,
+      left: _leftOffset,
       top: 0,
       right: 0,
       bottom: 0,
       child: messagesAsync.when(
-        data: (messages) => ChatContent(
+        data: (messages) => _ChatContent(
           messages: messages,
           scrollController: scrollController,
           activeSessionId: activeSessionId,
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => ErrorState(error: error),
+        error: (error, _) => _ErrorState(error: error),
       ),
     );
   }
 }
 
-class ChatInputPositioned extends StatelessWidget {
+class _ChatInputPositioned extends StatelessWidget {
   final bool shouldShowExpanded;
 
-  const ChatInputPositioned({
-    super.key,
+  const _ChatInputPositioned({
     required this.shouldShowExpanded,
   });
 
-  double get leftOffset => shouldShowExpanded
+  double get _leftOffset => shouldShowExpanded
       ? UIConstants.sessionListWidth + UIConstants.spacingMd
       : UIConstants.sessionListCollapsedWidth + UIConstants.spacingMd;
 
@@ -201,7 +250,7 @@ class ChatInputPositioned extends StatelessWidget {
     return AnimatedPositioned(
       duration: UIConstants.animationDuration,
       curve: Curves.easeOut,
-      left: leftOffset,
+      left: _leftOffset,
       right: 0,
       bottom: 0,
       child: const ChatInput(),
@@ -209,13 +258,12 @@ class ChatInputPositioned extends StatelessWidget {
   }
 }
 
-class ChatContent extends ConsumerWidget {
+class _ChatContent extends ConsumerWidget {
   final List<Message> messages;
   final ScrollController scrollController;
   final int? activeSessionId;
 
-  const ChatContent({
-    super.key,
+  const _ChatContent({
     required this.messages,
     required this.scrollController,
     required this.activeSessionId,
@@ -241,23 +289,23 @@ class ChatContent extends ConsumerWidget {
           flexibleSpace: ChatStateBar(sessionId: activeSessionId),
         ),
         if (messages.isEmpty)
-          const EmptyState()
+          const _EmptyState()
         else
-          ...buildMessageSlivers(messages, context),
+          ..._buildMessageSlivers(messages, context),
         SliverToBoxAdapter(child: SizedBox(height: inputHeight)),
       ],
     );
   }
 
-  List<Widget> buildMessageSlivers(List<Message> messages, BuildContext context) {
+  List<Widget> _buildMessageSlivers(List<Message> messages, BuildContext context) {
     return messages
         .expand((message) => MessageBubble(message: message).buildAsSliver(context))
         .toList();
   }
 }
 
-class EmptyState extends StatelessWidget {
-  const EmptyState({super.key});
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
@@ -276,14 +324,14 @@ class EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: UIConstants.spacingMd),
             Text(
-              '새로운 대화를 시작하세요',
+              '새로운 대화 시작',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurface.withAlpha(UIConstants.alpha50),
               ),
             ),
             const SizedBox(height: UIConstants.spacingSm),
             Text(
-              '메시지를 입력해 AI와 대화를 나눠보세요',
+              'AI 모델과 채팅을 시작해보세요',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurface.withAlpha(UIConstants.alpha40),
               ),
@@ -295,11 +343,10 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-class ErrorState extends StatelessWidget {
+class _ErrorState extends StatelessWidget {
   final Object error;
 
-  const ErrorState({
-    super.key,
+  const _ErrorState({
     required this.error,
   });
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vibe_code/core/constants/ui_constants.dart';
 import 'package:vibe_code/core/constants/app_constants.dart';
+import 'package:vibe_code/domain/notifiers/chat_input/chat_input_action_notifier.dart';
 import 'package:vibe_code/domain/providers/settings_provider.dart';
 import 'package:vibe_code/domain/providers/selected_model_count_provider.dart';
 
@@ -37,10 +38,13 @@ class RightButtons extends ConsumerWidget {
 
   Widget _buildPipelineDepthSelector(BuildContext context, WidgetRef ref) {
     final enabledModelsLength = ref.watch(
-      settingsProvider.select((async) => async.whenOrNull(
-        data: (settings) => settings.enabledModels.length,
-      ) ??
-          0),
+      settingsProvider.select(
+        (async) =>
+            async.whenOrNull(
+              data: (settings) => settings.enabledModels.length,
+            ) ??
+            0,
+      ),
     );
     final selectedDepth = ref.watch(selectedPipelineDepthProvider);
     final maxDepth = enabledModelsLength < AppConstants.maxPipelineModels
@@ -61,10 +65,9 @@ class RightButtons extends ConsumerWidget {
         Icon(
           Icons.list_outlined,
           size: 16,
-          color: Theme.of(context)
-              .colorScheme
-              .onSurface
-              .withAlpha(UIConstants.alpha60),
+          color: Theme.of(
+            context,
+          ).colorScheme.onSurface.withAlpha(UIConstants.alpha60),
         ),
         const SizedBox(width: UIConstants.spacingSm),
         // 버튼 컨테이너
@@ -75,16 +78,13 @@ class RightButtons extends ConsumerWidget {
             vertical: 2,
           ),
           decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .surfaceContainerHighest
+            color: Theme.of(context).colorScheme.surfaceContainerHighest
                 .withAlpha(UIConstants.alpha30),
             borderRadius: BorderRadius.circular(UIConstants.radiusSm),
             border: Border.all(
-              color: Theme.of(context)
-                  .colorScheme
-                  .outline
-                  .withAlpha(UIConstants.alpha20),
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withAlpha(UIConstants.alpha20),
             ),
           ),
           child: Row(
@@ -93,13 +93,16 @@ class RightButtons extends ConsumerWidget {
               final depth = index + 1;
               final isSelected = depth == currentValidDepth;
               return Padding(
-                padding: EdgeInsets.only(
-                  right: index < maxDepth - 1 ? 4.0 : 0,
-                ),
+                padding: EdgeInsets.only(right: index < maxDepth - 1 ? 4.0 : 0),
                 child: InkWell(
-                  onTap: () => ref
-                      .read(selectedPipelineDepthProvider.notifier)
-                      .setDepth(depth),
+                  onTap: () {
+                    ref
+                        .read(selectedPipelineDepthProvider.notifier)
+                        .setDepth(depth);
+                    Future.microtask(() {
+                      ref.read(chatInputActionProvider.notifier).requestFocus();
+                    });
+                  },
                   borderRadius: BorderRadius.circular(UIConstants.radiusXs),
                   child: Container(
                     width: 28,
@@ -116,10 +119,9 @@ class RightButtons extends ConsumerWidget {
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: isSelected
                             ? Theme.of(context).colorScheme.onPrimary
-                            : Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withAlpha(UIConstants.alpha70),
+                            : Theme.of(context).colorScheme.onSurface.withAlpha(
+                                UIConstants.alpha70,
+                              ),
                       ),
                     ),
                   ),
@@ -134,15 +136,16 @@ class RightButtons extends ConsumerWidget {
 
   Widget _buildPresetSelector(BuildContext context, WidgetRef ref) {
     final presets = ref.watch(
-      settingsProvider.select((async) => async.whenOrNull(
-        data: (settings) => settings.promptPresets,
-      ) ??
-          []),
+      settingsProvider.select(
+        (async) =>
+            async.whenOrNull(data: (settings) => settings.promptPresets) ?? [],
+      ),
     );
     final selectedPresetId = ref.watch(
-      settingsProvider.select((async) => async.whenOrNull(
-        data: (settings) => settings.selectedPresetId,
-      )),
+      settingsProvider.select(
+        (async) =>
+            async.whenOrNull(data: (settings) => settings.selectedPresetId),
+      ),
     );
 
     if (presets.isEmpty) return const SizedBox.shrink();
@@ -153,10 +156,9 @@ class RightButtons extends ConsumerWidget {
         Icon(
           Icons.auto_awesome_outlined,
           size: 16,
-          color: Theme.of(context)
-              .colorScheme
-              .onSurface
-              .withAlpha(UIConstants.alpha60),
+          color: Theme.of(
+            context,
+          ).colorScheme.onSurface.withAlpha(UIConstants.alpha60),
         ),
         const SizedBox(width: UIConstants.spacingSm),
         // 버튼 컨테이너
@@ -167,16 +169,13 @@ class RightButtons extends ConsumerWidget {
             vertical: 2,
           ),
           decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .surfaceContainerHighest
+            color: Theme.of(context).colorScheme.surfaceContainerHighest
                 .withAlpha(UIConstants.alpha30),
             borderRadius: BorderRadius.circular(UIConstants.radiusSm),
             border: Border.all(
-              color: Theme.of(context)
-                  .colorScheme
-                  .outline
-                  .withAlpha(UIConstants.alpha20),
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withAlpha(UIConstants.alpha20),
             ),
           ),
           child: Row(
@@ -192,8 +191,20 @@ class RightButtons extends ConsumerWidget {
                   onTap: () {
                     if (isSelected) {
                       ref.read(settingsProvider.notifier).selectPreset(null);
+                      Future.microtask(() {
+                        ref
+                            .read(chatInputActionProvider.notifier)
+                            .requestFocus();
+                      });
                     } else {
-                      ref.read(settingsProvider.notifier).selectPreset(preset.id);
+                      ref
+                          .read(settingsProvider.notifier)
+                          .selectPreset(preset.id);
+                      Future.microtask(() {
+                        ref
+                            .read(chatInputActionProvider.notifier)
+                            .requestFocus();
+                      });
                     }
                   },
                   borderRadius: BorderRadius.circular(UIConstants.radiusXs),
@@ -212,10 +223,9 @@ class RightButtons extends ConsumerWidget {
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: isSelected
                             ? Theme.of(context).colorScheme.onPrimary
-                            : Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withAlpha(UIConstants.alpha70),
+                            : Theme.of(context).colorScheme.onSurface.withAlpha(
+                                UIConstants.alpha70,
+                              ),
                       ),
                     ),
                   ),
