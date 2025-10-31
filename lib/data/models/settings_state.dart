@@ -1,4 +1,5 @@
 // lib/data/models/settings_state.dart
+
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../core/constants/app_constants.dart';
 

@@ -1,5 +1,6 @@
-import 'dart:async';
+// lib/presentation/screens/chat/chat_screen.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vibe_code/presentation/screens/chat/widgets/chat_input.dart';
